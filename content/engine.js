@@ -391,6 +391,83 @@ class JapaneseEngine {
   }
 
   /**
+   * Chuẩn hóa văn bản tiếng Nhật trước khi gửi tới API dịch (xử lý số đếm Hiragana & ngoặc furigana)
+   */
+  normalizeTextForTranslation(text) {
+    if (!text) return text;
+
+    // 1. Loại bỏ Furigana trong ngoặc đơn đi kèm chữ Hán (ví dụ: 時計（とけい） -> 時計)
+    let cleaned = text.replace(/([一-龯]+)\s*[（\(][\u3040-\u309F\u30A0-\u30FFー]+[）\)]/g, '$1');
+
+    // 2. Chuyển đổi số đếm viết bằng Hiragana sang chữ số chuẩn để API dịch chính xác
+    const thousands = [
+      ['きゅうせん', 9000], ['はっせん', 8000], ['ななせん', 7000], ['ろくせん', 6000],
+      ['ごせん', 5000], ['よんせん', 4000], ['さんぜん', 3000], ['にせん', 2000],
+      ['いっせん', 1000], ['せん', 1000]
+    ];
+    const hundreds = [
+      ['きゅうひゃく', 900], ['はっぴゃく', 800], ['ななひゃく', 700], ['ろっぴゃく', 600],
+      ['ごひゃく', 500], ['よんひゃく', 400], ['さんびゃく', 300], ['にひゃく', 200],
+      ['びゃく', 100], ['ぴゃく', 100], ['ひゃく', 100]
+    ];
+    const tens = [
+      ['きゅうじゅう', 90], ['はちじゅう', 80], ['ななじゅう', 70], ['ろくじゅう', 60],
+      ['ごじゅう', 50], ['よんじゅう', 40], ['さんじゅう', 30], ['にじゅう', 20],
+      ['じゅう', 10]
+    ];
+    const ones = [
+      ['きゅう', 9], ['く', 9], ['はち', 8], ['なな', 7], ['しち', 7],
+      ['ろく', 6], ['ご', 5], ['よん', 4], ['し', 4], ['さん', 3],
+      ['に', 2], ['いち', 1]
+    ];
+
+    function parseUnder10000(s) {
+      if (!s) return 0;
+      let sum = 0;
+      let rem = s;
+      for (const [k, v] of thousands) { if (rem.startsWith(k)) { sum += v; rem = rem.slice(k.length); break; } }
+      for (const [k, v] of hundreds) { if (rem.startsWith(k)) { sum += v; rem = rem.slice(k.length); break; } }
+      for (const [k, v] of tens) { if (rem.startsWith(k)) { sum += v; rem = rem.slice(k.length); break; } }
+      for (const [k, v] of ones) { if (rem === k) { sum += v; rem = ''; break; } }
+      return rem.length === 0 ? sum : null;
+    }
+
+    function parseHiraNum(hira) {
+      if (!hira) return null;
+      if (hira.includes('まん')) {
+        const parts = hira.split('まん');
+        const high = parseUnder10000(parts[0]) || 1;
+        const low = parseUnder10000(parts[1]) || 0;
+        return high * 10000 + low;
+      }
+      return parseUnder10000(hira);
+    }
+
+    const numRegex = /([ぜれいいちにつっさんよんしごろくななしちはちきゅうくじゅうひゃくびゃくぴゃくせんぜんまん]+)(えん|にん|さい|かい|じ|ふん|ぷん|ほん|ぼん|ぽん|こ|さつ|まい|台|個|本|枚|人|歳|円|回|時|分)?/g;
+
+    const counterMap = {
+      'えん': '円', 'にん': '人', 'さい': '歳', 'かい': '回',
+      'じ': '時', 'ふん': '分', 'ぷん': '分', 'ほん': '本',
+      'ぼん': '本', 'ぽん': '本', 'こ': '個', 'さつ': '冊', 'まい': '枚'
+    };
+
+    const blacklist = new Set(['にほん', 'にほんご', 'さんぽ', 'じぶん', 'きぶん', 'いっしょ', 'たいへん']);
+
+    cleaned = cleaned.replace(numRegex, (match, numPart, counterPart) => {
+      if (blacklist.has(match)) return match;
+      const val = parseHiraNum(numPart);
+      if (val !== null && val > 0) {
+        if (!counterPart && val < 10) return match;
+        const c = counterPart ? (counterMap[counterPart] || counterPart) : '';
+        return ' ' + val + c + ' ';
+      }
+      return match;
+    });
+
+    return cleaned.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
    * Tra cứu dự phòng Trực tuyến (Online Fallback)
    */
   async fetchOnlineData(word, signal) {
@@ -402,7 +479,8 @@ class JapaneseEngine {
     }
 
     try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=vi&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(cleanWord)}`;
+      const queryText = this.normalizeTextForTranslation(cleanWord);
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=vi&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(queryText)}`;
       const response = await fetch(url, { signal });
       if (!response.ok) return null;
 
@@ -432,7 +510,9 @@ class JapaneseEngine {
       }
 
       let onlineReading = '';
-      if (onlineRomaji && typeof romajiToHiragana === 'function') {
+      // Chỉ tạo online reading cho từ đơn ngắn (dưới 8 ký tự và không chứa dấu câu), tránh tạo phiên âm hỏng cho cả câu dài
+      const isSingleWord = cleanWord.length <= 8 && !/[\s、。！？!?]/.test(cleanWord);
+      if (isSingleWord && onlineRomaji && typeof romajiToHiragana === 'function') {
         onlineReading = romajiToHiragana(onlineRomaji);
       }
 

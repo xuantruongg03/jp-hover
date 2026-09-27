@@ -332,9 +332,8 @@
       const copyWord = currentWord;
       if (!copyWord) return;
 
-      const readingPart = (currentReading && currentReading !== copyWord) ? ` [${currentReading}]` : '';
-      const hvPart = currentHanViet ? ` (${currentHanViet})` : '';
-      const copyStr = `${copyWord}${readingPart}${hvPart} - ${currentMeaning || 'Chưa có giải nghĩa'}`;
+      // Chỉ sao chép nội dung từ vựng đang chọn / hover (không copy nghĩa)
+      const copyStr = copyWord;
 
       const notifySuccess = () => {
         copyBtn.classList.add('copied');
@@ -663,6 +662,12 @@
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
         <span style="font-weight:bold;color:#38bdf8;font-size:13px;">📑 Dịch câu tiếng Nhật</span>
         <div style="display:flex;gap:6px;">
+          <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu đang chọn">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
           <button class="jp-icon-btn jp-sentence-audio-btn" id="jp-sentence-audio" title="Nghe câu">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
@@ -672,9 +677,8 @@
         </div>
       </div>
       <div style="font-size:15px;font-weight:bold;color:#ffffff;line-height:1.4;margin-top:4px;">${text}</div>
-      <div id="jp-sentence-reading" style="font-size:12px;color:#a5b4fc;display:none;"></div>
-      <div id="jp-sentence-meaning" style="font-size:13px;color:#e2e8f0;background:rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;line-height:1.4;">
-        Đang dịch...
+      <div id="jp-sentence-meaning" style="font-size:13.5px;color:#e2e8f0;background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;line-height:1.45;border-left:3px solid #38bdf8;">
+        Đang dịch câu...
       </div>
     `;
 
@@ -685,6 +689,21 @@
     sentenceCard.style.left = `${Math.max(16, left)}px`;
     sentenceCard.style.top = `${Math.max(16, top)}px`;
     sentenceCard.classList.add('visible');
+
+    // Nút copy câu đang chọn
+    const copySentenceBtn = sentenceCard.querySelector('#jp-sentence-copy');
+    copySentenceBtn.addEventListener('click', () => {
+      const onSuccess = () => {
+        copySentenceBtn.classList.add('copied');
+        showToast('📋 Đã sao chép nội dung');
+        setTimeout(() => copySentenceBtn.classList.remove('copied'), 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopyText(text, onSuccess));
+      } else {
+        fallbackCopyText(text, onSuccess);
+      }
+    });
 
     // Nút audio và close
     const audioBtn = sentenceCard.querySelector('#jp-sentence-audio');
@@ -704,15 +723,10 @@
     // Gọi API dịch câu
     try {
       const res = await japaneseEngine.fetchOnlineData(text);
-      if (res) {
+      if (res && res.meaning) {
         const mElem = sentenceCard.querySelector('#jp-sentence-meaning');
-        const rElem = sentenceCard.querySelector('#jp-sentence-reading');
-        if (mElem && res.meaning) {
+        if (mElem) {
           mElem.textContent = res.meaning;
-        }
-        if (rElem && res.reading) {
-          rElem.textContent = `Cách đọc: ${res.reading}`;
-          rElem.style.display = 'block';
         }
       }
     } catch (_) {}
