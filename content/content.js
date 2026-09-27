@@ -853,10 +853,17 @@
   // 8. Bắt sự kiện chuột
   function handleMouseDown(e) {
     const path = e.composedPath ? e.composedPath() : [];
-    if (path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge)) {
+    const insideCard = path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge);
+    if (insideCard) {
       cancelHideSchedule();
       return;
     }
+
+    // Click ra ngoài sentence card → đóng ngay
+    if (sentenceCard && sentenceCard.classList.contains('visible')) {
+      hideSentenceCard();
+    }
+
     if (isMouseInTooltipBuffer(e.clientX, e.clientY)) {
       cancelHideSchedule();
       return;
@@ -1045,6 +1052,10 @@
     }
     if (isMouseInTooltipBuffer(e.clientX, e.clientY)) {
       return;
+    }
+    // Click ra ngoài sentence card → đóng
+    if (sentenceCard && sentenceCard.classList.contains('visible')) {
+      hideSentenceCard();
     }
     if (!isPinned) {
       if (cardElem && cardElem.classList.contains('visible')) {
