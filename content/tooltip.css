@@ -588,3 +588,10 @@
   transform: translateY(0) scale(1);
 }
 
+.jp-flashcard-btn:hover {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #818cf8 !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  transform: scale(1.1);
+}
+

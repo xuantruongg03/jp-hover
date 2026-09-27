@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎴 Flashcards & Sổ tay Từ vựng Tiếng Nhật - JP Furigana Hover</title>
+  <link rel="stylesheet" href="flashcards.css">
+  <link rel="icon" type="image/png" href="icons/icon32.png">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header chính -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-flag">🇯🇵</span>
+        <div class="brand-text">
+          <h1>JP Flashcards & Sổ tay Từ vựng</h1>
+          <span class="brand-sub">Luyện nhớ từ vựng tiếng Nhật thông minh • Phiên bản 1.2.0</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-add-word" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Thêm từ mới</span>
+        </button>
+        <button id="btn-export-anki" class="btn btn-secondary" title="Xuất file CSV chuẩn nhập trực tiếp vào Anki">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Xuất Anki (CSV)</span>
+        </button>
+        <button id="btn-backup-restore" class="btn btn-secondary" title="Sao lưu hoặc phục hồi dữ liệu sổ tay">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+          <span>Sao lưu (JSON)</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Thanh thống kê ghi nhớ (Stats Overview) -->
+    <div class="stats-overview">
+      <div class="stat-card">
+        <div class="stat-icon icon-blue">📚</div>
+        <div class="stat-info">
+          <span class="stat-label">Tổng số từ</span>
+          <span class="stat-value" id="stat-total">0</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-amber">🧠</div>
+        <div class="stat-info">
+          <span class="stat-label">Đang học / Cần ôn</span>
+          <span class="stat-value text-amber" id="stat-learning">0</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-green">✅</div>
+        <div class="stat-info">
+          <span class="stat-label">Đã thuộc</span>
+          <span class="stat-value text-green" id="stat-mastered">0</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-purple">🎯</div>
+        <div class="stat-info">
+          <span class="stat-label">Tỷ lệ ghi nhớ</span>
+          <span class="stat-value text-purple" id="stat-ratio">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thanh điều hướng Tab chế độ -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-study">
+        <span class="tab-icon">🎴</span>
+        <span>Luyện tập Flashcard</span>
+        <span class="tab-badge" id="badge-study-count">0</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-manager">
+        <span class="tab-icon">📖</span>
+        <span>Danh sách & Tra cứu Sổ tay</span>
+        <span class="tab-badge" id="badge-total-count">0</span>
+      </button>
+    </nav>
+
+    <!-- ==============================================
+         TAB 1: LUYỆN TẬP FLASHCARD
+         ============================================== -->
+    <main id="tab-study" class="tab-panel active">
+      <!-- Toolbar điều khiển học tập -->
+      <div class="study-controls">
+        <div class="control-group">
+          <label class="control-label">Bộ lọc:</label>
+          <select id="study-filter" class="select-control">
+            <option value="all">Tất cả từ đã lưu</option>
+            <option value="learning" selected>Chỉ từ cần ôn (Đang học)</option>
+            <option value="mastered">Từ đã thuộc</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Chế độ xem:</label>
+          <select id="study-direction" class="select-control">
+            <option value="jp-vi">🇯🇵 Nhật ➔ 🇻🇳 Việt</option>
+            <option value="vi-jp">🇻🇳 Việt ➔ 🇯🇵 Nhật</option>
+          </select>
+        </div>
+
+        <button id="btn-shuffle" class="btn btn-ghost" title="Xáo trộn thứ tự các thẻ">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
+          <span>Xáo trộn</span>
+        </button>
+
+        <div class="study-progress-box">
+          <span id="study-progress-text" class="progress-text">Thẻ 0 / 0</span>
+          <div class="progress-bar-bg">
+            <div id="study-progress-fill" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Không gian Thẻ Flashcard 3D -->
+      <div class="flashcard-scene" id="flashcard-scene">
+        <div class="flashcard" id="flashcard" title="Bấm vào thẻ hoặc nhấn Space để lật">
+          <!-- Mặt trước của thẻ -->
+          <div class="flashcard-face flashcard-front">
+            <div class="card-top-bar">
+              <span class="card-status-pill" id="card-front-status">🧠 Đang học</span>
+              <button class="card-icon-btn btn-audio-card" id="btn-card-front-audio" title="Nghe phát âm (Phím S)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="card-body-center">
+              <div class="card-main-word" id="card-front-word">日本語</div>
+              <div class="card-front-hint" id="card-front-hint">Danh từ N5</div>
+            </div>
+
+            <div class="card-footer-hint">
+              <span class="key-hint">Space</span> để lật thẻ xem đáp án
+            </div>
+          </div>
+
+          <!-- Mặt sau của thẻ -->
+          <div class="flashcard-face flashcard-back">
+            <div class="card-top-bar">
+              <div class="card-reading-cluster">
+                <span class="card-reading" id="card-back-reading">にほんご</span>
+                <span class="card-romaji" id="card-back-romaji">nihongo</span>
+              </div>
+              <button class="card-icon-btn btn-audio-card" id="btn-card-back-audio" title="Nghe phát âm (Phím S)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="card-back-content">
+              <div class="card-back-main" id="card-back-word">日本語</div>
+              <div class="card-hanviet-tag" id="card-back-hanviet">Âm Hán-Việt: NHẬT BẢN NGỮ</div>
+
+              <div class="card-meaning-box">
+                <span class="meaning-icon">💡</span>
+                <span id="card-back-meaning">Tiếng Nhật, ngôn ngữ của người Nhật</span>
+              </div>
+
+              <!-- Chi tiết chữ Kanji bóc tách -->
+              <div class="card-kanji-breakdown" id="card-kanji-breakdown"></div>
+            </div>
+
+            <div class="card-footer-hint">
+              <span>Đánh giá mức độ nhớ của bạn bên dưới 👇</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hàng nút đánh giá sau khi lật thẻ -->
+      <div class="study-action-bar">
+        <button id="btn-answer-wrong" class="btn btn-action-wrong" title="Phím tắt: 1 hoặc mũi tên Trái">
+          <span class="action-icon">❌</span>
+          <div class="action-text">
+            <strong>Chưa nhớ (Cần ôn)</strong>
+            <small>Phím: 1 / ←</small>
+          </div>
+        </button>
+
+        <button id="btn-card-flip" class="btn btn-action-flip" title="Phím tắt: Space hoặc Enter">
+          <span class="action-icon">🔄</span>
+          <div class="action-text">
+            <strong>Lật thẻ</strong>
+            <small>Space</small>
+          </div>
+        </button>
+
+        <button id="btn-answer-correct" class="btn btn-action-correct" title="Phím tắt: 2 hoặc mũi tên Phải">
+          <span class="action-icon">✅</span>
+          <div class="action-text">
+            <strong>Đã thuộc</strong>
+            <small>Phím: 2 / →</small>
+          </div>
+        </button>
+      </div>
+
+      <!-- Trạng thái trống (Empty State) -->
+      <div class="empty-state" id="study-empty-state" style="display: none;">
+        <div class="empty-icon">🎴</div>
+        <h2>Chưa có thẻ nào để luyện tập!</h2>
+        <p>Bạn chưa lưu từ vựng nào khớp với bộ lọc này. Hãy rê chuột vào từ tiếng Nhật trên web và bấm hình ngôi sao (⭐) hoặc thêm từ mới bên dưới.</p>
+        <div class="empty-actions">
+          <button id="btn-empty-add-samples" class="btn btn-primary">➕ Nạp 10 từ vựng mẫu để thử</button>
+          <button id="btn-empty-add-manual" class="btn btn-secondary">Thêm từ thủ công</button>
+        </div>
+      </div>
+
+      <!-- Trạng thái hoàn thành bộ thẻ (Finished State) -->
+      <div class="session-finished" id="session-finished" style="display: none;">
+        <div class="finished-card">
+          <div class="finished-trophy">🎉</div>
+          <h2>Xuất sắc! Bạn đã hoàn thành phiên học!</h2>
+          <p id="finished-summary">Bạn đã ôn tập xong tất cả các thẻ trong bộ lọc này.</p>
+          
+          <div class="finished-stats">
+            <div class="finished-stat-box green">
+              <span class="val" id="finished-count-mastered">0</span>
+              <span class="lbl">Đã nhớ tốt</span>
+            </div>
+            <div class="finished-stat-box amber">
+              <span class="val" id="finished-count-learning">0</span>
+              <span class="lbl">Cần ôn lại</span>
+            </div>
+          </div>
+
+          <div class="finished-actions">
+            <button id="btn-review-learning" class="btn btn-primary">🔁 Chỉ ôn lại các từ chưa nhớ</button>
+            <button id="btn-restart-study" class="btn btn-secondary">🔄 Học lại toàn bộ</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==============================================
+         TAB 2: DANH SÁCH & QUẢN LÝ SỔ TAY
+         ============================================== -->
+    <main id="tab-manager" class="tab-panel">
+      <!-- Toolbar tìm kiếm & lọc từ vựng -->
+      <div class="manager-toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="manager-search-input" placeholder="Tìm theo Kanji, Hiragana, Romaji, Hán-Việt hoặc nghĩa tiếng Việt...">
+          <button id="manager-clear-search" class="clear-search-btn" title="Xóa tìm kiếm">✕</button>
+        </div>
+
+        <div class="filter-controls">
+          <select id="manager-status-filter" class="select-control">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="learning">Đang học</option>
+            <option value="mastered">Đã thuộc</option>
+          </select>
+
+          <select id="manager-sort-filter" class="select-control">
+            <option value="newest">Mới lưu nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="alpha">Bảng chữ cái (A-Z)</option>
+          </select>
+
+          <div class="view-toggles">
+            <button class="view-toggle-btn active" id="view-grid-btn" title="Xem dạng lưới">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
+            </button>
+            <button class="view-toggle-btn" id="view-table-btn" title="Xem dạng bảng">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2.5"></line><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2.5"></line><line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2.5"></line></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danh sách hiển thị dạng Grid Cards -->
+      <div class="vocabulary-grid" id="vocabulary-grid"></div>
+
+      <!-- Danh sách hiển thị dạng Table List -->
+      <div class="vocabulary-table-wrap" id="vocabulary-table-wrap" style="display: none;">
+        <table class="vocabulary-table">
+          <thead>
+            <tr>
+              <th width="40">#</th>
+              <th>Từ vựng</th>
+              <th>Cách đọc & Romaji</th>
+              <th>Âm Hán-Việt</th>
+              <th>Ý nghĩa tiếng Việt</th>
+              <th width="110">Trạng thái</th>
+              <th width="120" style="text-align: right;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="vocabulary-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Trạng thái trống cho tab quản lý -->
+      <div class="empty-state" id="manager-empty-state" style="display: none;">
+        <div class="empty-icon">📖</div>
+        <h2>Không tìm thấy từ vựng nào!</h2>
+        <p id="manager-empty-desc">Sổ tay từ vựng của bạn đang trống hoặc không có từ nào khớp với bộ lọc tìm kiếm.</p>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>🇯🇵 JP Furigana Hover Pro • Flashcards & Vocabulary Notebook</span>
+      </div>
+      <div class="footer-right">
+        <span>Phím tắt Flashcard: <strong>Space</strong> Lật thẻ • <strong>1</strong> Chưa nhớ • <strong>2</strong> Đã thuộc • <strong>S</strong> Phát âm</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ==============================================
+       MODAL: THÊM TỪ MỚI THỦ CÔNG
+       ============================================== -->
+  <div class="modal-overlay" id="modal-add-word">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>➕ Thêm từ vựng mới vào Sổ tay</h3>
+        <button class="modal-close-btn" data-close-modal="modal-add-word">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Từ tiếng Nhật (Kanji hoặc Kana) *</label>
+          <div class="input-with-button">
+            <input type="text" id="input-new-word" placeholder="Ví dụ: 約束, 勉強, かわいい" autofocus>
+            <button id="btn-auto-lookup" class="btn btn-secondary" title="Tự động tra cứu âm Hán-Việt, cách đọc và nghĩa từ điển">
+              <span>🔍 Tự điền</span>
+            </button>
+          </div>
+          <small class="form-hint">Nhập từ rồi bấm "Tự điền" để hệ thống tự phân tích Hán-Việt và phiên âm từ kho 2,683 Kanji & từ điển.</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cách đọc Hiragana</label>
+            <input type="text" id="input-new-reading" placeholder="Ví dụ: やくそく">
+          </div>
+          <div class="form-group">
+            <label>Phiên âm Romaji</label>
+            <input type="text" id="input-new-romaji" placeholder="Ví dụ: yakusoku">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Âm Hán-Việt</label>
+            <input type="text" id="input-new-hanviet" placeholder="Ví dụ: ƯỚC THÚC">
+          </div>
+          <div class="form-group">
+            <label>Từ loại / Cấp độ</label>
+            <input type="text" id="input-new-type" placeholder="Ví dụ: Danh từ N4">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Giải nghĩa tiếng Việt *</label>
+          <textarea id="input-new-meaning" rows="2" placeholder="Ví dụ: Lời hứa, quy ước, hẹn ước"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Trạng thái ban đầu</label>
+          <select id="input-new-status" class="select-control full-width">
+            <option value="learning" selected>🧠 Đang học (Cần luyện Flashcard)</option>
+            <option value="mastered">✅ Đã thuộc</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="modal-add-word">Hủy</button>
+        <button id="btn-confirm-add" class="btn btn-primary">Lưu từ vào Sổ tay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       MODAL: CHỈNH SỬA TỪ VỰNG
+       ============================================== -->
+  <div class="modal-overlay" id="modal-edit-word">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✏️ Chỉnh sửa từ vựng</h3>
+        <button class="modal-close-btn" data-close-modal="modal-edit-word">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-original-word">
+        <div class="form-group">
+          <label>Từ tiếng Nhật</label>
+          <input type="text" id="edit-word" readonly style="opacity: 0.8; cursor: not-allowed;">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cách đọc Hiragana</label>
+            <input type="text" id="edit-reading">
+          </div>
+          <div class="form-group">
+            <label>Phiên âm Romaji</label>
+            <input type="text" id="edit-romaji">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Âm Hán-Việt</label>
+            <input type="text" id="edit-hanviet">
+          </div>
+          <div class="form-group">
+            <label>Từ loại</label>
+            <input type="text" id="edit-type">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ý nghĩa tiếng Việt</label>
+          <textarea id="edit-meaning" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Trạng thái</label>
+          <select id="edit-status" class="select-control full-width">
+            <option value="learning">🧠 Đang học (Cần ôn)</option>
+            <option value="mastered">✅ Đã thuộc</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="modal-edit-word">Hủy</button>
+        <button id="btn-confirm-edit" class="btn btn-primary">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       MODAL: SAO LƯU & KHÔI PHỤC (JSON)
+       ============================================== -->
+  <div class="modal-overlay" id="modal-backup">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>💾 Sao lưu & Khôi phục Sổ tay</h3>
+        <button class="modal-close-btn" data-close-modal="modal-backup">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="backup-section">
+          <h4>1. Tải về file Sao lưu (Backup JSON)</h4>
+          <p>Lưu toàn bộ danh sách từ vựng và trạng thái đã học ra file JSON để chuyển sang máy khác hoặc phòng ngừa mất dữ liệu.</p>
+          <button id="btn-download-json" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Tải về file JSON Backup</span>
+          </button>
+        </div>
+
+        <hr class="modal-divider">
+
+        <div class="backup-section">
+          <h4>2. Khôi phục từ file Sao lưu (Restore JSON)</h4>
+          <p>Chọn file JSON sao lưu từ máy tính của bạn:</p>
+          <input type="file" id="input-restore-file" accept=".json" style="margin-bottom: 10px;">
+          <div class="restore-options">
+            <label><input type="radio" name="restore-mode" value="merge" checked> Gộp chung với từ hiện có (Khuyên dùng)</label>
+            <label><input type="radio" name="restore-mode" value="overwrite"> Ghi đè toàn bộ sổ tay</label>
+          </div>
+          <button id="btn-execute-restore" class="btn btn-secondary" style="margin-top: 10px;">
+            <span>Thực hiện khôi phục</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="modal-backup">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast thông báo nhanh -->
+  <div id="app-toast" class="app-toast"></div>
+
+  <!-- Nạp scripts nội bộ -->
+  <script src="data/kanji_hanviet.js"></script>
+  <script src="content/romaji.js"></script>
+  <script src="data/dictionary.js"></script>
+  <script src="content/engine.js"></script>
+  <script src="flashcards.js"></script>
+</body>
+</html>

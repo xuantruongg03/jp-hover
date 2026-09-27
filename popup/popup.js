@@ -337,6 +337,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSavedWordsList(savedSearchInput.value);
   });
 
+  // Mở trang Flashcard & Sổ tay toàn màn hình
+  const openFlashcardsBtn = document.getElementById('open-flashcards-page-btn');
+  if (openFlashcardsBtn) {
+    openFlashcardsBtn.addEventListener('click', () => {
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('flashcards.html') });
+      } else {
+        window.open('../flashcards.html', '_blank');
+      }
+    });
+  }
+
   // Xóa tất cả từ đã lưu
   clearSavedBtn.addEventListener('click', () => {
     if (savedWordsList.length === 0) return;

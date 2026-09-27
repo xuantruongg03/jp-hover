@@ -79,3 +79,11 @@ chrome.commands.onCommand.addListener((command) => {
     });
   }
 });
+
+// Lắng nghe yêu cầu mở trang Flashcards & Sổ tay toàn màn hình
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'OPEN_FLASHCARDS') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('flashcards.html') });
+    sendResponse({ success: true });
+  }
+});

@@ -44,17 +44,46 @@
   let currentSelectedText = '';
   let savedWordsSet = new Set();
 
-  // 1. Tải cài đặt và danh sách từ đã lưu từ chrome.storage
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['jpSettings', 'jpSavedWords'], (res) => {
-      if (res && res.jpSettings) {
-        settings = { ...settings, ...res.jpSettings };
-      }
-      if (res && Array.isArray(res.jpSavedWords)) {
-        savedWordsSet = new Set(res.jpSavedWords.map(item => item.word));
-      }
-    });
+  // Helper lưu trữ đồng nhất (Hỗ trợ cả Chrome Storage MV3 & LocalStorage dự phòng)
+  function getStorageData(keys, callback) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(keys, callback);
+    } else {
+      const res = {};
+      keys.forEach(k => {
+        try {
+          const val = localStorage.getItem(k);
+          if (val) res[k] = JSON.parse(val);
+        } catch (_) {}
+      });
+      callback(res);
+    }
+  }
 
+  function setStorageData(data, callback) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set(data, callback);
+    } else {
+      Object.keys(data).forEach(k => {
+        try {
+          localStorage.setItem(k, JSON.stringify(data[k]));
+        } catch (_) {}
+      });
+      if (callback) callback();
+    }
+  }
+
+  // 1. Tải cài đặt và danh sách từ đã lưu
+  getStorageData(['jpSettings', 'jpSavedWords'], (res) => {
+    if (res && res.jpSettings) {
+      settings = { ...settings, ...res.jpSettings };
+    }
+    if (res && Array.isArray(res.jpSavedWords)) {
+      savedWordsSet = new Set(res.jpSavedWords.map(item => item.word));
+    }
+  });
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'local') {
         if (changes.jpSettings) {
@@ -143,6 +172,7 @@
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
+          <button class="jp-icon-btn jp-flashcard-btn" id="jp-flashcard-btn" title="Mở trang Flashcard & Sổ tay toàn màn hình">🎴</button>
           <button class="jp-icon-btn jp-lookup-btn" id="jp-lookup-btn" title="Tra cứu từ điển chi tiết (Mazii)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -212,8 +242,23 @@
       }
     });
 
-    // Cho phép bôi đen chọn text thoải mái bên trong Card
+    // Ngăn chặn sự kiện mousedown, mouseup, click trên Card làm đóng Tooltip
+    cardElem.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      cancelHideSchedule();
+    });
+
     cardElem.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      cancelHideSchedule();
+    });
+
+    cardElem.addEventListener('mouseup', (e) => {
+      e.stopPropagation();
+      cancelHideSchedule();
+    });
+
+    cardElem.addEventListener('click', (e) => {
       e.stopPropagation();
       cancelHideSchedule();
     });
@@ -226,6 +271,7 @@
     const audioBtn = cardElem.querySelector('#jp-audio-btn');
     audioBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       const speakText = currentReading || currentWord;
       if (speakText) {
         japaneseEngine.speak(
@@ -241,84 +287,105 @@
     const starBtn = cardElem.querySelector('#jp-star-btn');
     starBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!currentWord) return;
+      e.preventDefault();
+      const targetWord = currentWord;
+      if (!targetWord) return;
 
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(['jpSavedWords'], (res) => {
-          let list = res && Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
-          const idx = list.findIndex(item => item.word === currentWord);
+      getStorageData(['jpSavedWords'], (res) => {
+        let list = res && Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
+        const idx = list.findIndex(item => item.word === targetWord);
 
-          if (idx >= 0) {
-            list.splice(idx, 1);
-            savedWordsSet.delete(currentWord);
-            starBtn.classList.remove('active');
-            starBtn.title = 'Lưu vào Sổ tay từ vựng (⭐)';
-            showToast(`Đã bỏ lưu [${currentWord}]`);
-          } else {
-            const newItem = {
-              word: currentWord,
-              reading: currentReading || currentWord,
-              hanviet: currentHanViet || '',
-              meaning: currentMeaning || '',
-              romaji: (currentWordData && currentWordData.romaji) ? currentWordData.romaji : '',
-              type: (currentWordData && currentWordData.type) ? currentWordData.type : '',
-              savedAt: Date.now()
-            };
-            list.unshift(newItem);
-            savedWordsSet.add(currentWord);
-            starBtn.classList.add('active');
-            starBtn.title = 'Bỏ lưu khỏi Sổ tay từ vựng';
-            showToast(`⭐ Đã lưu [${currentWord}] vào Sổ tay!`);
-          }
+        if (idx >= 0) {
+          list.splice(idx, 1);
+          savedWordsSet.delete(targetWord);
+          starBtn.classList.remove('active');
+          starBtn.title = 'Lưu vào Sổ tay từ vựng (⭐)';
+          showToast(`Đã bỏ lưu [${targetWord}]`);
+        } else {
+          const newItem = {
+            word: targetWord,
+            reading: currentReading || targetWord,
+            hanviet: currentHanViet || '',
+            meaning: currentMeaning || '',
+            romaji: (currentWordData && currentWordData.romaji) ? currentWordData.romaji : '',
+            type: (currentWordData && currentWordData.type) ? currentWordData.type : '',
+            status: 'learning',
+            savedAt: Date.now()
+          };
+          list.unshift(newItem);
+          savedWordsSet.add(targetWord);
+          starBtn.classList.add('active');
+          starBtn.title = 'Bỏ lưu khỏi Sổ tay từ vựng';
+          showToast(`⭐ Đã lưu [${targetWord}] vào Sổ tay!`);
+        }
 
-          chrome.storage.local.set({ jpSavedWords: list });
-        });
-      }
+        setStorageData({ jpSavedWords: list });
+      });
     });
 
     // Nút Sao chép (Quick Copy 📋)
     const copyBtn = cardElem.querySelector('#jp-copy-btn');
     copyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!currentWord) return;
+      e.preventDefault();
 
-      const readingPart = (currentReading && currentReading !== currentWord) ? ` [${currentReading}]` : '';
+      const copyWord = currentWord;
+      if (!copyWord) return;
+
+      const readingPart = (currentReading && currentReading !== copyWord) ? ` [${currentReading}]` : '';
       const hvPart = currentHanViet ? ` (${currentHanViet})` : '';
-      const copyStr = `${currentWord}${readingPart}${hvPart} - ${currentMeaning || 'Chưa có giải nghĩa'}`;
+      const copyStr = `${copyWord}${readingPart}${hvPart} - ${currentMeaning || 'Chưa có giải nghĩa'}`;
+
+      const notifySuccess = () => {
+        copyBtn.classList.add('copied');
+        showToast(`📋 Đã sao chép: ${copyWord}`);
+        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
+      };
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(copyStr).then(() => {
-          copyBtn.classList.add('copied');
-          showToast(`📋 Đã sao chép: ${currentWord}`);
-          setTimeout(() => copyBtn.classList.remove('copied'), 1500);
-        }).catch(() => {
-          fallbackCopyText(copyStr);
+        navigator.clipboard.writeText(copyStr).then(notifySuccess).catch(() => {
+          fallbackCopyText(copyStr, notifySuccess);
         });
       } else {
-        fallbackCopyText(copyStr);
+        fallbackCopyText(copyStr, notifySuccess);
       }
     });
 
-    function fallbackCopyText(text) {
+    function fallbackCopyText(text, callback) {
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
+      textarea.style.top = '-9999px';
+      textarea.style.left = '-9999px';
+      textarea.setAttribute('readonly', '');
       document.body.appendChild(textarea);
       textarea.select();
       try {
-        document.execCommand('copy');
-        copyBtn.classList.add('copied');
-        showToast(`📋 Đã sao chép: ${currentWord}`);
-        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
+        const successful = document.execCommand('copy');
+        if (successful && callback) callback();
       } catch (_) {}
       document.body.removeChild(textarea);
+    }
+
+    // Nút Mở trang Flashcard & Sổ tay toàn màn hình
+    const flashcardBtn = cardElem.querySelector('#jp-flashcard-btn');
+    if (flashcardBtn) {
+      flashcardBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
+        } else {
+          window.open('flashcards.html', '_blank');
+        }
+      });
     }
 
     // Nút Kính lúp tra cứu từ điển trực tuyến (Mazii)
     const lookupBtn = cardElem.querySelector('#jp-lookup-btn');
     lookupBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       if (currentWord) {
         const isSingleKanji = currentWord.length === 1 && typeof isKanji === 'function' && isKanji(currentWord);
         const searchUrl = isSingleKanji 
@@ -332,6 +399,7 @@
     const pinBtn = cardElem.querySelector('#jp-pin-btn');
     pinBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       isPinned = !isPinned;
       if (isPinned) {
         pinBtn.classList.add('active');
@@ -348,6 +416,7 @@
     const closeBtn = cardElem.querySelector('#jp-close-btn');
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       isPinned = false;
       pinBtn.classList.remove('active');
       cardElem.classList.remove('pinned');
@@ -767,11 +836,19 @@
 
   // 8. Bắt sự kiện chuột
   function handleMouseDown(e) {
-    if (!isMouseOverTooltip && !isMouseInTooltipBuffer(e.clientX, e.clientY)) {
-      isSelectingOnPage = true;
-      if (!isPinned) {
-        hideTooltip();
-      }
+    const path = e.composedPath ? e.composedPath() : [];
+    if (path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge)) {
+      cancelHideSchedule();
+      return;
+    }
+    if (isMouseInTooltipBuffer(e.clientX, e.clientY)) {
+      cancelHideSchedule();
+      return;
+    }
+
+    isSelectingOnPage = true;
+    if (!isPinned) {
+      hideTooltip();
     }
   }
 
@@ -804,13 +881,18 @@
     
     lastHoverPos = { clientX: e.clientX, clientY: e.clientY };
 
-    if (isSelectingOnPage || e.buttons !== 0) {
-      if (!isPinned) hideTooltip();
+    const path = e.composedPath ? e.composedPath() : [];
+    const isOverCard = isMouseOverTooltip || 
+                       path.some(el => el === cardElem || el === sentenceCard) ||
+                       isMouseInTooltipBuffer(e.clientX, e.clientY);
+
+    if (isOverCard || isPinned) {
+      cancelHideSchedule();
       return;
     }
 
-    if (isMouseOverTooltip || isPinned) {
-      cancelHideSchedule();
+    if (isSelectingOnPage || e.buttons !== 0) {
+      if (!isPinned) hideTooltip();
       return;
     }
 
@@ -940,7 +1022,15 @@
   }
 
   function handleDocumentClick(e) {
-    if (!isMouseInTooltipBuffer(e.clientX, e.clientY) && !isPinned) {
+    const path = e.composedPath ? e.composedPath() : [];
+    if (path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge)) {
+      cancelHideSchedule();
+      return;
+    }
+    if (isMouseInTooltipBuffer(e.clientX, e.clientY)) {
+      return;
+    }
+    if (!isPinned) {
       if (cardElem && cardElem.classList.contains('visible')) {
         hideTooltip();
       }

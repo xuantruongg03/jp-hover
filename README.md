@@ -1,24 +1,41 @@
-# 🇯🇵 JP Furigana Hover (v1.1.0) - Tiện ích Tra cứu, Phiên âm & Sổ tay Tiếng Nhật
+# 🇯🇵 JP Furigana Hover (v1.2.0) - Tiện ích Tra cứu, Phiên âm, Sổ tay & Flashcards Tiếng Nhật
 
-Tiện ích mở rộng Chrome (Manifest V3) hiện đại, mượt mà, giúp bạn vừa duyệt web vừa học tiếng Nhật đỉnh cao: **chỉ cần rê chuột vào bất kỳ từ tiếng Nhật nào để xem ngay phiên âm Hiragana, Romaji, Âm Hán-Việt, Giải nghĩa, Nghe phát âm chuẩn, Lưu vào Sổ tay từ vựng và Dịch câu khi bôi đen**.
+Tiện ích mở rộng Chrome (Manifest V3) hiện đại, mượt mà, giúp bạn vừa duyệt web vừa học tiếng Nhật đỉnh cao: **chỉ cần rê chuột vào bất kỳ từ tiếng Nhật nào để xem ngay phiên âm Hiragana, Romaji, Âm Hán-Việt, Giải nghĩa, Nghe phát âm chuẩn, Lưu vào Sổ tay từ vựng, Luyện tập Flashcards 3D và Dịch câu khi bôi đen**.
 
 ---
 
-## ✨ Tính năng nổi bật (v1.1.0)
+## ✨ Tính năng nổi bật (v1.2.0)
 
-### 1. 🔍 Rê chuột (Hover) tức thì & Thông minh
+### 1. 🎴 Trang Luyện tập Flashcards 3D & Sổ tay Từ vựng Toàn màn hình (Mới trong v1.2.0)
+- **Mở giao diện chuyên biệt**: Truy cập trang Flashcards toàn màn hình chỉ với 1 click từ Tooltip (`🎴`) hoặc từ Popup tiện ích (`flashcards.html`).
+- **Thẻ Flashcard 3D sinh động**:
+  - Lật thẻ 3D mượt mà (`Space` hoặc nhấp chuột) để kiểm tra khả năng nhớ từ.
+  - Chuyển đổi linh hoạt giữa 2 chế độ: `🇯🇵 Tiếng Nhật ➔ 🇻🇳 Tiếng Việt` hoặc `🇻🇳 Tiếng Việt ➔ 🇯🇵 Tiếng Nhật`.
+  - Phát âm giọng đọc chuẩn bản ngữ trực tiếp trên thẻ (Phím `S`).
+  - Đánh giá nhanh: `❌ Chưa nhớ (Phím 1 hoặc ←)` hoặc `✅ Đã thuộc (Phím 2 hoặc →)`.
+  - Thanh tiến độ động theo thời gian thực kèm màn hình tổng kết phiên học sau khi hoàn thành.
+  - Phím tắt bàn phím toàn diện: `Space` (Lật), `1` (Chưa nhớ), `2` (Đã nhớ), `S` (Phát âm), `R` (Xáo trộn).
+- **Quản lý & Tra cứu Sổ tay chuyên sâu**:
+  - Tra cứu thời gian thực theo Kanji, Hiragana, Romaji, Hán-Việt hoặc nghĩa tiếng Việt.
+  - Chuyển đổi linh hoạt giữa Dạng lưới (Grid Cards) và Dạng bảng (Table List).
+  - Thêm từ vựng thủ công với tính năng **Tự điền thông minh**: Nhập từ tiếng Nhật, hệ thống tự động phân tích Hán-Việt, phiên âm Hiragana, Romaji và nghĩa từ kho 2,683 Kanji & từ điển.
+  - Chỉnh sửa từ vựng, ghi chú cá nhân và xóa từ nhanh chóng.
+  - Đổi trạng thái học tập trực tiếp bằng 1 click (`🧠 Đang học` ⟷ `✅ Đã thuộc`).
+  - **Sao lưu & Phục hồi JSON**: Tải file sao lưu hoặc khôi phục dữ liệu sổ tay giữa các máy tính.
+
+### 2. 🔍 Rê chuột (Hover) tức thì & Thông minh
 - **Nhận diện chính xác**: Tự động tách từ bằng `Intl.Segmenter` kết hợp quét từ ghép đa phân đoạn (compound words) và bộ giải mã chia đuôi động từ/tính từ (**109 quy tắc de-inflection**: `〜ば`, `〜たら`, `〜なさい`, `〜やすい`, `〜にくい`, `〜すぎる`, `〜ちゃう`, `〜とく`, `〜ず`, v.v.).
 - **Shadow DOM biệt lập**: Giao diện Tooltip Glassmorphic tối màu siêu đẹp, cách ly 100% — không bao giờ bị vỡ layout bởi CSS của trang web đang xem. Hỗ trợ dự phòng CSS nội tuyến chạy mượt mà ngay cả trên các trang có chính sách bảo mật khắt khe (CSP) như GitHub, X/Twitter.
 - **Tự động căn lề màn hình**: Tự động nhận diện mép màn hình và tính toán lại vị trí ngay cả khi dữ liệu nghĩa được tải bất đồng bộ, chống tràn viền (off-screen clipping).
 
-### 2. 📚 Dữ liệu tra cứu toàn diện & Chuyên sâu
+### 3. 📚 Dữ liệu tra cứu toàn diện & Chuyên sâu
 - 🎌 **Cách đọc (Furigana / Hiragana)**: Hiển thị cách đọc Hiragana chuẩn xác, hỗ trợ chuyển đổi từ Romaji sang Hiragana cho cả từ tra cứu online.
 - 🔤 **Phiên âm Romaji chuẩn Hepburn**: Hỗ trợ nguyên âm dài (`ō`, `ū`) và phụ âm kép âm ngắt `っ`.
 - 🏮 **Âm Hán-Việt toàn diện (2,683 Kanji)**: Bao phủ 100% của 2,136 chữ **Joyo Kanji** thường dùng + chữ Hán JLPT N5 đến N1 (ví dụ: `学校` → `HỌC HIỆU`, `電車` → `ĐIỆN XA`, `先生` → `TIÊN SINH`, `日本語` → `NHẬT BẢN NGỮ`).
 - 💡 **Giải nghĩa phong phú & Tra cứu thông minh**: Tích hợp sẵn 546+ từ vựng cốt lõi offline, tự động gọi API tra cứu tiếng Việt bổ sung khi gặp từ vựng mới.
 - 🔊 **Phát âm tiếng Nhật kép (Dual-Engine Audio)**: Sử dụng Web Speech API tích hợp sẵn. Nếu máy tính Windows chưa cài gói ngôn ngữ tiếng Nhật, tiện ích **tự động chuyển sang luồng phát âm trực tuyến Google TTS**, đảm bảo nghe phát âm 100% mọi lúc. Biểu tượng loa có hiệu ứng sóng âm động khi đang phát.
 
-### 3. ⭐ Sổ tay từ vựng & Xuất dữ liệu Anki (Mới trong v1.1.0)
+### 4. ⭐ Sổ tay từ vựng & Xuất dữ liệu Anki
 - ⭐ **Lưu từ vựng 1-click**: Bấm vào ngôi sao trên tooltip để lưu từ vựng vào Sổ tay. Ngôi sao sẽ sáng vàng và đồng bộ tức thì với bộ nhớ trình duyệt (`chrome.storage.local`).
 - 📋 **Sao chép nhanh (Quick Copy)**: Bấm nút sao chép trên tooltip để lấy nhanh định dạng chuẩn: `Từ [Cách đọc] (Hán-Việt) - Nghĩa` kèm hiệu ứng tích xanh.
 - 📖 **Quản lý Sổ tay trong Popup**:
@@ -27,12 +44,12 @@ Tiện ích mở rộng Chrome (Manifest V3) hiện đại, mượt mà, giúp b
   - Nghe lại phát âm hoặc xóa từng từ nhanh chóng.
 - 📥 **Xuất file Anki CSV**: Chỉ 1 bấm nút để tải file `.csv` chuẩn định dạng UTF-8 có BOM (không lo lỗi font tiếng Việt/tiếng Nhật) để nhập ngay vào ứng dụng học thẻ nhớ Flashcard **Anki**.
 
-### 4. 💬 Dịch câu khi bôi đen (Selection Translate - Mới trong v1.1.0)
+### 5. 💬 Dịch câu khi bôi đen (Selection Translate)
 - Bôi đen (highlight) bất kỳ câu hoặc đoạn văn tiếng Nhật nào trên trang web.
 - Một nút huy hiệu nhỏ gọn **"Dịch câu"** sẽ xuất hiện tinh tế ngay phía trên đoạn chọn.
 - Nhấp vào để mở thẻ dịch câu tiếng Việt sắc nét, mượt mà mà không cần chuyển qua Google Dịch. Có thể bật/tắt tính năng này tùy ý trong cài đặt.
 
-### 5. ⚡ Phím tắt & Trải nghiệm tiện lợi
+### 6. ⚡ Phím tắt & Trải nghiệm tiện lợi
 - **`Alt + J`**: Bật hoặc Tắt nhanh toàn bộ tiện ích bất cứ lúc nào.
 - Hiển thị huy hiệu trạng thái **`ON`** (xanh ngọc) hoặc **`OFF`** (xám) trực tiếp trên icon tiện ích.
 - Thông báo Toast hiển thị nhanh góc màn hình khi bấm phím tắt.
@@ -73,24 +90,20 @@ Mặc định phím tắt là **`Alt + J`**. Nếu muốn thay đổi thành ph�
 
 ---
 
-## 🧪 Kiểm thử tiện ích
+## 🧪 Kiểm thử tiện ích & Flashcards
 
-Bạn có thể mở trực tiếp file `test.html` trong thư mục bằng trình duyệt để kiểm tra:
-```
-file:///d:/Github/ext/JP/test.html
-```
-File `test.html` cung cấp sẵn 6 phần kiểm thử toàn diện:
-- Từ vựng cơ bản N5 - N1
-- Từ ghép Kanji & Số đếm
-- Các dạng chia động từ (De-inflections: phủ định, quá khứ, bị động, sai khiến, điều kiện, v.v.)
-- Chữ Katakana & từ mượn ngoại lai
-- Đoạn văn mẫu để kiểm tra tính năng **Bôi đen dịch câu**
-- Văn bản có sẵn thẻ `<ruby>` Furigana của HTML
-
-Hoặc mở các trang tin tức / mạng xã hội tiếng Nhật thực tế:
-- [NHK News Web Easy](https://www3.nhk.or.jp/news/easy/)
-- [Yahoo! Japan](https://www.yahoo.co.jp/)
-- [Wikipedia Tiếng Nhật](https://ja.wikipedia.org/)
+- Mở trực tiếp trang Flashcards & Sổ tay:
+  ```
+  file:///d:/Github/ext/JP/flashcards.html
+  ```
+- Mở trực tiếp file kiểm thử `test.html`:
+  ```
+  file:///d:/Github/ext/JP/test.html
+  ```
+- Hoặc mở các trang tin tức / mạng xã hội tiếng Nhật thực tế:
+  - [NHK News Web Easy](https://www3.nhk.or.jp/news/easy/)
+  - [Yahoo! Japan](https://www.yahoo.co.jp/)
+  - [Wikipedia Tiếng Nhật](https://ja.wikipedia.org/)
 
 ---
 
@@ -100,8 +113,11 @@ Hoặc mở các trang tin tức / mạng xã hội tiếng Nhật thực tế:
 d:\Github\ext\JP\
 ├── manifest.json            # Cấu hình Manifest V3, permissions & commands
 ├── background.js           # Service Worker quản lý phím tắt Alt+J & icon badge
+├── flashcards.html         # Trang Luyện tập Flashcards 3D & Sổ tay toàn màn hình
+├── flashcards.css          # CSS thiết kế giao diện Flashcards hiện đại
+├── flashcards.js           # Logic lật thẻ 3D, thống kê ghi nhớ, Anki & JSON backup
 ├── test.html               # Bộ kiểm thử 6 phần tương tác trực tiếp
-├── README.md               # Hướng dẫn chi tiết dự án v1.1.0
+├── README.md               # Hướng dẫn chi tiết dự án v1.2.0
 ├── create_icons.ps1        # Script PowerShell tự động tạo bộ icon PNG
 ├── icons/                  # Bộ icon độ phân giải 16, 32, 48, 128
 │   ├── icon16.png
