@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "JP Furigana Hover - Phiên âm Tiếng Nhật",
-  "version": "1.0.0",
-  "description": "Rê chuột để hiển thị tức thì phiên âm tiếng Nhật (Hiragana, Romaji, Hán-Việt, Nghĩa từ, Phát âm). Phím tắt Alt+J bật/tắt nhanh.",
+  "version": "1.1.0",
+  "description": "Rê chuột để hiển thị tức thì phiên âm tiếng Nhật (Hiragana, Romaji, Hán-Việt, Nghĩa từ, Phát âm). Hỗ trợ Sổ tay từ vựng, Xuất Anki, Dịch khi bôi đen và phím tắt Alt+J.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

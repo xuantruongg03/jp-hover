@@ -10,6 +10,17 @@ class JapaneseEngine {
     }
 
     this.onlineCache = new Map();
+    this.voices = [];
+    this.currentAudio = null;
+
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        this.voices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          this.voices = window.speechSynthesis.getVoices();
+        };
+      } catch (_) {}
+    }
   }
 
   /**
@@ -66,12 +77,14 @@ class JapaneseEngine {
           }
 
           if (isJapaneseText(currentWord) || (/^[0-9０-９]+/.test(currentWord) && counterRegex.test(currentWord))) {
-            // Kiểm tra ghép từ điển
-            if (wordEndIdx + 1 < segments.length) {
-              const nextWord = segments[wordEndIdx + 1].segment;
-              const combined = currentWord + nextWord;
-              if (typeof lookupJapaneseWord === 'function' && lookupJapaneseWord(combined)) {
-                return combined;
+            // Kiểm tra ghép từ điển (hỗ trợ từ ghép nhiều token)
+            if (typeof lookupJapaneseWord === 'function') {
+              let compoundCandidate = currentWord;
+              for (let step = 1; step <= 3 && wordEndIdx + step < segments.length; step++) {
+                compoundCandidate += segments[wordEndIdx + step].segment;
+                if (lookupJapaneseWord(compoundCandidate)) {
+                  currentWord = compoundCandidate;
+                }
               }
             }
             return currentWord;
@@ -395,10 +408,15 @@ class JapaneseEngine {
 
       const data = await response.json();
       let translation = '';
+      let onlineRomaji = '';
       const synonyms = [];
 
       if (data && data[0] && Array.isArray(data[0])) {
         translation = data[0].map(item => item[0]).filter(Boolean).join(' ').trim();
+        const romajiItem = data[0].find(item => item && item[3]);
+        if (romajiItem && romajiItem[3]) {
+          onlineRomaji = romajiItem[3].trim();
+        }
       }
 
       if (data && data[1] && Array.isArray(data[1])) {
@@ -413,9 +431,16 @@ class JapaneseEngine {
         }
       }
 
-      if (translation) {
+      let onlineReading = '';
+      if (onlineRomaji && typeof romajiToHiragana === 'function') {
+        onlineReading = romajiToHiragana(onlineRomaji);
+      }
+
+      if (translation || onlineReading) {
         const result = {
           meaning: translation,
+          romaji: onlineRomaji,
+          reading: onlineReading,
           synonyms: synonyms,
           fromOnline: true
         };
@@ -434,27 +459,56 @@ class JapaneseEngine {
   }
 
   /**
-   * Phát âm tiếng Nhật chuẩn
+   * Phát âm tiếng Nhật chuẩn (Web Speech API + Trực tuyến fallback cho Windows)
    */
-  speak(text, rate = 0.95) {
-    if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
+  speak(text, rate = 0.95, onStart = null, onEnd = null) {
+    if (!text || typeof window === 'undefined') return;
 
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP';
-    
-    const numRate = parseFloat(rate);
-    utterance.rate = (!isNaN(numRate) && numRate >= 0.4 && numRate <= 2.0) ? numRate : 0.95;
-    utterance.pitch = 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    const jaVoice = voices.find(v => v.lang === 'ja-JP' || v.lang.startsWith('ja'));
-    if (jaVoice) {
-      utterance.voice = jaVoice;
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      } catch (_) {}
     }
 
-    window.speechSynthesis.speak(utterance);
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+
+      const voices = (this.voices && this.voices.length > 0) ? this.voices : window.speechSynthesis.getVoices();
+      const jaVoice = voices.find(v => v.lang === 'ja-JP' || v.lang.startsWith('ja'));
+
+      if (jaVoice) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ja-JP';
+        utterance.voice = jaVoice;
+        
+        const numRate = parseFloat(rate);
+        utterance.rate = (!isNaN(numRate) && numRate >= 0.4 && numRate <= 2.0) ? numRate : 0.95;
+        utterance.pitch = 1.0;
+
+        if (onStart) utterance.onstart = onStart;
+        if (onEnd) {
+          utterance.onend = onEnd;
+          utterance.onerror = onEnd;
+        }
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
+    }
+
+    // Fallback sang Google TTS Audio Stream nếu trình duyệt không có Japanese voice
+    try {
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ja&q=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      this.currentAudio = audio;
+      if (onStart) onStart();
+      audio.onended = () => { if (onEnd) onEnd(); };
+      audio.onerror = () => { if (onEnd) onEnd(); };
+      audio.play().catch(() => { if (onEnd) onEnd(); });
+    } catch (_) {
+      if (onEnd) onEnd();
+    }
   }
 }
 

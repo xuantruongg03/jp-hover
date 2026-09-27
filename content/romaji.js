@@ -163,7 +163,91 @@ function katakanaToHiragana(str) {
   });
 }
 
+/**
+ * Chuyển đổi Romaji sang Hiragana (hỗ trợ trường âm ō, ū và phụ âm đôi っ)
+ */
+function romajiToHiragana(romaji) {
+  if (!romaji) return '';
+  let str = romaji.toLowerCase()
+    .replace(/ō/g, 'ou').replace(/ū/g, 'uu')
+    .replace(/ā/g, 'aa').replace(/ī/g, 'ii').replace(/ē/g, 'ee');
+
+  const ROMAJI_TO_HIRA = {
+    'kya': 'きゃ', 'kyu': 'きゅ', 'kyo': 'きょ',
+    'sha': 'しゃ', 'shu': 'しゅ', 'sho': 'しょ',
+    'cha': 'ちゃ', 'chu': 'ちゅ', 'cho': 'ちょ',
+    'nya': 'にゃ', 'nyu': 'にゅ', 'nyo': 'にょ',
+    'hya': 'ひゃ', 'hyu': 'ひゅ', 'hyo': 'ひょ',
+    'mya': 'みゃ', 'myu': 'みゅ', 'myo': 'みょ',
+    'rya': 'りゃ', 'ryu': 'りゅ', 'ryo': 'りょ',
+    'gya': 'ぎゃ', 'gyu': 'ぎゅ', 'gyo': 'ぎょ',
+    'ja': 'じゃ', 'ju': 'じゅ', 'jo': 'じょ',
+    'bya': 'びゃ', 'byu': 'びゅ', 'byo': 'びょ',
+    'pya': 'ぴゃ', 'pyu': 'ぴゅ', 'pyo': 'ぴょ',
+    'shi': 'し', 'chi': 'ち', 'tsu': 'つ', 'fu': 'ふ',
+    'ka': 'か', 'ki': 'き', 'ku': 'く', 'ke': 'け', 'ko': 'こ',
+    'sa': 'さ', 'su': 'す', 'se': 'せ', 'so': 'そ',
+    'ta': 'た', 'te': 'て', 'to': 'と',
+    'na': 'な', 'ni': 'に', 'nu': 'ぬ', 'ne': 'ね', 'no': 'の',
+    'ha': 'は', 'hi': 'ひ', 'he': 'へ', 'ho': 'ほ',
+    'ma': 'ま', 'mi': 'み', 'mu': 'む', 'me': 'め', 'mo': 'も',
+    'ya': 'や', 'yu': 'ゆ', 'yo': 'よ',
+    'ra': 'ら', 'ri': 'り', 'ru': 'る', 're': 'れ', 'ro': 'ろ',
+    'wa': 'わ', 'wo': 'を', 'nn': 'ん',
+    'ga': 'が', 'gi': 'ぎ', 'gu': 'ぐ', 'ge': 'げ', 'go': 'ご',
+    'za': 'ざ', 'ji': 'じ', 'zu': 'ず', 'ze': 'ぜ', 'zo': 'ぞ',
+    'da': 'だ', 'di': 'ぢ', 'du': 'づ', 'de': 'で', 'do': 'ど',
+    'ba': 'ば', 'bi': 'び', 'bu': 'ぶ', 'be': 'べ', 'bo': 'ぼ',
+    'pa': 'ぱ', 'pi': 'ぴ', 'pu': 'ぷ', 'pe': 'ぺ', 'po': 'ぽ',
+    'a': 'あ', 'i': 'い', 'u': 'う', 'e': 'え', 'o': 'お'
+  };
+
+  let res = '';
+  let i = 0;
+  while (i < str.length) {
+    // Phụ âm đôi (Sokuon っ)
+    if (i + 1 < str.length && str[i] === str[i + 1] && /[bcdfghjklmpqrstvwxyz]/.test(str[i]) && str[i] !== 'n') {
+      res += 'っ';
+      i++;
+      continue;
+    }
+    if (str.slice(i, i + 3) === 'tch' || str.slice(i, i + 3) === 'cch') {
+      res += 'っ';
+      i++;
+      continue;
+    }
+
+    let matched = false;
+    for (let len = 4; len >= 1; len--) {
+      const sub = str.slice(i, i + len);
+      if (ROMAJI_TO_HIRA[sub]) {
+        res += ROMAJI_TO_HIRA[sub];
+        i += len;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      if (str[i] === 'n') {
+        const next = str[i + 1];
+        if (!next || !/[aiueoy]/.test(next)) {
+          res += 'ん';
+          i++;
+          if (next === "'") i++;
+          continue;
+        }
+      }
+      res += str[i];
+      i++;
+    }
+  }
+
+  return res;
+}
+
 // Xuất ra môi trường browser hoặc module
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { toRomaji, isJapaneseText, katakanaToHiragana };
+  module.exports = { toRomaji, isJapaneseText, katakanaToHiragana, romajiToHiragana };
 }
+

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 JP Furigana Hover - Trang Kiểm Thử Toàn Diện</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --tag-bg: rgba(56, 189, 248, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, "Yu Gothic", "Noto Sans JP", sans-serif;
+      line-height: 1.8;
+      padding: 30px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    header {
+      text-align: center;
+      padding: 24px 20px;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: var(--tag-bg);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .instructions-card {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-around;
+      font-size: 13px;
+    }
+
+    .instruction-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    kbd {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .test-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .section-desc {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    .jp-box {
+      font-size: 20px;
+      line-height: 2.2;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      padding: 16px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .jp-word {
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .jp-word:hover {
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .highlight-tip {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid #f59e0b;
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      color: #fcd34d;
+    }
+
+    ruby {
+      ruby-position: over;
+    }
+
+    rt {
+      font-size: 11px;
+      color: #38bdf8;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-badge">TEST BENCH • KIỂM THỬ TIỆN ÍCH</div>
+      <h1>🇯🇵 JP Furigana Hover Test Suite</h1>
+      <p class="subtitle">Trang kiểm thử toàn diện các trường hợp nhận diện từ vựng, chia đuôi ngữ pháp, số đếm lượng từ, âm Hán-Việt Joyo Kanji, bôi đen dịch câu và sổ tay từ vựng.</p>
+    </header>
+
+    <!-- Thẻ hướng dẫn nhanh -->
+    <div class="instructions-card">
+      <div class="instruction-item">
+        <span>Rê chuột:</span>
+        <strong>Xem phiên âm & nghĩa</strong>
+      </div>
+      <div class="instruction-item">
+        <span>Bật/Tắt:</span>
+        <kbd>Alt + J</kbd>
+      </div>
+      <div class="instruction-item">
+        <span>Mở rộng từ:</span>
+        <kbd>D</kbd> / <kbd>A</kbd>
+      </div>
+      <div class="instruction-item">
+        <span>Lưu vào sổ tay:</span>
+        <span>Bấm <strong>⭐</strong></span>
+      </div>
+      <div class="instruction-item">
+        <span>Sao chép:</span>
+        <span>Bấm <strong>📋</strong></span>
+      </div>
+    </div>
+
+    <!-- 1. Từ vựng căn bản N5 - N4 -->
+    <section class="test-section">
+      <h2 class="section-title">1. Từ vựng & Kanji thông dụng (N5 - N4)</h2>
+      <p class="section-desc">Rê chuột vào bất kỳ từ nào để kiểm tra Furigana, Âm Hán-Việt (ví dụ: 学校 = HỌC HIỆU), Nghĩa tiếng Việt và Phát âm chuẩn.</p>
+      <div class="jp-box">
+        <span class="jp-word">私</span> は <span class="jp-word">毎日</span> <span class="jp-word">学校</span> へ <span class="jp-word">行きます</span>。<br>
+        <span class="jp-word">教室</span> で <span class="jp-word">先生</span> と <span class="jp-word">日本語</span> を <span class="jp-word">勉強します</span>。<br>
+        <span class="jp-word">駅</span> の <span class="jp-word">前</span> で <span class="jp-word">友達</span> に <span class="jp-word">会って</span>、<span class="jp-word">図書館</span> で <span class="jp-word">本</span> を <span class="jp-word">読みました</span>。<br>
+        <span class="jp-word">今日</span> の <span class="jp-word">天気</span> は <span class="jp-word">とても</span> <span class="jp-word">良い</span> です。<span class="jp-word">明日</span> は <span class="jp-word">雨</span> が <span class="jp-word">降る</span> でしょう。
+      </div>
+    </section>
+
+    <!-- 2. Bóc tách chữ Hán (Joyo Kanji) & Từ ghép khó -->
+    <section class="test-section">
+      <h2 class="section-title">2. Từ ghép nhiều chữ Kanji & Bóc tách Joyo Kanji (N3 - N1)</h2>
+      <p class="section-desc">Kiểm tra tính năng phân tích từng chữ Hán cấu thành (Kanji Decomposition) và quy tắc âm On (Hán).</p>
+      <div class="jp-box">
+        <span class="jp-word">東京大学</span> で <span class="jp-word">経済学</span> と <span class="jp-word">情報技術</span> を <span class="jp-word">研究する</span>。<br>
+        <span class="jp-word">現代社会</span> における <span class="jp-word">自然環境</span> の <span class="jp-word">保護</span> は、<span class="jp-word">人類</span> 全体の <span class="jp-word">重大</span> な <span class="jp-word">責任</span> である。<br>
+        <span class="jp-word">国際関係</span> の <span class="jp-word">発展</span> に <span class="jp-word">伴い</span>、<span class="jp-word">多文化共生</span> の <span class="jp-word">重要性</span> が <span class="jp-word">高まっている</span>。
+      </div>
+    </section>
+
+    <!-- 3. Động từ chia đuôi & De-inflection -->
+    <section class="test-section">
+      <h2 class="section-title">3. Bộ phân tích chia đuôi Ngữ pháp (De-inflection Engine)</h2>
+      <p class="section-desc">Kiểm tra khả năng khôi phục về thể từ điển (nguyên mẫu) cho các thể ngữ pháp đa dạng.</p>
+      <div class="grid-2">
+        <div class="jp-box">
+          <div style="font-size:13px;color:#38bdf8;font-weight:bold;margin-bottom:6px;">Thể Thường & Tiếp diễn:</div>
+          <span class="jp-word">食べている</span> (Đang ăn)<br>
+          <span class="jp-word">飲まなかった</span> (Đã không uống)<br>
+          <span class="jp-word">走れば</span> (Nếu chạy)<br>
+          <span class="jp-word">行ったら</span> (Nếu đã đi)
+        </div>
+        <div class="jp-box">
+          <div style="font-size:13px;color:#38bdf8;font-weight:bold;margin-bottom:6px;">Sai khiến, Bị động & Văn nói:</div>
+          <span class="jp-word">食べさせられた</span> (Bị bắt ăn)<br>
+          <span class="jp-word">食べちゃった</span> (Lỡ ăn mất rồi)<br>
+          <span class="jp-word">飲みやすい</span> (Dễ uống)<br>
+          <span class="jp-word">高すぎる</span> (Quá đắt)
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Số đếm và Lượng từ động -->
+    <section class="test-section">
+      <h2 class="section-title">4. Số đếm & Lượng từ động (Japanese Counters)</h2>
+      <p class="section-desc">Kiểm tra bộ phân tích động số từ kèm đơn vị đếm (người, cái, tiền Yên, chai, phút, ngày...).</p>
+      <div class="jp-box">
+        <span class="jp-word">1つ</span>、<span class="jp-word">2つ</span>、<span class="jp-word">3つ</span> の りんご。<br>
+        教室 に 学生 が <span class="jp-word">3人</span> います。会議 は <span class="jp-word">10時30分</span> に 始まります。<br>
+        この 本 は <span class="jp-word">1500円</span> です。<span class="jp-word">5本</span> の ペン を 買いました。<br>
+        彼は <span class="jp-word">20歳</span> で、日本 に <span class="jp-word">2年間</span> 住んでいます。
+      </div>
+    </section>
+
+    <!-- 5. Thẻ Ruby & Furigana có sẵn trên trang -->
+    <section class="test-section">
+      <h2 class="section-title">5. Tương thích thẻ HTML Ruby & Furigana trong ngoặc</h2>
+      <p class="section-desc">Tiện ích ưu tiên lấy Furigana chính xác từ thẻ &lt;ruby&gt; của trang web mà không bao giờ làm sai lệch từ gốc.</p>
+      <div class="jp-box">
+        <ruby>大<rt>おお</rt></ruby>きい <ruby>会<rt>かい</rt>社<rt>しゃ</rt></ruby> で <ruby>働<rt>はたら</rt></ruby>く。<br>
+        <ruby>新<rt>しん</rt>幹<rt>かん</rt>線<rt>せん</rt></ruby> に <ruby>乗<rt>の</rt></ruby>って <ruby>京<rt>きょう</rt>都<rt>と</rt></ruby> へ 行きました。<br>
+        富士山 (ふじさん) は 日本一 (にほんいち) の 山 です。
+      </div>
+    </section>
+
+    <!-- 6. Thử nghiệm Dịch câu khi Bôi đen (Selection Translate) -->
+    <section class="test-section">
+      <h2 class="section-title">6. Thử nghiệm Bôi đen dịch cả câu (Selection Translate)</h2>
+      <div class="highlight-tip">
+        👉 <strong>Thử ngay:</strong> Dùng chuột kéo bôi đen toàn bộ một câu tiếng Nhật bất kỳ bên dưới, một nút mini <strong>"🇯🇵 Dịch câu"</strong> sẽ hiện ra để dịch trọn vẹn ngữ nghĩa cả câu!
+      </div>
+      <div class="jp-box" style="user-select: text;">
+        日本の春には、桜の花がとても綺麗に咲きます。多くの人々が公園に集まって、お花見を楽しみます。<br>
+        継続は力なり。毎日少しずつ勉強を続ければ、必ず日本語が上達するでしょう。
+      </div>
+    </section>
+
+    <footer>
+      JP Furigana Hover Pro • Tiện ích Tra cứu & Phiên âm Tiếng Nhật Cao Cấp
+    </footer>
+  </div>
+
+  <!-- Nạp scripts extension cho môi trường test độc lập -->
+  <script src="data/kanji_hanviet.js"></script>
+  <script src="content/romaji.js"></script>
+  <script src="data/dictionary.js"></script>
+  <script src="content/engine.js"></script>
+  <script src="content/content.js"></script>
+</body>
+</html>

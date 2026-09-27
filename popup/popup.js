@@ -1,7 +1,14 @@
-// Logic tương tác Popup Extension và Live Playground
+// Logic tương tác Popup Extension, Sổ tay từ vựng & Live Playground
 
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
+  // DOM Elements - Navigation
+  const tabBtnSettings = document.getElementById('tab-btn-settings');
+  const tabBtnNotebook = document.getElementById('tab-btn-notebook');
+  const paneSettings = document.getElementById('pane-settings');
+  const paneNotebook = document.getElementById('pane-notebook');
+  const savedCountBadge = document.getElementById('saved-count-badge');
+
+  // DOM Elements - Settings
   const masterToggle = document.getElementById('master-toggle');
   const statusDot = document.getElementById('status-dot');
   const statusText = document.getElementById('status-text');
@@ -14,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const optKanjiBreakdown = document.getElementById('opt-kanji-breakdown');
   const optPitchAccent = document.getElementById('opt-pitch-accent');
   const optVisualHighlight = document.getElementById('opt-visual-highlight');
+  const optSelectionTranslate = document.getElementById('opt-selection-translate');
   const optOnlineFallback = document.getElementById('opt-online-fallback');
   const optAutoAudio = document.getElementById('opt-auto-audio');
 
@@ -23,6 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const testPreview = document.getElementById('test-preview');
   const testWords = document.querySelectorAll('.test-word');
+
+  // DOM Elements - Notebook
+  const savedSearchInput = document.getElementById('saved-search-input');
+  const exportAnkiBtn = document.getElementById('export-anki-btn');
+  const clearSavedBtn = document.getElementById('clear-saved-btn');
+  const savedWordsContainer = document.getElementById('saved-words-container');
+  const savedEmptyState = document.getElementById('saved-empty-state');
 
   // Cấu hình mặc định
   let currentSettings = {
@@ -35,24 +50,61 @@ document.addEventListener('DOMContentLoaded', () => {
     showKanjiBreakdown: true,
     showPitchAccent: true,
     enableVisualHighlight: true,
+    enableSelectionTranslate: true,
     enableOnlineFallback: true,
     autoPlayAudio: false,
     speechRate: 0.95
   };
 
-  // 1. Tải cài đặt hiện tại
+  let savedWordsList = [];
+
+  // 1. Quản lý Tab Navigation
+  function switchTab(tabId) {
+    if (tabId === 'settings') {
+      tabBtnSettings.classList.add('active');
+      tabBtnNotebook.classList.remove('active');
+      paneSettings.classList.add('active');
+      paneNotebook.classList.remove('active');
+    } else {
+      tabBtnSettings.classList.remove('active');
+      tabBtnNotebook.classList.add('active');
+      paneSettings.classList.remove('active');
+      paneNotebook.classList.add('active');
+      loadSavedWords();
+    }
+  }
+
+  tabBtnSettings.addEventListener('click', () => switchTab('settings'));
+  tabBtnNotebook.addEventListener('click', () => switchTab('notebook'));
+
+  // 2. Tải cài đặt hiện tại
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['jpSettings'], (res) => {
+    chrome.storage.local.get(['jpSettings', 'jpSavedWords'], (res) => {
       if (res && res.jpSettings) {
         currentSettings = { ...currentSettings, ...res.jpSettings };
       }
       applySettingsToUI();
+
+      if (res && Array.isArray(res.jpSavedWords)) {
+        savedWordsList = res.jpSavedWords;
+        updateSavedCountBadge();
+      }
+    });
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.jpSavedWords) {
+        savedWordsList = changes.jpSavedWords.newValue || [];
+        updateSavedCountBadge();
+        if (paneNotebook.classList.contains('active')) {
+          renderSavedWordsList(savedSearchInput.value);
+        }
+      }
     });
   } else {
     applySettingsToUI();
   }
 
-  // 2. Cập nhật UI theo dữ liệu settings
+  // 3. Cập nhật UI theo dữ liệu settings
   function applySettingsToUI() {
     masterToggle.checked = currentSettings.enabled;
     updateStatusDisplay(currentSettings.enabled);
@@ -68,6 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
     optKanjiBreakdown.checked = currentSettings.showKanjiBreakdown !== false;
     optPitchAccent.checked = currentSettings.showPitchAccent !== false;
     optVisualHighlight.checked = currentSettings.enableVisualHighlight !== false;
+    if (optSelectionTranslate) {
+      optSelectionTranslate.checked = currentSettings.enableSelectionTranslate !== false;
+    }
     optOnlineFallback.checked = currentSettings.enableOnlineFallback !== false;
     optAutoAudio.checked = currentSettings.autoPlayAudio === true;
 
@@ -77,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSpeedBadge(rate);
   }
 
-  // 3. Cập nhật trạng thái hiển thị
+  // Cập nhật trạng thái hiển thị
   function updateStatusDisplay(enabled) {
     if (enabled) {
       statusDot.classList.remove('disabled');
@@ -104,6 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function updateSavedCountBadge() {
+    if (savedCountBadge) {
+      savedCountBadge.textContent = savedWordsList.length;
+    }
+  }
+
   // 4. Lưu cài đặt vào chrome.storage
   function saveSettings() {
     currentSettings = {
@@ -116,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showKanjiBreakdown: optKanjiBreakdown.checked,
       showPitchAccent: optPitchAccent.checked,
       enableVisualHighlight: optVisualHighlight.checked,
+      enableSelectionTranslate: optSelectionTranslate ? optSelectionTranslate.checked : true,
       enableOnlineFallback: optOnlineFallback.checked,
       autoPlayAudio: optAutoAudio.checked,
       speechRate: parseFloat(speedSlider.value) || 0.95
@@ -128,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 5. Gắn sự kiện thay đổi
+  // Gắn sự kiện thay đổi settings
   masterToggle.addEventListener('change', saveSettings);
 
   activationRadios.forEach(radio => {
@@ -142,10 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
   optKanjiBreakdown.addEventListener('change', saveSettings);
   optPitchAccent.addEventListener('change', saveSettings);
   optVisualHighlight.addEventListener('change', saveSettings);
+  if (optSelectionTranslate) {
+    optSelectionTranslate.addEventListener('change', saveSettings);
+  }
   optOnlineFallback.addEventListener('change', saveSettings);
   optAutoAudio.addEventListener('change', saveSettings);
 
-  // Xử lý thanh trượt tốc độ
   speedSlider.addEventListener('input', () => {
     const rate = parseFloat(speedSlider.value);
     updateSpeedBadge(rate);
@@ -168,6 +232,166 @@ document.addEventListener('DOMContentLoaded', () => {
         japaneseEngine.speak('日本語', speed);
       }
     });
+  });
+
+  // 5. Quản lý Sổ tay từ vựng (Vocabulary Notebook)
+  function loadSavedWords() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['jpSavedWords'], (res) => {
+        savedWordsList = (res && Array.isArray(res.jpSavedWords)) ? res.jpSavedWords : [];
+        updateSavedCountBadge();
+        renderSavedWordsList(savedSearchInput.value);
+      });
+    } else {
+      renderSavedWordsList('');
+    }
+  }
+
+  function renderSavedWordsList(filterQuery = '') {
+    const query = (filterQuery || '').trim().toLowerCase();
+    const filtered = query
+      ? savedWordsList.filter(item => 
+          (item.word && item.word.toLowerCase().includes(query)) ||
+          (item.reading && item.reading.toLowerCase().includes(query)) ||
+          (item.hanviet && item.hanviet.toLowerCase().includes(query)) ||
+          (item.meaning && item.meaning.toLowerCase().includes(query))
+        )
+      : savedWordsList;
+
+    if (!filtered || filtered.length === 0) {
+      savedWordsContainer.innerHTML = '';
+      savedWordsContainer.style.display = 'none';
+      savedEmptyState.style.display = 'flex';
+      if (query) {
+        savedEmptyState.querySelector('.empty-title').textContent = 'Không tìm thấy kết quả';
+        savedEmptyState.querySelector('.empty-desc').textContent = `Không có từ nào khớp với từ khóa "${filterQuery}".`;
+      } else {
+        savedEmptyState.querySelector('.empty-title').textContent = 'Chưa có từ nào được lưu';
+        savedEmptyState.querySelector('.empty-desc').textContent = 'Khi rê chuột tra từ trên bất kỳ trang web nào, hãy bấm nút ⭐ trên tooltip để lưu từ vào đây!';
+      }
+      return;
+    }
+
+    savedEmptyState.style.display = 'none';
+    savedWordsContainer.style.display = 'flex';
+    savedWordsContainer.innerHTML = '';
+
+    filtered.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'saved-word-card';
+
+      const readingText = (item.reading && item.reading !== item.word) ? item.reading : '';
+      const hvBadge = item.hanviet ? `<span class="saved-word-hv">${item.hanviet}</span>` : '';
+
+      card.innerHTML = `
+        <div class="saved-word-top">
+          <div class="saved-word-main">
+            <span class="saved-word-kanji">${item.word}</span>
+            ${readingText ? `<span class="saved-word-reading">${readingText}</span>` : ''}
+            ${hvBadge}
+          </div>
+          <div class="saved-word-actions">
+            <button class="saved-item-btn saved-play-btn" title="Nghe phát âm">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+              </svg>
+            </button>
+            <button class="saved-item-btn saved-del-btn" title="Xóa từ này">✕</button>
+          </div>
+        </div>
+        <div class="saved-word-meaning">${item.meaning || 'Chưa có giải nghĩa'}</div>
+      `;
+
+      // Nút audio
+      card.querySelector('.saved-play-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof japaneseEngine !== 'undefined') {
+          japaneseEngine.speak(item.reading || item.word, currentSettings.speechRate);
+        }
+      });
+
+      // Nút xóa
+      card.querySelector('.saved-del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSavedWord(item.word);
+      });
+
+      savedWordsContainer.appendChild(card);
+    });
+  }
+
+  function deleteSavedWord(wordToDelete) {
+    savedWordsList = savedWordsList.filter(item => item.word !== wordToDelete);
+    updateSavedCountBadge();
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ jpSavedWords: savedWordsList }, () => {
+        renderSavedWordsList(savedSearchInput.value);
+      });
+    } else {
+      renderSavedWordsList(savedSearchInput.value);
+    }
+  }
+
+  // Tìm kiếm thời gian thực
+  savedSearchInput.addEventListener('input', () => {
+    renderSavedWordsList(savedSearchInput.value);
+  });
+
+  // Xóa tất cả từ đã lưu
+  clearSavedBtn.addEventListener('click', () => {
+    if (savedWordsList.length === 0) return;
+    if (confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${savedWordsList.length} từ vựng đã lưu không?`)) {
+      savedWordsList = [];
+      updateSavedCountBadge();
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ jpSavedWords: [] }, () => {
+          renderSavedWordsList('');
+        });
+      } else {
+        renderSavedWordsList('');
+      }
+    }
+  });
+
+  // Xuất Anki (CSV)
+  exportAnkiBtn.addEventListener('click', () => {
+    if (savedWordsList.length === 0) {
+      alert('Sổ từ vựng đang trống. Hãy lưu ít nhất 1 từ vựng trước khi xuất Anki!');
+      return;
+    }
+
+    // Định dạng CSV chuẩn UTF-8 kèm BOM cho Anki/Excel
+    let csvContent = '\uFEFF';
+    csvContent += 'Từ vựng,Cách đọc,Âm Hán-Việt,Giải nghĩa,Từ loại,Ngày lưu\n';
+
+    savedWordsList.forEach(item => {
+      const escapeCsv = (str) => {
+        if (!str) return '""';
+        return `"${String(str).replace(/"/g, '""')}"`;
+      };
+
+      const dateStr = item.savedAt ? new Date(item.savedAt).toLocaleDateString('vi-VN') : '';
+      const row = [
+        escapeCsv(item.word),
+        escapeCsv(item.reading || item.word),
+        escapeCsv(item.hanviet || ''),
+        escapeCsv(item.meaning || ''),
+        escapeCsv(item.type || ''),
+        escapeCsv(dateStr)
+      ].join(',');
+
+      csvContent += row + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `jp_anki_words_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   });
 
   // 6. Live Playground: Tương tác thử nghiệm từ vựng ngay trong Popup
@@ -277,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 7. Mở trang cài đặt phím tắt an toàn qua chrome.tabs.create
+  // 7. Mở trang cài đặt phím tắt
   const openShortcutsBtn = document.getElementById('open-shortcuts-btn');
   if (openShortcutsBtn) {
     openShortcutsBtn.addEventListener('click', (e) => {
