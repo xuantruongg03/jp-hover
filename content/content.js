@@ -566,7 +566,7 @@
             meaningText.innerHTML = `${onlineRes.meaning} <span class="jp-online-tag">🌐 Trực tuyến</span>`;
             meaningBox.style.display = 'flex';
           }
-          if (onlineRes.reading && (!data.reading || data.reading === targetWord)) {
+          if (onlineRes.reading && onlineRes.reading !== targetWord && (!data.reading || data.reading === targetWord)) {
             currentReading = onlineRes.reading;
             readingElem.textContent = onlineRes.reading;
             readingElem.style.display = 'inline';
@@ -876,8 +876,9 @@
     const word = japaneseEngine.getWordAtOffset(text, offset, scanExtend);
 
     if (word) {
+      let wordIndex = -1;
       try {
-        const wordIndex = text.indexOf(word, Math.max(0, offset - word.length));
+        wordIndex = text.indexOf(word, Math.max(0, offset - word.length));
         if (wordIndex !== -1) {
           wordRange = document.createRange();
           wordRange.setStart(textNode, wordIndex);
@@ -896,11 +897,15 @@
         activeAbortController = null;
       }
 
-      // Nhận diện Furigana trong ngoặc đơn hoặc thẻ <ruby>
+      // Nhận diện Furigana trong ngoặc đơn NGAY SAU TỪ KANJI hoặc trong thẻ <ruby>
       let inlineFurigana = '';
       try {
-        const afterText = text.slice(offset);
-        const matchParen = afterText.match(/^[^\(（]*[\(（]([\u3040-\u309F\u30A0-\u30FFー]+)[\)）]/);
+        // Chỉ tìm ngoặc đơn nếu nó bắt đầu ngay lập tức sau từ (ví dụ: 時計（とけい）)
+        // Không quét xa để tránh nhận nhầm ngoặc của từ khác trong câu (như すみません、この時計（とけい）)
+        const startAfter = (wordIndex !== -1) ? (wordIndex + word.length) : (offset + word.length);
+        const afterText = text.slice(startAfter);
+        const matchParen = afterText.match(/^\s*[\(（]([\u3040-\u309F\u30A0-\u30FFー]+)[\)）]/);
+
         if (matchParen && matchParen[1]) {
           inlineFurigana = matchParen[1].trim();
         } else if (textNode.parentElement) {
@@ -918,7 +923,8 @@
       if (analyzed) {
         analyzed.word = word;
 
-        if (inlineFurigana && isJapaneseText(inlineFurigana)) {
+        // Chỉ áp dụng Furigana trong ngoặc đơn nếu từ chứa chữ Kanji
+        if (inlineFurigana && isJapaneseText(inlineFurigana) && /[一-龯]/.test(word)) {
           analyzed.reading = inlineFurigana;
           if (typeof toRomaji === 'function') {
             analyzed.romaji = toRomaji(inlineFurigana);
