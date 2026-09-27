@@ -168,15 +168,14 @@
             </svg>
           </button>
           <button class="jp-icon-btn jp-star-btn" id="jp-star-btn" title="Lưu vào Sổ tay từ vựng">⭐</button>
-          <button class="jp-icon-btn jp-copy-btn" id="jp-copy-btn" title="Sao chép từ & nghĩa">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button class="jp-icon-btn jp-copy-btn" id="jp-copy-btn" title="Sao chép từ">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <button class="jp-icon-btn jp-flashcard-btn" id="jp-flashcard-btn" title="Mở trang Flashcard & Sổ tay toàn màn hình">🎴</button>
           <button class="jp-icon-btn jp-lookup-btn" id="jp-lookup-btn" title="Tra cứu từ điển chi tiết (Mazii)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -366,20 +365,6 @@
         if (successful && callback) callback();
       } catch (_) {}
       document.body.removeChild(textarea);
-    }
-
-    // Nút Mở trang Flashcard & Sổ tay toàn màn hình
-    const flashcardBtn = cardElem.querySelector('#jp-flashcard-btn');
-    if (flashcardBtn) {
-      flashcardBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
-        } else {
-          window.open('flashcards.html', '_blank');
-        }
-      });
     }
 
     // Nút Kính lúp tra cứu từ điển trực tuyến (Mazii)
