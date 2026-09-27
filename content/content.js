@@ -189,6 +189,7 @@
       
       <div class="jp-meaning-container" id="jp-meaning-container">
         <div class="jp-meaning-box" id="jp-meaning-box">
+          <span class="jp-meaning-icon">💡</span>
           <span id="jp-meaning-text"></span>
         </div>
         <div class="jp-synonyms-row" id="jp-synonyms-row" style="display:none;"></div>
