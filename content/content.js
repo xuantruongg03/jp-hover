@@ -33,7 +33,7 @@
   let isMouseOverTooltip = false;
   let isPinned = false;
   let isSelectingOnPage = false;
-  let scanExtend = 0; // Số từ mở rộng sang phải khi nhấn phím D
+  let scanExtend = 0; // Giữ lại để không phá API getWordAtOffset nhưng luôn = 0
   let lastHoverPos = { clientX: 0, clientY: 0 };
   let debounceTimer = null;
   let hideDelayTimer = null;
@@ -189,7 +189,6 @@
       
       <div class="jp-meaning-container" id="jp-meaning-container">
         <div class="jp-meaning-box" id="jp-meaning-box">
-          <span class="jp-meaning-icon">💡</span>
           <span id="jp-meaning-text"></span>
         </div>
         <div class="jp-synonyms-row" id="jp-synonyms-row" style="display:none;"></div>
@@ -217,7 +216,6 @@
         <div class="jp-shortcut-hint">
           <span>Phím:</span>
           <span class="jp-kbd">Alt+J</span>
-          <span class="jp-kbd" title="Nhấn D để mở rộng cụm từ">D: Mở rộng</span>
         </div>
       </div>
     `;
@@ -1064,28 +1062,8 @@
     }
   }
 
-  // 11. Phím tắt điều hướng mở rộng từ ghép (D để mở rộng, A để thu hẹp)
-  function handleScanShortcuts(e) {
-    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-    if (activeTag === 'input' || activeTag === 'textarea') return;
-
-    if (cardElem && cardElem.classList.contains('visible')) {
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
-        scanExtend = Math.min(4, scanExtend + 1);
-        processHover(lastHoverPos.clientX, lastHoverPos.clientY);
-      } else if (e.key === 'a' || e.key === 'A') {
-        e.preventDefault();
-        scanExtend = Math.max(0, scanExtend - 1);
-        processHover(lastHoverPos.clientX, lastHoverPos.clientY);
-      }
-    }
-  }
-
-  // Phím tắt toàn cục Alt+J dự phòng
+  // 11. Phím tắt toàn cục Alt+J
   function handleKeyDown(e) {
-    handleScanShortcuts(e);
-
     if (e.altKey && (e.key === 'j' || e.key === 'J' || e.code === 'KeyJ')) {
       // Khi đang chạy trong môi trường Chrome Extension, Background Service Worker (chrome.commands) sẽ xử lý
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
