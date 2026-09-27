@@ -39,9 +39,17 @@ body {
   gap: 10px;
 }
 
-.logo-icon {
-  font-size: 26px;
-  filter: drop-shadow(0 2px 8px rgba(239, 68, 68, 0.3));
+.logo-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.logo-img:hover {
+  transform: scale(1.08) rotate(-2deg);
 }
 
 .title {
