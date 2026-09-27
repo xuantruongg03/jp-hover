@@ -19,7 +19,9 @@
     enableOnlineFallback: true,
     enableSelectionTranslate: true,
     autoPlayAudio: false,
-    speechRate: 0.95
+    speechRate: 0.95,
+    translationEngine: 'google',
+    geminiApiKey: ''
   };
 
   // Trạng thái hiện tại
@@ -660,7 +662,10 @@
 
     sentenceCard.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
-        <span style="font-weight:bold;color:#38bdf8;font-size:13px;">📑 Dịch câu tiếng Nhật</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-weight:bold;color:#38bdf8;font-size:13px;">📑 Dịch câu</span>
+          <span class="jp-api-badge" id="jp-sentence-api-badge">Đang gọi API ngoài...</span>
+        </div>
         <div style="display:flex;gap:6px;">
           <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu đang chọn">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
@@ -678,7 +683,7 @@
       </div>
       <div style="font-size:15px;font-weight:bold;color:#ffffff;line-height:1.4;margin-top:4px;">${text}</div>
       <div id="jp-sentence-meaning" style="font-size:13.5px;color:#e2e8f0;background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;line-height:1.45;border-left:3px solid #38bdf8;">
-        Đang dịch câu...
+        Đang dịch câu qua API ngoài...
       </div>
     `;
 
@@ -720,13 +725,25 @@
       hideSentenceCard();
     });
 
-    // Gọi API dịch câu
+    // Gọi API dịch câu bên ngoài (Google Translate API hoặc Gemini AI API)
     try {
-      const res = await japaneseEngine.fetchOnlineData(text);
+      const res = await japaneseEngine.translateSentence(text, {
+        engine: settings.translationEngine || 'google',
+        apiKey: settings.geminiApiKey || ''
+      });
       if (res && res.meaning) {
         const mElem = sentenceCard.querySelector('#jp-sentence-meaning');
+        const bElem = sentenceCard.querySelector('#jp-sentence-api-badge');
         if (mElem) {
           mElem.textContent = res.meaning;
+        }
+        if (bElem && res.provider) {
+          bElem.textContent = res.provider;
+          if (res.provider.includes('Gemini')) {
+            bElem.classList.add('ai');
+          } else {
+            bElem.classList.remove('ai');
+          }
         }
       }
     } catch (_) {}

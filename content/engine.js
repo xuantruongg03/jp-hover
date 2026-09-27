@@ -539,6 +539,76 @@ class JapaneseEngine {
   }
 
   /**
+   * Dịch câu hoàn chỉnh sử dụng API bên ngoài (Google Translate API hoặc Gemini AI API)
+   * @param {string} text - Câu tiếng Nhật cần dịch
+   * @param {object} [options] - Tuỳ chọn { engine: 'google' | 'gemini', apiKey: string }
+   */
+  async translateSentence(text, options = {}) {
+    if (!text || typeof text !== 'string') return null;
+    const cleanText = text.trim();
+    if (!cleanText) return null;
+
+    const engineType = options.engine || 'google';
+    const cacheKey = `sent_${engineType}_${cleanText}`;
+    if (this.onlineCache.has(cacheKey)) {
+      return this.onlineCache.get(cacheKey);
+    }
+
+    // 1. Tùy chọn: Gọi API ngoài của Google Gemini AI nếu người dùng cấu hình
+    if (engineType === 'gemini' && options.apiKey) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(options.apiKey)}`;
+        const prompt = `Bạn là chuyên gia dịch thuật tiếng Nhật - tiếng Việt. Hãy dịch chính xác câu tiếng Nhật sau sang tiếng Việt tự nhiên và chuẩn nghĩa nhất (chú ý số đếm, lượng từ, Hiragana/Katakana và kính ngữ). Chỉ trả về duy nhất nội dung câu dịch tiếng Việt, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`;
+
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 250 }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const out = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (out) {
+            const result = { meaning: out, provider: 'Gemini AI API' };
+            this.onlineCache.set(cacheKey, result);
+            return result;
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini translate failed, falling back to Google Translate API:', err);
+      }
+    }
+
+    // 2. Mặc định: Gọi API ngoài của Google Translate (translate.googleapis.com)
+    try {
+      const queryText = this.normalizeTextForTranslation(cleanText);
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=vi&dt=t&q=${encodeURIComponent(queryText)}`;
+      const response = await fetch(url);
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      let translation = '';
+      if (data && data[0] && Array.isArray(data[0])) {
+        translation = data[0].map(item => item[0]).filter(Boolean).join('').trim();
+      }
+
+      if (translation) {
+        const result = { meaning: translation, provider: 'Google Translate API' };
+        this.onlineCache.set(cacheKey, result);
+        return result;
+      }
+    } catch (err) {
+      console.error('Google Translate API error:', err);
+    }
+
+    return null;
+  }
+
+  /**
    * Phát âm tiếng Nhật chuẩn (Web Speech API + Trực tuyến fallback cho Windows)
    */
   speak(text, rate = 0.95, onStart = null, onEnd = null) {

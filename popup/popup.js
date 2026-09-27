@@ -53,7 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     enableSelectionTranslate: true,
     enableOnlineFallback: true,
     autoPlayAudio: false,
-    speechRate: 0.95
+    speechRate: 0.95,
+    translationEngine: 'google',
+    geminiApiKey: ''
   };
 
   let savedWordsList = [];
@@ -130,6 +132,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const rate = currentSettings.speechRate || 0.95;
     speedSlider.value = rate;
     updateSpeedBadge(rate);
+
+    // Cập nhật bộ máy dịch câu API bên ngoài
+    const transRadios = document.querySelectorAll('input[name="trans-engine"]');
+    transRadios.forEach(r => {
+      r.checked = (r.value === (currentSettings.translationEngine || 'google'));
+    });
+    const keyContainer = document.getElementById('gemini-key-container');
+    const keyInput = document.getElementById('gemini-api-key');
+    if (keyInput) keyInput.value = currentSettings.geminiApiKey || '';
+    if (keyContainer) keyContainer.style.display = (currentSettings.translationEngine === 'gemini') ? 'block' : 'none';
   }
 
   // Cập nhật trạng thái hiển thị
@@ -180,7 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
       enableSelectionTranslate: optSelectionTranslate ? optSelectionTranslate.checked : true,
       enableOnlineFallback: optOnlineFallback.checked,
       autoPlayAudio: optAutoAudio.checked,
-      speechRate: parseFloat(speedSlider.value) || 0.95
+      speechRate: parseFloat(speedSlider.value) || 0.95,
+      translationEngine: document.querySelector('input[name="trans-engine"]:checked')?.value || 'google',
+      geminiApiKey: (document.getElementById('gemini-api-key')?.value || '').trim()
     };
 
     updateStatusDisplay(currentSettings.enabled);
@@ -209,6 +223,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   optOnlineFallback.addEventListener('change', saveSettings);
   optAutoAudio.addEventListener('change', saveSettings);
+
+  const transRadios = document.querySelectorAll('input[name="trans-engine"]');
+  transRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      const keyContainer = document.getElementById('gemini-key-container');
+      if (keyContainer) keyContainer.style.display = (radio.value === 'gemini') ? 'block' : 'none';
+      saveSettings();
+    });
+  });
+
+  const geminiKeyInput = document.getElementById('gemini-api-key');
+  if (geminiKeyInput) {
+    geminiKeyInput.addEventListener('input', saveSettings);
+  }
 
   speedSlider.addEventListener('input', () => {
     const rate = parseFloat(speedSlider.value);
