@@ -71,15 +71,19 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 8px;
+  overflow: hidden;
 }
 
 .jp-word-box {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;
   user-select: text !important;
   -webkit-user-select: text !important;
 }
@@ -111,10 +115,13 @@
 }
 
 .jp-main-word {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
