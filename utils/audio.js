@@ -188,10 +188,14 @@ class JapaneseAudioEngine {
       utterance.voice = chosenVoice;
 
       const rate = parseFloat(options.rate);
-      utterance.rate = (!isNaN(rate) && rate >= 0.4 && rate <= 2.0) ? rate : 0.95;
+      utterance.rate = (!isNaN(rate) && rate >= 0.25 && rate <= 2.5) ? rate : 1.0;
 
       const pitch = parseFloat(options.pitch);
       utterance.pitch = (!isNaN(pitch) && pitch >= 0.5 && pitch <= 1.5) ? pitch : 1.0;
+
+      if (options.onBoundary) {
+        utterance.onboundary = options.onBoundary;
+      }
 
       let started = false;
       utterance.onstart = () => {
@@ -220,10 +224,24 @@ class JapaneseAudioEngine {
   /**
    * Fallback sang Google Translate TTS Stream khi thiết bị không có Japanese voice
    */
-  playGoogleTtsAudio(text, onStart, onEnd) {
+  playGoogleTtsAudio(text, onStart, onEnd, rate = 1.0) {
     this.stop();
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ja&q=${encodeURIComponent(text)}`;
     const audio = new Audio(url);
+    const numRate = parseFloat(rate);
+    const validRate = (!isNaN(numRate) && numRate >= 0.25 && numRate <= 2.5) ? numRate : 1.0;
+
+    const applyRate = () => {
+      try {
+        audio.playbackRate = validRate;
+        audio.defaultPlaybackRate = validRate;
+      } catch (_) {}
+    };
+    applyRate();
+    audio.addEventListener('play', applyRate);
+    audio.addEventListener('playing', applyRate);
+    audio.addEventListener('loadedmetadata', applyRate);
+
     this.currentAudio = audio;
 
     if (onStart) onStart();
@@ -253,17 +271,19 @@ class JapaneseAudioEngine {
     const cleanText = text.trim();
     if (!cleanText) return;
 
+    const rate = (options && typeof options === 'object' && options.rate) ? options.rate : 1.0;
+
     // Nếu người dùng chọn giọng trực tuyến Google TTS hoặc thiết bị hoàn toàn không có giọng tiếng Nhật
     const jaVoices = this.getJapaneseVoices();
     if (options.voiceUri === 'google-tts' || jaVoices.length === 0) {
-      this.playGoogleTtsAudio(cleanText, onStart, onEnd);
+      this.playGoogleTtsAudio(cleanText, onStart, onEnd, rate);
       return;
     }
 
     // Mặc định: Phát trực tiếp tức thì bằng giọng người Nhật trong hệ thống (0ms delay)
     this.speakSpeechSynthesis(cleanText, options, onStart, onEnd, () => {
       // Fallback duy nhất khi máy hoàn toàn không có giọng tiếng Nhật
-      this.playGoogleTtsAudio(cleanText, onStart, onEnd);
+      this.playGoogleTtsAudio(cleanText, onStart, onEnd, rate);
     });
   }
 

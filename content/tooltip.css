@@ -543,8 +543,15 @@
 .jp-footer-left {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.jp-shortcut-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .jp-footer-title {
@@ -724,25 +731,125 @@
 
 .jp-sentence-source-box {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
-  font-size: 16px;
-  line-height: 1.85;
-  color: #f8fafc;
-  letter-spacing: 0.03em;
-  margin: 8px 0 4px 0;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
+  margin: 10px 0 6px 0;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  max-height: 44vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   user-select: text;
   -webkit-user-select: text;
 }
 
-.jp-sentence-source-box span.reading-chunk-active {
-  background: rgba(56, 189, 248, 0.3) !important;
-  color: #38bdf8 !important;
+.jp-sentence-source-box::-webkit-scrollbar {
+  width: 6px;
+}
+.jp-sentence-source-box::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
   border-radius: 4px;
-  padding: 1px 3px;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.jp-sentence-source-box::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+/* Thẻ bao phủ từng câu trong đoạn văn */
+.jp-reading-sentence-item {
+  position: relative;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 16px;
+  line-height: 1.85;
+  color: #cbd5e1;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.jp-reading-sentence-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+/* HIỆU ỨNG BOX HIGHLIGHT BAO PHỦ CÂU ĐANG ĐỌC (Luyện đọc JLPT) */
+.jp-reading-sentence-item.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(14, 165, 233, 0.08) 100%) !important;
+  border: 1.5px solid #38bdf8 !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.32), inset 0 0 10px rgba(56, 189, 248, 0.12) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  transform: scale(1.006);
+}
+
+/* Badge loa hiển thị trên góc Box Highlight */
+.jp-reading-speaker-badge {
+  display: none;
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.4px;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.jp-reading-sentence-item.active .jp-reading-speaker-badge {
+  display: inline-flex;
+  animation: jpSpeakerBadgePulse 1.6s infinite ease-in-out;
+}
+
+@keyframes jpSpeakerBadgePulse {
+  0%, 100% { opacity: 0.95; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.5); }
+}
+
+.jp-wave-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: inline-block;
+  animation: jpWaveBounce 1s infinite ease-in-out;
+}
+.jp-wave-dot:nth-child(1) { animation-delay: 0s; }
+.jp-wave-dot:nth-child(2) { animation-delay: 0.2s; }
+.jp-wave-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes jpWaveBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* Hiệu ứng quét sáng từng từ bên trong Box Highlight (Karaoke style) */
+.jp-reading-word {
+  display: inline;
+  border-radius: 3px;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.jp-reading-sentence-item.active .jp-reading-word.word-active {
+  background: rgba(56, 189, 248, 0.38) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+  border-radius: 3px;
+  padding: 1px 2px;
 }
 
 .jp-sentence-meaning {

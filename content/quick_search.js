@@ -535,14 +535,13 @@ class QuickSearchPalette {
       html += `<div class="jp-qs-section-title">📚 Từ vựng tiếng Nhật tương ứng (${revData.words.length})</div>`;
       revData.words.forEach(item => {
         const romaji = typeof toRomaji === 'function' ? toRomaji(item.r || '') : '';
-        const kata = typeof hiraganaToKatakana === 'function' ? hiraganaToKatakana(item.r || '') : '';
+        const showReading = item.r && item.r !== item.word;
         html += `
           <div class="jp-qs-card" data-word="${this.escapeHtml(item.word)}" data-reading="${this.escapeHtml(item.r || '')}" data-meaning="${this.escapeHtml(item.m || '')}" title="Bấm vào thẻ để sao chép từ">
             <div class="jp-qs-card-left">
               <div class="jp-qs-word-title">
                 <span class="jp-qs-vocab">${this.escapeHtml(item.word)}</span>
-                <span class="jp-qs-reading">${this.escapeHtml(item.r || '')}</span>
-                ${kata && kata !== item.r && item.word !== kata ? `<span class="jp-qs-kata">(${this.escapeHtml(kata)})</span>` : ''}
+                ${showReading ? `<span class="jp-qs-reading">${this.escapeHtml(item.r)}</span>` : ''}
                 ${romaji ? `<span class="jp-qs-romaji">${this.escapeHtml(romaji)}</span>` : ''}
               </div>
               <div class="jp-qs-meaning">💡 ${this.escapeHtml(item.m || '')}</div>
@@ -642,8 +641,8 @@ class QuickSearchPalette {
       if (!slot) return;
 
       const readingText = res.reading || '';
-      const kataText = (typeof hiraganaToKatakana === 'function' && readingText) ? hiraganaToKatakana(readingText) : '';
       const romajiText = res.romaji || '';
+      const showReading = readingText && readingText !== res.japanese;
 
       slot.innerHTML = `
         <div class="jp-qs-card jp-qs-reverse-card" data-word="${this.escapeHtml(res.japanese)}" data-reading="${this.escapeHtml(readingText)}" data-meaning="${this.escapeHtml(query)}" title="Bấm vào thẻ để sao chép từ">
@@ -653,8 +652,7 @@ class QuickSearchPalette {
             </div>
             <div class="jp-qs-word-title">
               <span class="jp-qs-vocab jp-qs-vocab-hero">${this.escapeHtml(res.japanese)}</span>
-              ${readingText ? `<span class="jp-qs-reading">${this.escapeHtml(readingText)}</span>` : ''}
-              ${kataText && kataText !== readingText ? `<span class="jp-qs-kata">(${this.escapeHtml(kataText)})</span>` : ''}
+              ${showReading ? `<span class="jp-qs-reading">${this.escapeHtml(readingText)}</span>` : ''}
               ${romajiText ? `<span class="jp-qs-romaji">${this.escapeHtml(romajiText)}</span>` : ''}
             </div>
             <div class="jp-qs-meaning" style="font-size:14px;color:#f1f5f9;margin-top:2px;">💡 ${this.escapeHtml(query)}</div>
@@ -827,14 +825,13 @@ class QuickSearchPalette {
         html += `<div class="jp-qs-section-title">📚 Từ vựng bóc tách trong câu (${extractedWords.length})</div>`;
         extractedWords.forEach(item => {
           const romaji = typeof toRomaji === 'function' ? toRomaji(item.r || '') : '';
-          const kata = typeof hiraganaToKatakana === 'function' ? hiraganaToKatakana(item.r || '') : '';
+          const showReading = item.r && item.r !== item.word;
           html += `
             <div class="jp-qs-card" data-word="${this.escapeHtml(item.word)}" data-reading="${this.escapeHtml(item.r || '')}" data-meaning="${this.escapeHtml(item.m || '')}" title="Bấm vào thẻ để sao chép từ">
               <div class="jp-qs-card-left">
                 <div class="jp-qs-word-title">
                   <span class="jp-qs-vocab">${this.escapeHtml(item.word)}</span>
-                  <span class="jp-qs-reading">${this.escapeHtml(item.r || '')}</span>
-                  ${kata && kata !== item.r && item.word !== kata ? `<span class="jp-qs-kata">(${this.escapeHtml(kata)})</span>` : ''}
+                  ${showReading ? `<span class="jp-qs-reading">${this.escapeHtml(item.r)}</span>` : ''}
                   ${romaji ? `<span class="jp-qs-romaji">${this.escapeHtml(romaji)}</span>` : ''}
                 </div>
                 <div class="jp-qs-meaning">${this.escapeHtml(item.m || '')}</div>
@@ -924,14 +921,13 @@ class QuickSearchPalette {
     html += `<div class="jp-qs-section-title">📚 Từ vựng tiếng Nhật (${matches.length})</div>`;
     matches.forEach(item => {
       const romaji = typeof toRomaji === 'function' ? toRomaji(item.r || '') : '';
-      const kata = typeof hiraganaToKatakana === 'function' ? hiraganaToKatakana(item.r || '') : '';
+      const showReading = item.r && item.r !== item.word;
       html += `
         <div class="jp-qs-card" data-word="${this.escapeHtml(item.word)}" data-reading="${this.escapeHtml(item.r || '')}" data-meaning="${this.escapeHtml(item.m || '')}" title="Bấm vào thẻ để sao chép từ">
           <div class="jp-qs-card-left">
             <div class="jp-qs-word-title">
               <span class="jp-qs-vocab">${this.escapeHtml(item.word)}</span>
-              <span class="jp-qs-reading">${this.escapeHtml(item.r || '')}</span>
-              ${kata && kata !== item.r && item.word !== kata ? `<span class="jp-qs-kata">(${this.escapeHtml(kata)})</span>` : ''}
+              ${showReading ? `<span class="jp-qs-reading">${this.escapeHtml(item.r)}</span>` : ''}
               ${romaji ? `<span class="jp-qs-romaji">${this.escapeHtml(romaji)}</span>` : ''}
             </div>
             <div class="jp-qs-meaning">💡 ${this.escapeHtml(item.m || '')}</div>
@@ -1024,8 +1020,8 @@ class QuickSearchPalette {
       if (!slot) return;
 
       const readingText = result.reading || '';
-      const kataText = (typeof hiraganaToKatakana === 'function' && readingText) ? hiraganaToKatakana(readingText) : '';
       const romajiText = result.romaji || '';
+      const showReading = readingText && readingText !== query;
 
       slot.innerHTML = `
         <div class="jp-qs-card jp-qs-reverse-card" data-word="${this.escapeHtml(query)}" data-reading="${this.escapeHtml(readingText)}" data-meaning="${this.escapeHtml(result.meaning)}" title="Bấm vào thẻ để sao chép từ">
@@ -1035,8 +1031,7 @@ class QuickSearchPalette {
             </div>
             <div class="jp-qs-word-title">
               <span class="jp-qs-vocab jp-qs-vocab-hero">${this.escapeHtml(query)}</span>
-              ${readingText ? `<span class="jp-qs-reading">${this.escapeHtml(readingText)}</span>` : ''}
-              ${kataText && kataText !== readingText ? `<span class="jp-qs-kata">(${this.escapeHtml(kataText)})</span>` : ''}
+              ${showReading ? `<span class="jp-qs-reading">${this.escapeHtml(readingText)}</span>` : ''}
               ${romajiText ? `<span class="jp-qs-romaji">${this.escapeHtml(romajiText)}</span>` : ''}
             </div>
             <div class="jp-qs-meaning" style="font-size:14px;color:#f1f5f9;margin-top:2px;">💡 ${this.escapeHtml(result.meaning)}</div>

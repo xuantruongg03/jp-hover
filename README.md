@@ -1,4 +1,4 @@
-# 🇯🇵 JP Furigana Hover Pro (v1.6.3) - Tài liệu Thiết kế Kiến trúc & Toàn bộ Mã nguồn
+# 🇯🇵 JP Furigana Hover Pro (v1.6.4) - Tài liệu Thiết kế Kiến trúc & Toàn bộ Mã nguồn
 
 > **Tiện ích mở rộng Chrome / Edge (Manifest V3) toàn diện nhất dành cho người học tiếng Nhật.**
 > Cung cấp khả năng rê chuột hiển thị Furigana, Hán-Việt, bóc tách quy tắc âm On/Kun, xem thứ tự nét vẽ chữ Hán SVG, tra từ trên phụ đề YouTube/Netflix, đồng bộ 1-Click sang Anki Desktop, thanh tìm kiếm Spotlight (`Alt+S`) và hệ thống ôn tập ngắt quãng SRS SuperMemo SM-2.

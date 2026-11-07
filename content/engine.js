@@ -1631,10 +1631,15 @@ class JapaneseEngine {
         utterance.voice = jaVoice;
         
         const numRate = parseFloat(rate);
-        utterance.rate = (!isNaN(numRate) && numRate >= 0.4 && numRate <= 2.0) ? numRate : 0.95;
-        utterance.pitch = 1.0;
+        const validRate = (!isNaN(numRate) && numRate >= 0.25 && numRate <= 2.5) ? numRate : 1.0;
+        utterance.rate = validRate;
+        utterance.pitch = (typeof optionsOrRate === 'object' && optionsOrRate.pitch) ? optionsOrRate.pitch : 1.0;
 
         if (onStart) utterance.onstart = onStart;
+        if (optionsOrRate && typeof optionsOrRate === 'object') {
+          if (optionsOrRate.onStart) utterance.onstart = optionsOrRate.onStart;
+          if (optionsOrRate.onBoundary) utterance.onboundary = optionsOrRate.onBoundary;
+        }
         if (onEnd) {
           utterance.onend = onEnd;
           utterance.onerror = onEnd;
@@ -1649,11 +1654,24 @@ class JapaneseEngine {
     try {
       const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ja&q=${encodeURIComponent(text)}`;
       const audio = new Audio(audioUrl);
+      const numRate = parseFloat(rate);
+      const validRate = (!isNaN(numRate) && numRate >= 0.25 && numRate <= 2.5) ? numRate : 1.0;
+      const applyRate = () => {
+        try {
+          audio.playbackRate = validRate;
+          audio.defaultPlaybackRate = validRate;
+        } catch (_) {}
+      };
+      applyRate();
+      audio.addEventListener('play', applyRate);
+      audio.addEventListener('playing', applyRate);
+      audio.addEventListener('loadedmetadata', applyRate);
+
       this.currentAudio = audio;
       if (onStart) onStart();
-      audio.onended = () => { if (onEnd) onEnd(); };
-      audio.onerror = () => { if (onEnd) onEnd(); };
-      audio.play().catch(() => { if (onEnd) onEnd(); });
+      audio.onended = () => { this.currentAudio = null; if (onEnd) onEnd(); };
+      audio.onerror = () => { this.currentAudio = null; if (onEnd) onEnd(); };
+      audio.play().catch(() => { this.currentAudio = null; if (onEnd) onEnd(); });
     } catch (_) {
       if (onEnd) onEnd();
     }

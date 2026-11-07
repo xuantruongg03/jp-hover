@@ -261,9 +261,9 @@
 
       <div class="jp-footer">
         <div class="jp-footer-left">
-          <span class="jp-kbd" title="Phát âm từ đang hover (Phím S)">S</span> Nghe
-          <span class="jp-kbd" title="Ghim popup cố định (Phím P)">P</span> Ghim
-          <span class="jp-kbd" title="Tra cứu nhanh (Phím Alt+S)">Alt+S</span> Tra từ
+          <span class="jp-shortcut-item"><span class="jp-kbd" title="Phát âm từ đang hover (Phím S)">S</span> Nghe</span>
+          <span class="jp-shortcut-item"><span class="jp-kbd" title="Ghim popup cố định (Phím P)">P</span> Ghim</span>
+          <span class="jp-shortcut-item"><span class="jp-kbd" title="Tra cứu nhanh (Phím Alt+S)">Alt+S</span> Tra từ</span>
         </div>
         <div class="jp-shortcut-hint" title="Bật / Tắt tiện ích (Phím Alt+J)">
           <span class="jp-kbd">Alt+J</span>
@@ -703,7 +703,7 @@
         readingElem.textContent = kataReading ? `(${kataReading})` : rawReading;
         readingElem.style.display = 'inline';
         if (kataElem) kataElem.style.display = 'none';
-      } else if (settings.readingFormat === 'both' || settings.showKatakana !== false) {
+      } else if (settings.readingFormat === 'both') {
         readingElem.textContent = hiraReading || rawReading;
         readingElem.style.display = 'inline';
         if (kataElem && kataReading && kataReading !== hiraReading) {
@@ -713,6 +713,7 @@
           kataElem.style.display = 'none';
         }
       } else {
+        // Mặc định: 'hiragana' - Chỉ hiển thị Hiragana sạch sẽ, không lặp lại Katakana cùng âm
         readingElem.textContent = hiraReading || rawReading;
         readingElem.style.display = 'inline';
         if (kataElem) kataElem.style.display = 'none';
@@ -951,7 +952,7 @@
             readingElem.textContent = settings.readingFormat === 'katakana' ? (kataOnline ? `(${kataOnline})` : hiraOnline) : hiraOnline;
             readingElem.style.display = 'inline';
             if (kataElem) {
-              if (settings.readingFormat !== 'katakana' && (settings.readingFormat === 'both' || settings.showKatakana !== false) && kataOnline) {
+              if (settings.readingFormat === 'both' && kataOnline && kataOnline !== hiraOnline) {
                 kataElem.textContent = `(${kataOnline})`;
                 kataElem.style.display = 'inline';
               } else {
@@ -994,10 +995,15 @@
     currentIndex: 0,
     speed: 1.0,
     audioBtn: null,
-    sourceElem: null
+    sourceElem: null,
+    wordTimer: null
   };
 
   function stopSentenceReading() {
+    if (activeSentenceReading.wordTimer) {
+      clearInterval(activeSentenceReading.wordTimer);
+      activeSentenceReading.wordTimer = null;
+    }
     if (!activeSentenceReading.isReading) return;
     activeSentenceReading.isReading = false;
     if (window.speechSynthesis) {
@@ -1006,6 +1012,9 @@
     const engine = window.japaneseEngine || (typeof japaneseEngine !== 'undefined' ? japaneseEngine : null);
     if (engine && engine.currentAudio) {
       try { engine.currentAudio.pause(); engine.currentAudio = null; } catch (_) {}
+    }
+    if (typeof japaneseAudio !== 'undefined' && japaneseAudio.stop) {
+      try { japaneseAudio.stop(); } catch (_) {}
     }
     if (activeSentenceReading.audioBtn) {
       activeSentenceReading.audioBtn.classList.remove('playing');
@@ -1017,19 +1026,19 @@
       activeSentenceReading.audioBtn.title = 'Phát âm (Luyện nghe JLPT)';
     }
     if (activeSentenceReading.sourceElem) {
-      activeSentenceReading.sourceElem.querySelectorAll('.reading-chunk-active').forEach(el => {
-        el.classList.remove('reading-chunk-active');
+      activeSentenceReading.sourceElem.querySelectorAll('.jp-reading-sentence-item').forEach(el => {
+        el.classList.remove('active');
+        el.querySelectorAll('.jp-reading-word').forEach(w => w.classList.remove('word-active'));
       });
     }
   }
 
-  function startSentenceReading(targetText, speed, audioBtn, sourceElem) {
+  function startSentenceReading(targetText, speed, audioBtn, sourceElem, startIndex = 0) {
     stopSentenceReading();
     if (!targetText) return;
 
     // Phân tách đoạn văn thành các câu độc lập theo dấu câu tiếng Nhật để luyện đọc JLPT
-    // Tránh lỗi ngắt tiếng sau 15 giây của Chrome Speech Synthesis
-    const parts = targetText.split(/([。！？\n]+)/);
+    const parts = targetText.split(/([。！？!?\n]+)/);
     const chunks = [];
     for (let i = 0; i < parts.length; i += 2) {
       const sentence = (parts[i] || '') + (parts[i + 1] || '');
@@ -1039,14 +1048,17 @@
     }
     if (chunks.length === 0) chunks.push(targetText.trim());
 
+    const startIdx = Math.max(0, Math.min(startIndex, chunks.length - 1));
+
     activeSentenceReading = {
       isReading: true,
       text: targetText,
       chunks: chunks,
-      currentIndex: 0,
+      currentIndex: startIdx,
       speed: speed,
       audioBtn: audioBtn,
-      sourceElem: sourceElem
+      sourceElem: sourceElem,
+      wordTimer: null
     };
 
     if (audioBtn) {
@@ -1070,37 +1082,133 @@
       return;
     }
 
+    if (activeSentenceReading.wordTimer) {
+      clearInterval(activeSentenceReading.wordTimer);
+      activeSentenceReading.wordTimer = null;
+    }
+
     const chunk = chunks[currentIndex];
 
-    // Highlight câu đang đọc trong box văn bản
+    // Áp dụng HIỆU ỨNG BOX HIGHLIGHT BAO PHỦ CÂU ĐANG ĐỌC
+    let activeSentenceItem = null;
     if (sourceElem) {
-      sourceElem.querySelectorAll('.reading-chunk').forEach((el, idx) => {
-        if (idx === currentIndex) el.classList.add('reading-chunk-active');
-        else el.classList.remove('reading-chunk-active');
+      const items = sourceElem.querySelectorAll('.jp-reading-sentence-item');
+      items.forEach((item, idx) => {
+        if (idx === currentIndex) {
+          item.classList.add('active');
+          activeSentenceItem = item;
+          try {
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch (_) {}
+        } else {
+          item.classList.remove('active');
+          item.querySelectorAll('.jp-reading-word').forEach(w => w.classList.remove('word-active'));
+        }
       });
     }
+
+    const wordSpans = activeSentenceItem ? Array.from(activeSentenceItem.querySelectorAll('.jp-reading-word')) : [];
+
+    // Fallback timer: quét từng từ theo nhịp độ phát âm để đảm bảo highlight mượt mà
+    let timerWordIdx = 0;
+    if (wordSpans.length > 0) {
+      wordSpans[0].classList.add('word-active');
+      const estimatedTotalMs = Math.max(800, (chunk.length * 280) / Math.max(0.4, speed));
+      const stepMs = Math.max(100, Math.round(estimatedTotalMs / Math.max(1, wordSpans.length)));
+
+      activeSentenceReading.wordTimer = setInterval(() => {
+        if (!activeSentenceReading.isReading) return;
+        timerWordIdx++;
+        if (timerWordIdx < wordSpans.length) {
+          wordSpans.forEach((w, i) => {
+            if (i === timerWordIdx) w.classList.add('word-active');
+            else w.classList.remove('word-active');
+          });
+        }
+      }, stepMs);
+    }
+
+    // Bộ bắt event onboundary chính xác từ Web Speech API
+    const handleBoundary = (event) => {
+      if (!activeSentenceReading.isReading || !activeSentenceItem) return;
+      if (typeof event.charIndex === 'number' && wordSpans.length > 0) {
+        if (activeSentenceReading.wordTimer) {
+          clearInterval(activeSentenceReading.wordTimer);
+          activeSentenceReading.wordTimer = null;
+        }
+
+        const charIdx = event.charIndex;
+        let matched = false;
+        wordSpans.forEach(w => {
+          const s = parseInt(w.getAttribute('data-start') || '0', 10);
+          const e = parseInt(w.getAttribute('data-end') || '0', 10);
+          if (charIdx >= s && charIdx < e) {
+            w.classList.add('word-active');
+            matched = true;
+          } else {
+            w.classList.remove('word-active');
+          }
+        });
+        if (!matched && wordSpans.length > 0) {
+          for (let k = 0; k < wordSpans.length; k++) {
+            const e = parseInt(wordSpans[k].getAttribute('data-end') || '0', 10);
+            if (charIdx < e) {
+              wordSpans[k].classList.add('word-active');
+              break;
+            }
+          }
+        }
+      }
+    };
 
     const engine = window.japaneseEngine || (typeof japaneseEngine !== 'undefined' ? japaneseEngine : null);
     if (engine && engine.speak) {
       engine.speak(
         chunk,
         {
-          rate: (settings.speechRate || 0.95) * speed,
+          rate: speed,
           pitch: settings.speechPitch || 1.0,
-          voiceUri: settings.voiceUri || ''
+          voiceUri: settings.voiceUri || '',
+          onBoundary: handleBoundary
         },
         null,
         () => {
           if (!activeSentenceReading.isReading) return;
+          if (activeSentenceReading.wordTimer) {
+            clearInterval(activeSentenceReading.wordTimer);
+            activeSentenceReading.wordTimer = null;
+          }
+          if (wordSpans.length > 0) {
+            wordSpans.forEach(w => w.classList.remove('word-active'));
+          }
           activeSentenceReading.currentIndex++;
           setTimeout(() => {
             if (activeSentenceReading.isReading) {
               playCurrentSentenceChunk();
             }
-          }, 150);
+          }, 180);
         }
       );
     }
+  }
+
+  function segmentSentenceToSpans(sentenceStr, sIdx) {
+    if (!sentenceStr || typeof sentenceStr !== 'string') return '';
+    let segments = [];
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      try {
+        const seg = new Intl.Segmenter('ja', { granularity: 'word' });
+        segments = Array.from(seg.segment(sentenceStr));
+      } catch (_) {}
+    }
+    if (segments.length === 0) {
+      return `<span class="jp-reading-word" data-s-idx="${sIdx}" data-w-idx="0" data-start="0" data-end="${sentenceStr.length}">${escapeHtml(sentenceStr)}</span>`;
+    }
+    return segments.map((item, wIdx) => {
+      const start = item.index;
+      const end = item.index + item.segment.length;
+      return `<span class="jp-reading-word" data-s-idx="${sIdx}" data-w-idx="${wIdx}" data-start="${start}" data-end="${end}">${escapeHtml(item.segment)}</span>`;
+    }).join('');
   }
 
   function escapeHtml(str) {
@@ -1128,8 +1236,8 @@
     let currentSpeed = 1.0;
     let translatedJapanese = '';
 
-    // Chia text thành các chunk có thể span để highlight khi phát âm
-    const parts = text.split(/([。！？\n]+)/);
+    // Chia text thành các câu độc lập và bọc từng câu trong một Box Highlight riêng
+    const parts = text.split(/([。！？!?\n]+)/);
     const chunks = [];
     for (let i = 0; i < parts.length; i += 2) {
       const sentence = (parts[i] || '') + (parts[i + 1] || '');
@@ -1139,7 +1247,19 @@
     }
     if (chunks.length === 0) chunks.push(text.trim());
 
-    const chunksHtml = chunks.map((c, idx) => `<span class="reading-chunk" data-index="${idx}">${escapeHtml(c)} </span>`).join('');
+    const chunksHtml = chunks.map((c, idx) => `
+      <div class="jp-reading-sentence-item" data-index="${idx}" title="Bấm vào câu này để nghe riêng (JLPT)">
+        <div class="jp-reading-speaker-badge">
+          <span class="jp-wave-dot"></span>
+          <span class="jp-wave-dot"></span>
+          <span class="jp-wave-dot"></span>
+          <span>Đang đọc</span>
+        </div>
+        <div class="jp-reading-sentence-content">
+          ${segmentSentenceToSpans(c, idx)}
+        </div>
+      </div>
+    `).join('');
 
     sentenceCard.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px;gap:8px;flex-wrap:wrap;">
@@ -1149,10 +1269,12 @@
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <!-- Bộ điều khiển tốc độ đọc JLPT Dokkai -->
-          <div class="jp-jlpt-speed-bar" title="Tốc độ đọc JLPT">
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.8">0.8x</button>
-            <button type="button" class="jp-jlpt-speed-btn active" data-speed="1.0">1.0x</button>
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.2">1.2x</button>
+          <div class="jp-jlpt-speed-bar" title="Tốc độ đọc JLPT (0.6x - 1.5x)">
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.6" title="0.6x - Rất chậm (Tập phát âm / Sơ cấp)">0.6x</button>
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.8" title="0.8x - Chậm (Luyện nghe N5/N4)">0.8x</button>
+            <button type="button" class="jp-jlpt-speed-btn active" data-speed="1.0" title="1.0x - Tốc độ chuẩn bản ngữ">1.0x</button>
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.2" title="1.2x - Nhanh (Luyện thi Dokkai JLPT)">1.2x</button>
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.5" title="1.5x - Cực nhanh (Luyện phản xạ N2/N1)">1.5x</button>
           </div>
           <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu (Clipboard)">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
@@ -1178,6 +1300,16 @@
     const audioBtn = sentenceCard.querySelector('#jp-sentence-audio');
     const copySentenceBtn = sentenceCard.querySelector('#jp-sentence-copy');
 
+    // Cho phép người dùng bấm trực tiếp vào từng câu để phát âm câu đó
+    sourceElem.querySelectorAll('.jp-reading-sentence-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(item.getAttribute('data-index') || '0', 10);
+        const speakTarget = translatedJapanese || text;
+        startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem, idx);
+      });
+    });
+
     // Tốc độ phát âm JLPT
     const speedBtns = sentenceCard.querySelectorAll('.jp-jlpt-speed-btn');
     speedBtns.forEach(btn => {
@@ -1186,9 +1318,26 @@
         speedBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentSpeed = parseFloat(btn.getAttribute('data-speed')) || 1.0;
+
+        // Cập nhật ngay tức thì tốc độ cho audio đang phát dở
+        if (typeof japaneseAudio !== 'undefined' && japaneseAudio.currentAudio) {
+          try {
+            japaneseAudio.currentAudio.playbackRate = currentSpeed;
+            japaneseAudio.currentAudio.defaultPlaybackRate = currentSpeed;
+          } catch (_) {}
+        }
+        const eng = window.japaneseEngine || (typeof japaneseEngine !== 'undefined' ? japaneseEngine : null);
+        if (eng && eng.currentAudio) {
+          try {
+            eng.currentAudio.playbackRate = currentSpeed;
+            eng.currentAudio.defaultPlaybackRate = currentSpeed;
+          } catch (_) {}
+        }
+
         if (activeSentenceReading.isReading) {
+          const curIdx = activeSentenceReading.currentIndex;
           const speakTarget = translatedJapanese || text;
-          startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem);
+          startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem, curIdx);
         }
       });
     });
@@ -1222,7 +1371,7 @@
         stopSentenceReading();
       } else {
         const speakTarget = translatedJapanese || text;
-        startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem);
+        startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem, 0);
       }
     });
 
@@ -1865,10 +2014,46 @@
 
   // 11. Phím tắt toàn cục: Alt+J, Alt+R/Alt+F, Alt+S, E (Anki), S (Audio)
   function handleKeyDown(e) {
-    const isActivelyTyping = (Date.now() - lastUserTypingTime < 700);
-    const targetIsInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+    // 1. Alt + J: Bật/Tắt Extension (Luôn luôn lắng nghe để người dùng bật lại khi cần)
+    if (e.altKey && (e.key === 'j' || e.key === 'J' || e.code === 'KeyJ')) {
+      e.preventDefault();
+      e.stopPropagation();
+      settings.enabled = !settings.enabled;
+      window.__JP_EXTENSION_ENABLED__ = settings.enabled;
+      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (qs && qs.setEnabled) {
+        qs.setEnabled(settings.enabled);
+      }
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ jpSettings: settings });
+      }
+      if (!settings.enabled) {
+        hideAllPopups(true);
+      }
+      showToast(settings.enabled ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)' : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)');
+      return;
+    }
+
+    // Nếu Extension đang TẮT -> Không bắt bất kỳ phím tắt nào khác
+    if (!settings.enabled) return;
+
+    // Nhận diện xem người dùng có đang gõ văn bản trong input/textarea/chatgpt prompt không
+    const activeEl = document.activeElement;
+    const isFocusInInput = activeEl && (
+      ['INPUT', 'TEXTAREA'].includes(activeEl.tagName) ||
+      activeEl.isContentEditable ||
+      activeEl.getAttribute('contenteditable') === 'true' ||
+      activeEl.getAttribute('role') === 'textbox'
+    );
+    const targetIsInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || 
+                          e.target.isContentEditable || 
+                          (typeof e.target.getAttribute === 'function' && e.target.getAttribute('contenteditable') === 'true');
+
+    // Chỉ kích hoạt phím tắt từ vựng (S, W, E, C, P) khi:
+    // - Tooltip đang hiển thị VÀ
+    // - Chuột đang rê trên tooltip HOẶC người dùng KHÔNG focus trong bất kỳ ô nhập văn bản nào
     const isCardVisible = cardElem && cardElem.classList.contains('visible');
-    const canTriggerWordShortcut = isCardVisible && currentWord && (!targetIsInput || !isActivelyTyping || isMouseOverTooltip);
+    const canTriggerWordShortcut = isCardVisible && currentWord && (isMouseOverTooltip || (!targetIsInput && !isFocusInInput));
 
     // Esc để đóng Quick Search, Sentence Card, Stroke Modal hoặc đóng Tooltip
     if (e.key === 'Escape') {
@@ -1975,7 +2160,7 @@
     // Alt + S / Ctrl + Shift + F: Mở thanh tra cứu nhanh
     if ((e.altKey && (e.key === 's' || e.key === 'S')) || 
         (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
-      if (!settings.enabled) return; // NẾU EXTENSION ĐANG TẮT -> KHÔNG MỞ THANH TRA CỨU
+      if (!settings.enabled) return;
       const palette = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
       if (palette) {
         e.preventDefault();
@@ -1983,26 +2168,6 @@
         palette.toggle();
         return;
       }
-    }
-
-    // Alt + J: Bật/Tắt Extension
-    if (e.altKey && (e.key === 'j' || e.key === 'J' || e.code === 'KeyJ')) {
-      e.preventDefault();
-      e.stopPropagation();
-      settings.enabled = !settings.enabled;
-      window.__JP_EXTENSION_ENABLED__ = settings.enabled;
-      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-      if (qs && qs.setEnabled) {
-        qs.setEnabled(settings.enabled);
-      }
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ jpSettings: settings });
-      }
-      if (!settings.enabled) {
-        hideAllPopups(true);
-      }
-      showToast(settings.enabled ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)' : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)');
-      return;
     }
   }
 
@@ -2622,6 +2787,13 @@
   white-space: nowrap;
 }
 
+.jp-shortcut-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 .jp-shortcut-hint {
   display: inline-flex;
   align-items: center;
@@ -2796,25 +2968,125 @@
 
 .jp-sentence-source-box {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
-  font-size: 16px;
-  line-height: 1.85;
-  color: #f8fafc;
-  letter-spacing: 0.03em;
-  margin: 8px 0 4px 0;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
+  margin: 10px 0 6px 0;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  max-height: 44vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   user-select: text;
   -webkit-user-select: text;
 }
 
-.jp-sentence-source-box span.reading-chunk-active {
-  background: rgba(56, 189, 248, 0.3) !important;
-  color: #38bdf8 !important;
+.jp-sentence-source-box::-webkit-scrollbar {
+  width: 6px;
+}
+.jp-sentence-source-box::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
   border-radius: 4px;
-  padding: 1px 3px;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.jp-sentence-source-box::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.5);
+}
+
+/* Thẻ bao phủ từng câu trong đoạn văn */
+.jp-reading-sentence-item {
+  position: relative;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 16px;
+  line-height: 1.85;
+  color: #cbd5e1;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.jp-reading-sentence-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+/* HIỆU ỨNG BOX HIGHLIGHT BAO PHỦ CÂU ĐANG ĐỌC (Luyện đọc JLPT) */
+.jp-reading-sentence-item.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(14, 165, 233, 0.08) 100%) !important;
+  border: 1.5px solid #38bdf8 !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.32), inset 0 0 10px rgba(56, 189, 248, 0.12) !important;
+  color: #ffffff !important;
+  font-weight: 500;
+  transform: scale(1.006);
+}
+
+/* Badge loa hiển thị trên góc Box Highlight */
+.jp-reading-speaker-badge {
+  display: none;
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.4px;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.jp-reading-sentence-item.active .jp-reading-speaker-badge {
+  display: inline-flex;
+  animation: jpSpeakerBadgePulse 1.6s infinite ease-in-out;
+}
+
+@keyframes jpSpeakerBadgePulse {
+  0%, 100% { opacity: 0.95; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.5); }
+}
+
+.jp-wave-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: inline-block;
+  animation: jpWaveBounce 1s infinite ease-in-out;
+}
+.jp-wave-dot:nth-child(1) { animation-delay: 0s; }
+.jp-wave-dot:nth-child(2) { animation-delay: 0.2s; }
+.jp-wave-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes jpWaveBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* Hiệu ứng quét sáng từng từ bên trong Box Highlight (Karaoke style) */
+.jp-reading-word {
+  display: inline;
+  border-radius: 3px;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.jp-reading-sentence-item.active .jp-reading-word.word-active {
+  background: rgba(56, 189, 248, 0.38) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+  border-radius: 3px;
+  padding: 1px 2px;
 }
 
 .jp-sentence-meaning {
@@ -3069,4 +3341,9 @@ rt.jp-ext-injected-rt {
   document.addEventListener('mousemove', handleMouseMove, true);
   document.addEventListener('click', handleDocumentClick, true);
   document.addEventListener('keydown', handleKeyDown, true);
+  window.addEventListener('scroll', () => {
+    if (!isPinned) {
+      hideVisualHighlight();
+    }
+  }, { passive: true });
 })();
