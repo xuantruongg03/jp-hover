@@ -20,7 +20,7 @@
   border: 1.5px solid #38bdf8;
   border-radius: 4px;
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
-  z-index: 2147483646;
+  z-index: 2147483640;
   transition: all 0.12s cubic-bezier(0.2, 0, 0.2, 1);
   display: none;
 }
@@ -32,9 +32,10 @@
 /* Thẻ Popup Card chính */
 .jp-card {
   position: fixed;
+  z-index: 2147483647;
   pointer-events: auto;
-  min-width: 250px;
-  max-width: 380px;
+  min-width: 270px;
+  max-width: 400px;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -71,18 +72,16 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 8px;
-  overflow: hidden;
 }
 
 .jp-word-box {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  overflow: hidden;
   flex: 1 1 0;
   user-select: text !important;
   -webkit-user-select: text !important;
@@ -92,13 +91,16 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .jp-reading {
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: #38bdf8; /* Xanh Cyan sáng */
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
@@ -112,6 +114,8 @@
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .jp-main-word {
@@ -276,14 +280,32 @@
 }
 
 .jp-rule-box {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(245, 158, 11, 0.08);
   border-left: 2.5px solid #f59e0b;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 0 4px 4px 0;
-  font-size: 10px;
+  font-size: 10.5px;
   color: #fcd34d;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jp-pronunciation-note {
+  background: rgba(6, 182, 212, 0.12);
+  border-left: 2.5px solid #06b6d4;
+  padding: 3px 6px;
+  border-radius: 0 4px 4px 0;
+  font-size: 10.5px;
+  color: #67e8f9;
   line-height: 1.35;
 }
+
+.jp-onkun-rule-item {
+  color: #fcd34d;
+}
+
 
 /* Phần Ý nghĩa (Meaning) & Đồng nghĩa */
 .jp-meaning-container {
@@ -377,78 +399,111 @@
 .jp-kanji-card {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 6px 10px;
   font-size: 11.5px;
+  transition: all 0.2s ease;
+}
+
+.jp-kanji-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(56, 189, 248, 0.25);
 }
 
 .jp-kanji-char {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #38bdf8;
-  min-width: 20px;
-  text-align: center;
+  min-width: 26px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.jp-kanji-char:hover {
+  background: rgba(56, 189, 248, 0.25);
+  transform: scale(1.08);
 }
 
 .jp-kanji-info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .jp-kanji-meta {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .jp-kanji-hv-name {
   font-weight: 700;
   color: #fcd34d;
-  font-size: 11px;
+  font-size: 11.5px;
+  letter-spacing: 0.5px;
 }
 
 .jp-kanji-onkun {
   color: #94a3b8;
   font-size: 10px;
+  word-break: break-word;
 }
 
 .jp-kanji-desc {
   color: #cbd5e1;
   font-size: 10.5px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
-.jp-kanji-lookup-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.jp-kanji-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.jp-kanji-action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  margin-left: auto;
-  flex-shrink: 0;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   -webkit-user-select: none;
 }
 
-.jp-kanji-lookup-btn:hover {
-  background: rgba(56, 189, 248, 0.18);
+.jp-kanji-action-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
   border-color: rgba(56, 189, 248, 0.5);
   color: #38bdf8;
-  transform: translateY(-1px) scale(1.08);
+  transform: translateY(-1px) scale(1.06);
   box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
 }
 
-.jp-kanji-lookup-btn svg {
+.jp-kanji-action-btn svg {
   width: 13px;
   height: 13px;
   stroke: currentColor;
@@ -460,27 +515,43 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   font-size: 10px;
   color: #94a3b8;
-  padding-top: 4px;
+  padding-top: 6px;
   border-top: 1px dashed rgba(255, 255, 255, 0.08);
   user-select: none;
   -webkit-user-select: none;
+  flex-wrap: wrap;
+}
+
+.jp-footer-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.jp-footer-title {
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
 .jp-shortcut-hint {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
 }
 
 .jp-kbd {
   background: rgba(255, 255, 255, 0.1);
   padding: 1px 5px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   font-size: 9.5px;
-  color: #cbd5e1;
+  font-weight: 600;
+  color: #e2e8f0;
 }
 
 /* Nút sao lưu từ vựng (Bookmark Star) */
@@ -621,4 +692,516 @@
   color: #c084fc;
   border-color: rgba(168, 85, 247, 0.4);
 }
+
+/* ==========================================================================
+   TÍNH NĂNG MỚI: ANKICONNECT, KANJI STROKE ORDER & QUICK SEARCH
+   ========================================================================== */
+
+/* Nút Anki 1-Click trên Header Tooltip */
+.jp-anki-btn {
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.jp-anki-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  transform: scale(1.05);
+}
+
+.jp-anki-btn.success {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #10b981 !important;
+}
+
+/* Nút xem nét vẽ chữ Hán trên Kanji Breakdown */
+.jp-stroke-trigger {
+  cursor: pointer;
+  text-decoration: underline dotted #38bdf8;
+  transition: color 0.15s ease;
+}
+
+.jp-stroke-trigger:hover {
+  color: #38bdf8;
+}
+
+/* Modal xem Nét vẽ Chữ Hán (Kanji Stroke Order) */
+.jp-stroke-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.jp-stroke-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.jp-stroke-modal {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9);
+  border-radius: 18px;
+  width: 90%;
+  max-width: 440px;
+  padding: 22px;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transform: scale(0.95);
+  transition: transform 0.2s ease;
+}
+
+.jp-stroke-modal-overlay.active .jp-stroke-modal {
+  transform: scale(1);
+}
+
+.jp-stroke-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.jp-stroke-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jp-stroke-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.jp-stroke-close:hover {
+  color: #ffffff;
+}
+
+.jp-stroke-canvas-box {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 10px 25px rgba(56, 189, 248, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jp-stroke-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.jp-stroke-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f1f5f9;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.jp-stroke-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+}
+
+.jp-stroke-info {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   CSS CHO CHẾ ĐỘ CHÈN FURIGANA TOÀN TRANG (FULL-PAGE FURIGANA)
+   ========================================================================== */
+ruby.jp-ext-injected-ruby {
+  display: inline-ruby !important;
+  ruby-align: center !important;
+  margin: 0 1px;
+}
+
+rt.jp-ext-injected-rt {
+  font-size: 0.65em !important;
+  line-height: 1 !important;
+  color: #0284c7 !important;
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* ==========================================================================
+   CSS CHO THANH TRA CỨU NHANH (QUICK SEARCH PALETTE: ALT+S)
+   ========================================================================== */
+#jp-quick-search-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
+}
+
+.jp-qs-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+}
+
+.jp-qs-modal {
+  width: 90%;
+  max-width: 640px;
+  max-height: 80vh;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(56, 189, 248, 0.25);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: qsFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes qsFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.jp-qs-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.jp-qs-icon {
+  font-size: 20px;
+}
+
+.jp-qs-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 17px;
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+.jp-qs-input::placeholder {
+  color: #64748b;
+  font-size: 15px;
+}
+
+.jp-qs-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.jp-qs-close:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.jp-qs-tags {
+  display: flex;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+}
+
+.jp-qs-tag {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.jp-qs-tag:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.jp-qs-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jp-qs-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.jp-qs-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.jp-qs-card:hover {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.35);
+  transform: translateX(3px);
+}
+
+.jp-qs-card-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jp-qs-word-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.jp-qs-vocab {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.jp-qs-reading {
+  font-size: 15px;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.jp-qs-romaji {
+  font-size: 13px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.jp-qs-meaning {
+  font-size: 14px;
+  color: #e2e8f0;
+}
+
+.jp-qs-type-badge {
+  font-size: 11px;
+  color: #a78bfa;
+}
+
+.jp-qs-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.jp-qs-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.jp-qs-action-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+}
+
+.jp-qs-footer {
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.jp-qs-footer kbd {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #94a3b8;
+}
+
+.jp-qs-kanji-card {
+  border-left: 3.5px solid #38bdf8;
+}
+
+.jp-qs-kanji-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.jp-qs-kanji-big {
+  font-size: 30px;
+  font-weight: 700;
+  color: #38bdf8;
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.jp-qs-kanji-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.jp-qs-kanji-hv {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fcd34d;
+}
+
+.jp-qs-kanji-readings {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.tag-on {
+  color: #f472b6;
+  background: rgba(236, 72, 153, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.tag-kun {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tag-jlpt {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.jp-qs-kanji-meaning {
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+.jp-qs-stroke-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.jp-qs-stroke-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
 

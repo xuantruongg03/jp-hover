@@ -1,6 +1,16 @@
-// Logic tương tác Popup Extension, Sổ tay từ vựng & Live Playground
+// Logic tương tác Popup Extension, Sổ tay từ vựng & Live Playground (v1.4.0)
 
 document.addEventListener('DOMContentLoaded', () => {
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   // DOM Elements - Navigation
   const tabBtnSettings = document.getElementById('tab-btn-settings');
   const tabBtnNotebook = document.getElementById('tab-btn-notebook');
@@ -25,8 +35,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const optOnlineFallback = document.getElementById('opt-online-fallback');
   const optAutoAudio = document.getElementById('opt-auto-audio');
 
+  // NEW Settings Elements
+  const optSubtitleHover = document.getElementById('opt-subtitle-hover');
+  const optAutoPauseHover = document.getElementById('opt-auto-pause-hover');
+  const optAnkiEnabled = document.getElementById('opt-anki-enabled');
+  const ankiDeckName = document.getElementById('anki-deck-name');
+  const ankiModelName = document.getElementById('anki-model-name');
+  const ankiStatusBadge = document.getElementById('anki-status-badge');
+  const btnTestAnki = document.getElementById('btn-test-anki');
+  const btnSyncAllAnki = document.getElementById('btn-sync-all-anki');
+
+  const btnOpenQuickSearch = document.getElementById('btn-open-quick-search');
+  const dueWordsBanner = document.getElementById('due-words-banner');
+  const dueWordsCount = document.getElementById('due-words-count');
+  const btnReviewDueNow = document.getElementById('btn-review-due-now');
+
+  const voiceSelect = document.getElementById('voice-select');
+  const optgroupFemale = document.getElementById('optgroup-female');
+  const optgroupMale = document.getElementById('optgroup-male');
+  const previewVoiceBtn = document.getElementById('preview-voice-btn');
   const speedSlider = document.getElementById('speech-rate-slider');
   const speedBadge = document.getElementById('speed-badge');
+  const pitchSlider = document.getElementById('speech-pitch-slider');
+  const pitchBadge = document.getElementById('pitch-badge');
   const presetButtons = document.querySelectorAll('.preset-btn');
 
   const testPreview = document.getElementById('test-preview');
@@ -54,8 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
     enableOnlineFallback: true,
     autoPlayAudio: false,
     speechRate: 0.95,
+    speechPitch: 1.0,
+    voiceUri: '',
     translationEngine: 'google',
-    geminiApiKey: ''
+    geminiApiKey: '',
+    // Mới
+    enableSubtitleHover: true,
+    autoPauseVideoOnHover: false,
+    ankiEnabled: true,
+    ankiHost: 'http://127.0.0.1:8765',
+    ankiDeckName: 'JP Hover Notebook',
+    ankiModelName: 'Basic'
   };
 
   let savedWordsList = [];
@@ -90,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res && Array.isArray(res.jpSavedWords)) {
         savedWordsList = res.jpSavedWords;
         updateSavedCountBadge();
+        checkDueWords();
       }
     });
 
@@ -97,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (area === 'local' && changes.jpSavedWords) {
         savedWordsList = changes.jpSavedWords.newValue || [];
         updateSavedCountBadge();
+        checkDueWords();
         if (paneNotebook.classList.contains('active')) {
           renderSavedWordsList(savedSearchInput.value);
         }
@@ -128,12 +170,27 @@ document.addEventListener('DOMContentLoaded', () => {
     optOnlineFallback.checked = currentSettings.enableOnlineFallback !== false;
     optAutoAudio.checked = currentSettings.autoPlayAudio === true;
 
-    // Cập nhật tốc độ đọc
+    // Cài đặt mới
+    if (optSubtitleHover) optSubtitleHover.checked = currentSettings.enableSubtitleHover !== false;
+    if (optAutoPauseHover) optAutoPauseHover.checked = currentSettings.autoPauseVideoOnHover === true;
+    if (optAnkiEnabled) optAnkiEnabled.checked = currentSettings.ankiEnabled !== false;
+    if (ankiDeckName) ankiDeckName.value = currentSettings.ankiDeckName || 'JP Hover Notebook';
+    if (ankiModelName) ankiModelName.value = currentSettings.ankiModelName || 'Basic';
+
+    // Cập nhật tốc độ & cao độ đọc
     const rate = currentSettings.speechRate || 0.95;
     speedSlider.value = rate;
     updateSpeedBadge(rate);
 
-    // Cập nhật bộ máy dịch câu API bên ngoài
+    if (pitchSlider) {
+      const pitch = currentSettings.speechPitch || 1.0;
+      pitchSlider.value = pitch;
+      if (pitchBadge) pitchBadge.textContent = `${parseFloat(pitch).toFixed(2)}x`;
+    }
+
+    populateVoiceOptions();
+
+    // Dịch câu API bên ngoài
     const transRadios = document.querySelectorAll('input[name="trans-engine"]');
     transRadios.forEach(r => {
       r.checked = (r.value === (currentSettings.translationEngine || 'google'));
@@ -142,18 +199,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const keyInput = document.getElementById('gemini-api-key');
     if (keyInput) keyInput.value = currentSettings.geminiApiKey || '';
     if (keyContainer) keyContainer.style.display = (currentSettings.translationEngine === 'gemini') ? 'block' : 'none';
+
+    // Kiểm tra Anki status
+    checkAnkiStatus();
   }
 
-  // Cập nhật trạng thái hiển thị
+  function populateVoiceOptions() {
+    if (!voiceSelect || typeof japaneseAudio === 'undefined') return;
+
+    const voices = japaneseAudio.getJapaneseVoices();
+    if (optgroupFemale) optgroupFemale.innerHTML = '';
+    if (optgroupMale) optgroupMale.innerHTML = '';
+
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.uri;
+      opt.textContent = v.label;
+
+      if (v.gender === 'male') {
+        if (optgroupMale) optgroupMale.appendChild(opt);
+      } else {
+        if (optgroupFemale) optgroupFemale.appendChild(opt);
+      }
+    });
+
+    if (currentSettings.voiceUri) {
+      voiceSelect.value = currentSettings.voiceUri;
+    } else {
+      voiceSelect.value = '';
+    }
+  }
+
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      populateVoiceOptions();
+    };
+  }
+
   function updateStatusDisplay(enabled) {
     if (enabled) {
       statusDot.classList.remove('disabled');
       statusText.textContent = 'Đang hoạt động';
       statusText.style.color = '#10b981';
+      if (paneSettings) paneSettings.classList.remove('is-disabled');
     } else {
       statusDot.classList.add('disabled');
       statusText.textContent = 'Đã tắt';
       statusText.style.color = '#64748b';
+      if (paneSettings) paneSettings.classList.add('is-disabled');
     }
   }
 
@@ -177,6 +270,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function checkDueWords() {
+    const now = Date.now();
+    const dueList = savedWordsList.filter(w => w.srs && w.srs.nextReview && w.srs.nextReview <= now);
+    if (dueWordsBanner && dueWordsCount) {
+      if (dueList.length > 0) {
+        dueWordsCount.textContent = dueList.length;
+        dueWordsBanner.style.display = 'flex';
+      } else {
+        dueWordsBanner.style.display = 'none';
+      }
+    }
+  }
+
+  // Kiểm tra kết nối AnkiConnect
+  async function checkAnkiStatus() {
+    if (!ankiStatusBadge) return;
+    ankiStatusBadge.textContent = '⏳ Đang kiểm tra...';
+    ankiStatusBadge.style.color = '#94a3b8';
+
+    if (typeof ankiConnect !== 'undefined') {
+      const res = await ankiConnect.checkConnection();
+      if (res && res.connected) {
+        ankiStatusBadge.textContent = `🟢 Đã kết nối Anki v${res.version}`;
+        ankiStatusBadge.style.color = '#10b981';
+      } else {
+        ankiStatusBadge.textContent = '🔴 Chưa mở Anki hoặc thiếu AnkiConnect';
+        ankiStatusBadge.style.color = '#ef4444';
+      }
+    }
+  }
+
+  if (btnTestAnki) {
+    btnTestAnki.addEventListener('click', checkAnkiStatus);
+  }
+
   // 4. Lưu cài đặt vào chrome.storage
   function saveSettings() {
     currentSettings = {
@@ -193,355 +321,365 @@ document.addEventListener('DOMContentLoaded', () => {
       enableOnlineFallback: optOnlineFallback.checked,
       autoPlayAudio: optAutoAudio.checked,
       speechRate: parseFloat(speedSlider.value) || 0.95,
+      speechPitch: pitchSlider ? (parseFloat(pitchSlider.value) || 1.0) : 1.0,
+      voiceUri: voiceSelect ? voiceSelect.value : '',
       translationEngine: document.querySelector('input[name="trans-engine"]:checked')?.value || 'google',
-      geminiApiKey: (document.getElementById('gemini-api-key')?.value || '').trim()
+      geminiApiKey: (document.getElementById('gemini-api-key')?.value || '').trim(),
+      // Mới
+      enableSubtitleHover: optSubtitleHover ? optSubtitleHover.checked : true,
+      autoPauseVideoOnHover: optAutoPauseHover ? optAutoPauseHover.checked : false,
+      ankiEnabled: optAnkiEnabled ? optAnkiEnabled.checked : true,
+      ankiHost: 'http://127.0.0.1:8765',
+      ankiDeckName: ankiDeckName ? ankiDeckName.value.trim() : 'JP Hover Notebook',
+      ankiModelName: ankiModelName ? ankiModelName.value.trim() : 'Basic'
     };
 
     updateStatusDisplay(currentSettings.enabled);
 
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ jpSettings: currentSettings });
+      chrome.storage.local.set({ jpSettings: currentSettings }, () => {
+        if (typeof chrome.tabs !== 'undefined' && chrome.tabs.query) {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs && tabs[0] && tabs[0].id) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                action: 'SET_STATE',
+                enabled: currentSettings.enabled,
+                settings: currentSettings
+              }).catch(() => {});
+            }
+          });
+        }
+      });
     }
   }
 
-  // Gắn sự kiện thay đổi settings
+  // Gắn sự kiện thay đổi cài đặt
   masterToggle.addEventListener('change', saveSettings);
-
-  activationRadios.forEach(radio => {
-    radio.addEventListener('change', saveSettings);
+  activationRadios.forEach(r => r.addEventListener('change', saveSettings));
+  [
+    optReading, optRomaji, optHanviet, optMeaning, optKanjiBreakdown,
+    optPitchAccent, optVisualHighlight, optSelectionTranslate, optOnlineFallback, optAutoAudio,
+    optSubtitleHover, optAutoPauseHover, optAnkiEnabled
+  ].forEach(cb => {
+    if (cb) cb.addEventListener('change', saveSettings);
   });
 
-  optReading.addEventListener('change', saveSettings);
-  optRomaji.addEventListener('change', saveSettings);
-  optHanviet.addEventListener('change', saveSettings);
-  optMeaning.addEventListener('change', saveSettings);
-  optKanjiBreakdown.addEventListener('change', saveSettings);
-  optPitchAccent.addEventListener('change', saveSettings);
-  optVisualHighlight.addEventListener('change', saveSettings);
-  if (optSelectionTranslate) {
-    optSelectionTranslate.addEventListener('change', saveSettings);
-  }
-  optOnlineFallback.addEventListener('change', saveSettings);
-  optAutoAudio.addEventListener('change', saveSettings);
+  if (ankiDeckName) ankiDeckName.addEventListener('change', saveSettings);
+  if (ankiModelName) ankiModelName.addEventListener('change', saveSettings);
 
   const transRadios = document.querySelectorAll('input[name="trans-engine"]');
-  transRadios.forEach(radio => {
-    radio.addEventListener('change', () => {
+  transRadios.forEach(r => {
+    r.addEventListener('change', () => {
       const keyContainer = document.getElementById('gemini-key-container');
-      if (keyContainer) keyContainer.style.display = (radio.value === 'gemini') ? 'block' : 'none';
+      if (keyContainer) keyContainer.style.display = (r.value === 'gemini') ? 'block' : 'none';
       saveSettings();
     });
   });
 
-  const geminiKeyInput = document.getElementById('gemini-api-key');
-  if (geminiKeyInput) {
-    geminiKeyInput.addEventListener('input', saveSettings);
-  }
+  const geminiInput = document.getElementById('gemini-api-key');
+  if (geminiInput) geminiInput.addEventListener('change', saveSettings);
 
-  speedSlider.addEventListener('input', () => {
-    const rate = parseFloat(speedSlider.value);
-    updateSpeedBadge(rate);
-  });
-
-  speedSlider.addEventListener('change', () => {
+  speedSlider.addEventListener('input', (e) => {
+    updateSpeedBadge(e.target.value);
     saveSettings();
-    if (typeof japaneseEngine !== 'undefined') {
-      japaneseEngine.speak('日本語', currentSettings.speechRate);
-    }
   });
+
+  if (pitchSlider) {
+    pitchSlider.addEventListener('input', (e) => {
+      if (pitchBadge) pitchBadge.textContent = `${parseFloat(e.target.value).toFixed(2)}x`;
+      saveSettings();
+    });
+  }
 
   presetButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      const speed = parseFloat(btn.dataset.speed);
-      speedSlider.value = speed;
-      updateSpeedBadge(speed);
+      const sp = btn.dataset.speed;
+      speedSlider.value = sp;
+      updateSpeedBadge(sp);
       saveSettings();
-      if (typeof japaneseEngine !== 'undefined') {
-        japaneseEngine.speak('日本語', speed);
-      }
     });
   });
 
-  // 5. Quản lý Sổ tay từ vựng (Vocabulary Notebook)
+  if (voiceSelect) voiceSelect.addEventListener('change', saveSettings);
+
+  if (previewVoiceBtn) {
+    previewVoiceBtn.addEventListener('click', () => {
+      if (typeof japaneseAudio !== 'undefined') {
+        japaneseAudio.speak('こんにちは、日本語の勉強を頑張りましょう！', {
+          rate: parseFloat(speedSlider.value) || 0.95,
+          pitch: pitchSlider ? parseFloat(pitchSlider.value) : 1.0,
+          voiceUri: voiceSelect.value
+        });
+      }
+    });
+  }
+
+  // Quick Action Buttons
+  if (btnOpenQuickSearch) {
+    btnOpenQuickSearch.addEventListener('click', () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'TOGGLE_QUICK_SEARCH' });
+        window.close();
+      });
+    });
+  }
+
+  if (btnReviewDueNow) {
+    btnReviewDueNow.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
+    });
+  }
+
+  // Mở trang Flashcards & JLPT Luyện nghe / Thi thử
+  const openFlashcardsBtn = document.getElementById('open-flashcards-page-btn');
+  if (openFlashcardsBtn) {
+    openFlashcardsBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
+    });
+  }
+
+  const openListeningBtn = document.getElementById('open-listening-page-btn');
+  if (openListeningBtn) {
+    openListeningBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
+    });
+  }
+
+  const openExamBtn = document.getElementById('open-exam-page-btn');
+  if (openExamBtn) {
+    openExamBtn.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'OPEN_FLASHCARDS' });
+    });
+  }
+
+  // 5. Quản lý Sổ tay Từ vựng
   function loadSavedWords() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['jpSavedWords'], (res) => {
-        savedWordsList = (res && Array.isArray(res.jpSavedWords)) ? res.jpSavedWords : [];
+        savedWordsList = Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
         updateSavedCountBadge();
         renderSavedWordsList(savedSearchInput.value);
+        checkDueWords();
       });
-    } else {
-      renderSavedWordsList('');
     }
   }
 
   function renderSavedWordsList(filterQuery = '') {
-    const query = (filterQuery || '').trim().toLowerCase();
-    const filtered = query
-      ? savedWordsList.filter(item => 
-          (item.word && item.word.toLowerCase().includes(query)) ||
-          (item.reading && item.reading.toLowerCase().includes(query)) ||
-          (item.hanviet && item.hanviet.toLowerCase().includes(query)) ||
-          (item.meaning && item.meaning.toLowerCase().includes(query))
-        )
-      : savedWordsList;
+    savedWordsContainer.innerHTML = '';
+    const q = filterQuery.toLowerCase().trim();
 
-    if (!filtered || filtered.length === 0) {
-      savedWordsContainer.innerHTML = '';
-      savedWordsContainer.style.display = 'none';
+    const filtered = savedWordsList.filter(item => {
+      if (!q) return true;
+      return (
+        item.word.toLowerCase().includes(q) ||
+        (item.reading && item.reading.toLowerCase().includes(q)) ||
+        (item.meaning && item.meaning.toLowerCase().includes(q)) ||
+        (item.hanviet && item.hanviet.toLowerCase().includes(q))
+      );
+    });
+
+    if (filtered.length === 0) {
       savedEmptyState.style.display = 'flex';
-      if (query) {
-        savedEmptyState.querySelector('.empty-title').textContent = 'Không tìm thấy kết quả';
-        savedEmptyState.querySelector('.empty-desc').textContent = `Không có từ nào khớp với từ khóa "${filterQuery}".`;
-      } else {
-        savedEmptyState.querySelector('.empty-title').textContent = 'Chưa có từ nào được lưu';
-        savedEmptyState.querySelector('.empty-desc').textContent = 'Khi rê chuột tra từ trên bất kỳ trang web nào, hãy bấm nút ⭐ trên tooltip để lưu từ vào đây!';
-      }
+      savedWordsContainer.style.display = 'none';
       return;
     }
 
     savedEmptyState.style.display = 'none';
     savedWordsContainer.style.display = 'flex';
-    savedWordsContainer.innerHTML = '';
 
     filtered.forEach(item => {
       const card = document.createElement('div');
       card.className = 'saved-word-card';
-
-      const readingText = (item.reading && item.reading !== item.word) ? item.reading : '';
-      const hvBadge = item.hanviet ? `<span class="saved-word-hv">${item.hanviet}</span>` : '';
+      const isDue = item.srs && item.srs.nextReview && item.srs.nextReview <= Date.now();
 
       card.innerHTML = `
-        <div class="saved-word-top">
-          <div class="saved-word-main">
-            <span class="saved-word-kanji">${item.word}</span>
-            ${readingText ? `<span class="saved-word-reading">${readingText}</span>` : ''}
-            ${hvBadge}
+        <div class="saved-word-main">
+          <div class="saved-word-header">
+            <span class="saved-word-text">${escapeHtml(item.word)}</span>
+            <span class="saved-word-reading">${escapeHtml(item.reading || '')}</span>
+            ${item.hanviet ? `<span class="saved-word-hv">${escapeHtml(item.hanviet)}</span>` : ''}
+            ${isDue ? `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:bold;">Đến hạn ôn</span>` : ''}
           </div>
-          <div class="saved-word-actions">
-            <button class="saved-item-btn saved-play-btn" title="Nghe phát âm">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-              </svg>
-            </button>
-            <button class="saved-item-btn saved-del-btn" title="Xóa từ này">✕</button>
-          </div>
+          <div class="saved-word-meaning">${escapeHtml(item.meaning || '')}</div>
+          ${item.sentence ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;"><em>${escapeHtml(item.sentence)}</em></div>` : ''}
         </div>
-        <div class="saved-word-meaning">${item.meaning || 'Chưa có giải nghĩa'}</div>
+        <div class="saved-word-actions">
+          <button type="button" class="btn-item-action btn-item-anki" title="Đẩy từ này sang Anki Desktop">📥</button>
+          <button type="button" class="btn-item-action btn-item-speak" title="Nghe phát âm">🔊</button>
+          <button type="button" class="btn-item-action btn-item-delete" title="Xóa từ">🗑️</button>
+        </div>
       `;
 
-      // Nút audio
-      card.querySelector('.saved-play-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (typeof japaneseEngine !== 'undefined') {
-          japaneseEngine.speak(item.reading || item.word, currentSettings.speechRate);
+      card.querySelector('.btn-item-speak').addEventListener('click', () => {
+        if (typeof japaneseAudio !== 'undefined') {
+          japaneseAudio.speak(item.reading || item.word, { rate: currentSettings.speechRate });
         }
       });
 
-      // Nút xóa
-      card.querySelector('.saved-del-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteSavedWord(item.word);
+      card.querySelector('.btn-item-anki').addEventListener('click', async (e) => {
+        const btn = e.target;
+        btn.textContent = '⏳';
+        try {
+          if (typeof ankiConnect !== 'undefined') {
+            await ankiConnect.addWordNote({
+              word: item.word,
+              reading: item.reading,
+              hanviet: item.hanviet,
+              meaning: item.meaning,
+              sentence: item.sentence,
+              deckName: currentSettings.ankiDeckName,
+              modelName: currentSettings.ankiModelName
+            });
+            btn.textContent = '✅';
+            btn.style.color = '#10b981';
+          }
+        } catch (err) {
+          alert('Lỗi AnkiConnect: ' + err.message);
+          btn.textContent = '❌';
+        }
+      });
+
+      card.querySelector('.btn-item-delete').addEventListener('click', () => {
+        savedWordsList = savedWordsList.filter(w => w.word !== item.word);
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ jpSavedWords: savedWordsList }, () => {
+            renderSavedWordsList(savedSearchInput.value);
+            updateSavedCountBadge();
+          });
+        }
       });
 
       savedWordsContainer.appendChild(card);
     });
   }
 
-  function deleteSavedWord(wordToDelete) {
-    savedWordsList = savedWordsList.filter(item => item.word !== wordToDelete);
-    updateSavedCountBadge();
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ jpSavedWords: savedWordsList }, () => {
-        renderSavedWordsList(savedSearchInput.value);
-      });
-    } else {
-      renderSavedWordsList(savedSearchInput.value);
-    }
-  }
-
-  // Tìm kiếm thời gian thực
-  savedSearchInput.addEventListener('input', () => {
-    renderSavedWordsList(savedSearchInput.value);
+  savedSearchInput.addEventListener('input', (e) => {
+    renderSavedWordsList(e.target.value);
   });
 
-  // Mở trang Flashcard & Sổ tay toàn màn hình
-  const openFlashcardsBtn = document.getElementById('open-flashcards-page-btn');
-  if (openFlashcardsBtn) {
-    openFlashcardsBtn.addEventListener('click', () => {
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-        chrome.tabs.create({ url: chrome.runtime.getURL('flashcards.html') });
-      } else {
-        window.open('../flashcards.html', '_blank');
+  // Đồng bộ tất cả từ vựng sang Anki
+  if (btnSyncAllAnki) {
+    btnSyncAllAnki.addEventListener('click', async () => {
+      if (savedWordsList.length === 0) {
+        alert('Sổ tay đang trống!');
+        return;
       }
+      btnSyncAllAnki.innerHTML = '<span>⏳ Đang đồng bộ...</span>';
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const item of savedWordsList) {
+        try {
+          if (typeof ankiConnect !== 'undefined') {
+            await ankiConnect.addWordNote({
+              word: item.word,
+              reading: item.reading,
+              hanviet: item.hanviet,
+              meaning: item.meaning,
+              sentence: item.sentence,
+              deckName: currentSettings.ankiDeckName,
+              modelName: currentSettings.ankiModelName
+            });
+            successCount++;
+          }
+        } catch (_) {
+          errorCount++;
+        }
+      }
+
+      btnSyncAllAnki.innerHTML = '<span>📥 Anki Desktop</span>';
+      alert(`Đã hoàn tất đồng bộ Anki!\nThành công: ${successCount} từ\nThất bại hoặc trùng lặp: ${errorCount} từ`);
     });
   }
 
-  // Xóa tất cả từ đã lưu
-  clearSavedBtn.addEventListener('click', () => {
-    if (savedWordsList.length === 0) return;
-    if (confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${savedWordsList.length} từ vựng đã lưu không?`)) {
-      savedWordsList = [];
-      updateSavedCountBadge();
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ jpSavedWords: [] }, () => {
-          renderSavedWordsList('');
-        });
-      } else {
-        renderSavedWordsList('');
-      }
-    }
-  });
-
-  // Xuất Anki (CSV)
+  // Xuất file CSV Anki
   exportAnkiBtn.addEventListener('click', () => {
     if (savedWordsList.length === 0) {
-      alert('Sổ từ vựng đang trống. Hãy lưu ít nhất 1 từ vựng trước khi xuất Anki!');
+      alert('Sổ tay chưa có từ nào để xuất!');
       return;
     }
 
-    // Định dạng CSV chuẩn UTF-8 kèm BOM cho Anki/Excel
     let csvContent = '\uFEFF';
-    csvContent += 'Từ vựng,Cách đọc,Âm Hán-Việt,Giải nghĩa,Từ loại,Ngày lưu\n';
+    csvContent += 'Expression\tReading\tHanViet\tMeaning\tSentence\n';
 
     savedWordsList.forEach(item => {
-      const escapeCsv = (str) => {
-        if (!str) return '""';
-        return `"${String(str).replace(/"/g, '""')}"`;
-      };
-
-      const dateStr = item.savedAt ? new Date(item.savedAt).toLocaleDateString('vi-VN') : '';
-      const row = [
-        escapeCsv(item.word),
-        escapeCsv(item.reading || item.word),
-        escapeCsv(item.hanviet || ''),
-        escapeCsv(item.meaning || ''),
-        escapeCsv(item.type || ''),
-        escapeCsv(dateStr)
-      ].join(',');
-
-      csvContent += row + '\n';
+      const word = (item.word || '').replace(/\t/g, ' ');
+      const reading = (item.reading || '').replace(/\t/g, ' ');
+      const hanviet = (item.hanviet || '').replace(/\t/g, ' ');
+      const meaning = (item.meaning || '').replace(/\t/g, ' ');
+      const sentence = (item.sentence || '').replace(/\t/g, ' ');
+      csvContent += `${word}\t${reading}\t${hanviet}\t${meaning}\t${sentence}\n`;
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/tab-separated-values;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `jp_anki_words_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `JP_Notebook_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
     URL.revokeObjectURL(url);
   });
 
-  // 6. Live Playground: Tương tác thử nghiệm từ vựng ngay trong Popup
-  testWords.forEach(span => {
-    span.addEventListener('mouseenter', () => {
-      const text = span.textContent.trim();
-      const analyzed = typeof japaneseEngine !== 'undefined' ? japaneseEngine.analyze(text) : null;
-
-      if (analyzed) {
-        renderPreview(analyzed);
-        if (currentSettings.autoPlayAudio && typeof japaneseEngine !== 'undefined') {
-          japaneseEngine.speak(analyzed.reading || text, currentSettings.speechRate);
-        }
+  // Xóa toàn bộ từ đã lưu
+  clearSavedBtn.addEventListener('click', () => {
+    if (confirm('Bạn có chắc chắn muốn xóa toàn bộ từ vựng trong sổ tay không?')) {
+      savedWordsList = [];
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ jpSavedWords: [] }, () => {
+          renderSavedWordsList('');
+          updateSavedCountBadge();
+        });
       }
-    });
+    }
+  });
 
-    span.addEventListener('click', () => {
-      const text = span.textContent.trim();
-      const analyzed = typeof japaneseEngine !== 'undefined' ? japaneseEngine.analyze(text) : null;
-      if (typeof japaneseEngine !== 'undefined') {
-        japaneseEngine.speak((analyzed && analyzed.reading) ? analyzed.reading : text, currentSettings.speechRate);
-      }
+  // 6. Live Testing Playground
+  testWords.forEach(w => {
+    w.addEventListener('mouseenter', () => {
+      showLivePreview(w.textContent.trim());
     });
   });
 
-  function renderPreview(data) {
+  function showLivePreview(word) {
+    if (!word || typeof lookupJapaneseWord === 'undefined') return;
+    const data = lookupJapaneseWord(word) || { word, reading: word, meaning: 'Từ vựng tiếng Nhật' };
+
     let tagsHtml = '';
     if (currentSettings.showRomaji && data.romaji) {
-      tagsHtml += `<span class="preview-tag-ro">Romaji: ${data.romaji}</span>`;
+      tagsHtml += `<span class="preview-tag-ro">Romaji: ${escapeHtml(data.romaji)}</span>`;
     }
     if (currentSettings.showHanViet && data.hanviet) {
-      tagsHtml += `<span class="preview-tag-hv">Âm HV: ${data.hanviet}</span>`;
-    }
-    if (data.onKunRule && data.onKunRule.badge) {
-      tagsHtml += `<span style="background:rgba(236,72,153,0.2);color:#f472b6;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid rgba(236,72,153,0.3);">${data.onKunRule.badge}</span>`;
+      tagsHtml += `<span class="preview-tag-hv">Âm HV: ${escapeHtml(data.hanviet)}</span>`;
     }
     if (data.type) {
-      tagsHtml += `<span style="background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;padding:2px 6px;border-radius:4px;">${data.type}</span>`;
+      tagsHtml += `<span style="background:rgba(16,185,129,0.2);color:#6ee7b7;font-size:10px;padding:2px 6px;border-radius:4px;">${escapeHtml(data.type)}</span>`;
     }
-    if (data.grammarTags && data.grammarTags.length > 0) {
-      data.grammarTags.forEach(gt => {
-        tagsHtml += `<span style="background:rgba(234,88,12,0.2);color:#fb923c;font-size:10px;padding:2px 6px;border-radius:4px;">${gt}</span>`;
-      });
-    }
-
-    let grammarHtml = '';
-    if (data.onKunRule && data.onKunRule.rule) {
-      grammarHtml += `<div style="margin-top:6px;background:rgba(245,158,11,0.1);border-left:2px solid #f59e0b;padding:3px 6px;font-size:9.5px;color:#fcd34d;">💡 ${data.onKunRule.rule}</div>`;
-    }
-
-    let kanjiHtml = '';
-    if (currentSettings.showKanjiBreakdown && data.kanjiList && data.kanjiList.length > 0) {
-      kanjiHtml = '<div style="margin-top:6px;border-top:1px dashed rgba(255,255,255,0.1);padding-top:4px;font-size:10px;color:#94a3b8;">';
-      kanjiHtml += '<div>🏮 Kanji: ' + data.kanjiList.map(k => `<strong>${k.char}</strong> (${k.hv} - ${k.m})`).join(' | ') + '</div>';
-      kanjiHtml += '</div>';
-    }
-
-    const pitchStr = (currentSettings.showPitchAccent && data.pitch !== null) ? `<span style="color:#f472b6;font-size:10px;margin-left:4px;">[Trọng âm ⓪]</span>` : '';
 
     testPreview.innerHTML = `
       <div class="preview-result">
         <div class="preview-head">
           <div>
-            ${currentSettings.showReading && data.reading ? `<span class="preview-reading">${data.reading}</span>` : ''}
-            ${pitchStr}
-            <div class="preview-word">${data.word}</div>
+            ${currentSettings.showReading !== false && data.reading ? `<span class="preview-reading">${escapeHtml(data.reading)}</span>` : ''}
+            <div class="preview-word">${escapeHtml(data.word)}</div>
           </div>
-          <div style="display:flex;gap:6px;">
-            <button class="preview-action-btn" id="preview-lookup-btn" title="Tra cứu trên Mazii">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </button>
-            <button class="preview-action-btn" id="preview-audio-btn" title="Nghe phát âm">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-              </svg>
-            </button>
-          </div>
+          <button class="preview-action-btn" id="preview-audio-btn" title="Nghe phát âm">🔊</button>
         </div>
         <div class="preview-tags">${tagsHtml}</div>
-        ${currentSettings.showMeaning && data.meaning ? `<div class="preview-meaning">💡 ${data.meaning}</div>` : ''}
-        ${grammarHtml}
-        ${kanjiHtml}
+        ${currentSettings.showMeaning && data.meaning ? `<div class="preview-meaning">💡 ${escapeHtml(data.meaning)}</div>` : ''}
       </div>
     `;
-
-    const lookupBtn = testPreview.querySelector('#preview-lookup-btn');
-    if (lookupBtn) {
-      lookupBtn.addEventListener('click', () => {
-        const isSingleKanji = data.word.length === 1 && typeof isKanji === 'function' && isKanji(data.word);
-        const url = isSingleKanji
-          ? `https://mazii.net/vi-VN/search/kanji/javi/${encodeURIComponent(data.word)}`
-          : `https://mazii.net/vi-VN/search/word/javi/${encodeURIComponent(data.word)}`;
-        window.open(url, '_blank');
-      });
-    }
 
     const audioBtn = testPreview.querySelector('#preview-audio-btn');
     if (audioBtn) {
       audioBtn.addEventListener('click', () => {
-        if (typeof japaneseEngine !== 'undefined') {
-          japaneseEngine.speak(data.reading || data.word, currentSettings.speechRate);
+        if (typeof japaneseAudio !== 'undefined') {
+          japaneseAudio.speak(data.reading || data.word, { rate: currentSettings.speechRate });
         }
       });
     }
   }
 
-  // 7. Mở trang cài đặt phím tắt
+  // 7. Đổi phím tắt
   const openShortcutsBtn = document.getElementById('open-shortcuts-btn');
   if (openShortcutsBtn) {
     openShortcutsBtn.addEventListener('click', (e) => {

@@ -1260,13 +1260,13 @@ const KANJI_DATA = {
     "hv": "LÔ",
     "on": "ロ",
     "kun": "あし, よし",
-    "m": "cây lau, cây lau"
+    "m": "cây lau"
   },
   "梓": {
     "hv": "TỬ",
     "on": "シ",
     "kun": "あずさ",
-    "m": "cây tử (dùng để đóng đàn; tượng trưng cho con), khắc chữ lên bản gỗ, quê cha đất tổ"
+    "m": "cây tử (dùng để đóng đàn, tượng trưng cho con), khắc chữ lên bản gỗ, quê cha đất tổ"
   },
   "圧": {
     "hv": "ÁP",
@@ -1338,7 +1338,7 @@ const KANJI_DATA = {
     "hv": "AN",
     "on": "アン",
     "kun": "くら",
-    "m": "yên cương ngựa, yên cương ngựa"
+    "m": "yên cương ngựa"
   },
   "杏": {
     "hv": "HẠNH",
@@ -1416,13 +1416,13 @@ const KANJI_DATA = {
     "hv": "UÝ",
     "on": "イ",
     "kun": "なぐさ・める, なぐさ・む",
-    "m": "an ủi, yên lòng, an ủi"
+    "m": "an ủi, yên lòng"
   },
   "椅": {
     "hv": "KỶ",
     "on": "イ",
     "kun": "—",
-    "m": "cái ghế tựa, cái ghế tựa"
+    "m": "cái ghế tựa"
   },
   "為": {
     "hv": "VỊ",
@@ -1470,7 +1470,7 @@ const KANJI_DATA = {
     "hv": "NUY",
     "on": "イ",
     "kun": "な, しお・れる, しな・びる, しぼ・む, な・える",
-    "m": "khô héo, (xem: nuy nhuy 萎蕤), khô héo"
+    "m": "khô héo, (xem: nuy nhuy 萎蕤)"
   },
   "衣": {
     "hv": "Y",
@@ -1494,7 +1494,7 @@ const KANJI_DATA = {
     "hv": "TĨNH",
     "on": "セイ, ショウ",
     "kun": "い",
-    "m": "cái giếng, sao Tỉnh (một trong Nhị thập bát tú), cái giếng"
+    "m": "cái giếng, sao Tỉnh (một trong Nhị thập bát tú)"
   },
   "亥": {
     "hv": "HỢI",
@@ -1614,7 +1614,7 @@ const KANJI_DATA = {
     "hv": "ÂM",
     "on": "イン, オン",
     "kun": "かげ",
-    "m": "bóng râm, che chở, bóng râm"
+    "m": "bóng râm, che chở"
   },
   "陰": {
     "hv": "ÂM",
@@ -1668,7 +1668,7 @@ const KANJI_DATA = {
     "hv": "ĐỀ",
     "on": "テイ, ダイ",
     "kun": "う",
-    "m": "(xem: đề hồ 鵜鶘,鹈鹕)"
+    "m": "(xem: đề hồ 鵜鶘, 鹈鹕)"
   },
   "丑": {
     "hv": "SỬU",
@@ -1896,7 +1896,7 @@ const KANJI_DATA = {
     "hv": "DIÊN",
     "on": "エン",
     "kun": "の・びる, の・べる, の・べ, の・ばす",
-    "m": "kéo dài, chậm, kéo dài"
+    "m": "kéo dài, chậm"
   },
   "怨": {
     "hv": "OÁN",
@@ -1992,7 +1992,7 @@ const KANJI_DATA = {
     "hv": "Ô",
     "on": "オ",
     "kun": "けが・す, けが・れる, けが・らわしい, よご・す, よご・れる, きたな・い",
-    "m": "bẩn thỉu, bẩn thỉu"
+    "m": "bẩn thỉu"
   },
   "凹": {
     "hv": "AO",
@@ -2076,7 +2076,7 @@ const KANJI_DATA = {
     "hv": "HOÀNG",
     "on": "コウ, オウ",
     "kun": "き, こ-",
-    "m": "vàng, màu vàng, vàng, màu vàng"
+    "m": "vàng, màu vàng"
   },
   "岡": {
     "hv": "CƯƠNG",
@@ -2112,7 +2112,7 @@ const KANJI_DATA = {
     "hv": "DÕNG",
     "on": "ヨウ, トウ",
     "kun": "おけ",
-    "m": "cái thùng, cái thùng"
+    "m": "cái thùng"
   },
   "牡": {
     "hv": "MẪU",
@@ -2166,7 +2166,7 @@ const KANJI_DATA = {
     "hv": "HÁ",
     "on": "カ, ゲ",
     "kun": "した, しも, もと, さ・げる, さ・がる, くだ・る, くだ・り, くだ・す, -くだ・す, くだ・さる, お・ろす, お・りる",
-    "m": "đi xuống, ở bên dưới, đi xuống"
+    "m": "đi xuống, ở bên dưới"
   },
   "化": {
     "hv": "HOÁ",
@@ -2232,7 +2232,7 @@ const KANJI_DATA = {
     "hv": "HẠ",
     "on": "カ",
     "kun": "ひま, いとま",
-    "m": "rảnh rỗi, thôi, nghỉ, rảnh rỗi"
+    "m": "rảnh rỗi, thôi, nghỉ"
   },
   "果": {
     "hv": "QUẢ",
@@ -2340,7 +2340,7 @@ const KANJI_DATA = {
     "hv": "CA",
     "on": "カ, ケ",
     "kun": "—",
-    "m": "(xem: thích ca 釋迦), (xem: thích ca 釋迦)"
+    "m": "(xem: thích ca 釋迦)"
   },
   "過": {
     "hv": "QUA",
@@ -2652,7 +2652,7 @@ const KANJI_DATA = {
     "hv": "HẠCH",
     "on": "カク",
     "kun": "—",
-    "m": "hạt, hột, nhân, hạt, hột, nhân"
+    "m": "hạt, hột, nhân"
   },
   "殻": {
     "hv": "XÁC",
@@ -2688,7 +2688,7 @@ const KANJI_DATA = {
     "hv": "GIÁC",
     "on": "カク",
     "kun": "かど, つの",
-    "m": "cái sừng, góc, cái sừng"
+    "m": "cái sừng, góc"
   },
   "較": {
     "hv": "GIÁC",
@@ -2826,7 +2826,7 @@ const KANJI_DATA = {
     "hv": "CÁT",
     "on": "カツ",
     "kun": "—",
-    "m": "áo vải to, áo vải to"
+    "m": "áo vải to"
   },
   "轄": {
     "hv": "HẠT",
@@ -3078,7 +3078,7 @@ const KANJI_DATA = {
     "hv": "HÃN",
     "on": "カン",
     "kun": "あせ",
-    "m": "mồ hôi, mồ hôi"
+    "m": "mồ hôi"
   },
   "甘": {
     "hv": "CAM",
@@ -3096,7 +3096,7 @@ const KANJI_DATA = {
     "hv": "KHAN",
     "on": "カン",
     "kun": "み・る",
-    "m": "xem, nhìn, đọc, xem, nhìn"
+    "m": "xem, nhìn, đọc"
   },
   "竿": {
     "hv": "CAN",
@@ -3126,7 +3126,7 @@ const KANJI_DATA = {
     "hv": "PHŨ",
     "on": "カン",
     "kun": "かま",
-    "m": "bộ phũ, bộ phũ, bộ phũ"
+    "m": "bộ phũ"
   },
   "肝": {
     "hv": "CAN",
@@ -3150,7 +3150,7 @@ const KANJI_DATA = {
     "hv": "QUAN",
     "on": "カン",
     "kun": "み・る, しめ・す",
-    "m": "xem, quan sát, xem, quan sát"
+    "m": "xem, quan sát"
   },
   "諌": {
     "hv": "GIÁN",
@@ -3381,10 +3381,10 @@ const KANJI_DATA = {
     "m": "xua, huơ, múa"
   },
   "机": {
-    "hv": "CƠ",
+    "hv": "KỶ",
     "on": "キ",
     "kun": "つくえ",
-    "m": "công việc, máy móc, công việc"
+    "m": "cái bàn"
   },
   "旗": {
     "hv": "KỲ",
@@ -3420,7 +3420,7 @@ const KANJI_DATA = {
     "hv": "CƠ",
     "on": "キ",
     "kun": "はた",
-    "m": "công việc, máy móc, công việc"
+    "m": "công việc, máy móc"
   },
   "毅": {
     "hv": "NGHỊ",
@@ -3486,7 +3486,7 @@ const KANJI_DATA = {
     "hv": "KHỈ",
     "on": "キ",
     "kun": "お・きる, お・こる, お・こす, おこ・す, た・つ",
-    "m": "bắt đầu, đứng dậy, bắt đầu"
+    "m": "bắt đầu, đứng dậy"
   },
   "軌": {
     "hv": "QUỸ",
@@ -3504,7 +3504,7 @@ const KANJI_DATA = {
     "hv": "CƠ",
     "on": "キ",
     "kun": "う・える",
-    "m": "đói, mất mùa, đói"
+    "m": "đói, mất mùa"
   },
   "騎": {
     "hv": "KỴ",
@@ -3636,7 +3636,7 @@ const KANJI_DATA = {
     "hv": "CHỬ",
     "on": "ショ, ソ",
     "kun": "きね",
-    "m": "cái chầy, cái chày, cái chầy, cái chày"
+    "m": "cái chầy, cái chày"
   },
   "却": {
     "hv": "KHƯỚC",
@@ -3936,7 +3936,7 @@ const KANJI_DATA = {
     "hv": "GIÁP",
     "on": "キョウ, コウ",
     "kun": "はざま",
-    "m": "eo đất, eo biển, eo đất, eo biển"
+    "m": "eo đất, eo biển"
   },
   "恐": {
     "hv": "KHỦNG",
@@ -4014,7 +4014,7 @@ const KANJI_DATA = {
     "hv": "CẢNH",
     "on": "キョウ, ケイ",
     "kun": "かがみ",
-    "m": "gương, kính, gương, kính"
+    "m": "gương, kính"
   },
   "響": {
     "hv": "HƯỞNG",
@@ -4098,7 +4098,7 @@ const KANJI_DATA = {
     "hv": "CẨN",
     "on": "キン, ゴン",
     "kun": "わず・か",
-    "m": "chỉ, ít ỏi, vẻn vẹn, chỉ, ít ỏi, vẻn vẹn"
+    "m": "chỉ, ít ỏi, vẻn vẹn"
   },
   "勤": {
     "hv": "CẦN",
@@ -4152,7 +4152,7 @@ const KANJI_DATA = {
     "hv": "CẤM",
     "on": "キン",
     "kun": "—",
-    "m": "cấm đoán (không cho phép), kiêng kị, tránh, cấm đoán (không cho phép)"
+    "m": "cấm đoán (không cho phép), kiêng kị, tránh"
   },
   "筋": {
     "hv": "CÂN",
@@ -4380,7 +4380,7 @@ const KANJI_DATA = {
     "hv": "SÀO",
     "on": "ソウ",
     "kun": "く・る",
-    "m": "ươm tơ (kéo tơ ở kén ra), ươm tơ (kéo tơ ở kén ra)"
+    "m": "ươm tơ (kéo tơ ở kén ra)"
   },
   "桑": {
     "hv": "TANG",
@@ -4464,7 +4464,7 @@ const KANJI_DATA = {
     "hv": "KHẢI",
     "on": "ケイ",
     "kun": "ひら・く, さと・す",
-    "m": "mở ra, bắt đầu, mở ra"
+    "m": "mở ra, bắt đầu"
   },
   "圭": {
     "hv": "KHUÊ",
@@ -4626,7 +4626,7 @@ const KANJI_DATA = {
     "hv": "NGHINH",
     "on": "ゲイ",
     "kun": "むか・える",
-    "m": "đón tiếp, đón tiếp"
+    "m": "đón tiếp"
   },
   "鯨": {
     "hv": "KÌNH",
@@ -4836,7 +4836,7 @@ const KANJI_DATA = {
     "hv": "KHIÊN",
     "on": "ケン",
     "kun": "かた",
-    "m": "cái vai, gánh vác, cái vai"
+    "m": "cái vai, gánh vác"
   },
   "謙": {
     "hv": "KHIÊM",
@@ -4908,7 +4908,7 @@ const KANJI_DATA = {
     "hv": "HUYỄN",
     "on": "ゲン",
     "kun": "まぼろし",
-    "m": "hư ảo, không có thực, hư ảo, không có thực"
+    "m": "hư ảo, không có thực"
   },
   "弦": {
     "hv": "HUYỀN",
@@ -5274,7 +5274,7 @@ const KANJI_DATA = {
     "hv": "HOÀNH",
     "on": "コウ",
     "kun": "ひろ・い",
-    "m": "to tát, rộng rãi, to tát, rộng rãi"
+    "m": "to tát, rộng rãi"
   },
   "工": {
     "hv": "CÔNG",
@@ -5322,7 +5322,7 @@ const KANJI_DATA = {
     "hv": "HOANG",
     "on": "コウ",
     "kun": "あわ・てる, あわ・ただしい",
-    "m": "vội vã, vội vàng, hoảng sợ, vội vã, vội vàng"
+    "m": "vội vã, vội vàng, hoảng sợ"
   },
   "抗": {
     "hv": "KHÁNG",
@@ -5364,7 +5364,7 @@ const KANJI_DATA = {
     "hv": "CANH",
     "on": "コウ",
     "kun": "さら, さら・に, ふ・ける, ふ・かす",
-    "m": "canh giờ, càng, hơn, càng, hơn"
+    "m": "canh giờ, càng, hơn"
   },
   "杭": {
     "hv": "HÀNG",
@@ -5730,7 +5730,7 @@ const KANJI_DATA = {
     "hv": "CÔN",
     "on": "コン",
     "kun": "—",
-    "m": "(xem: côn lôn 崑崙,昆仑), nhiều nhung nhúc, em trai"
+    "m": "(xem: côn lôn 崑崙, 昆仑), nhiều nhung nhúc, em trai"
   },
   "根": {
     "hv": "CĂN",
@@ -6036,7 +6036,7 @@ const KANJI_DATA = {
     "hv": "BẢN",
     "on": "ハン",
     "kun": "さか",
-    "m": "sườn núi, sườn núi"
+    "m": "sườn núi"
   },
   "堺": {
     "hv": "GIỚI",
@@ -6060,7 +6060,7 @@ const KANJI_DATA = {
     "hv": "KHI",
     "on": "キ",
     "kun": "さき, さい, みさき",
-    "m": "(xem: khi khu 崎嶇,崎岖)"
+    "m": "(xem: khi khu 崎嶇, 崎岖)"
   },
   "埼": {
     "hv": "KỲ",
@@ -6210,7 +6210,7 @@ const KANJI_DATA = {
     "hv": "MÃNH",
     "on": "ベイ",
     "kun": "さら",
-    "m": "cái mâm, cái mâm"
+    "m": "cái mâm"
   },
   "傘": {
     "hv": "TẢN",
@@ -6234,7 +6234,7 @@ const KANJI_DATA = {
     "hv": "TÁN",
     "on": "サン",
     "kun": "ち・る, ち・らす, -ち・らす, ち・らかす, ち・らかる, ち・らばる, ばら, ばら・ける",
-    "m": "tan nhỏ ra, tan nhỏ ra"
+    "m": "tan nhỏ ra"
   },
   "桟": {
     "hv": "CHĂN",
@@ -6264,7 +6264,7 @@ const KANJI_DATA = {
     "hv": "TÀM",
     "on": "サン, テン",
     "kun": "かいこ, こ",
-    "m": "con tằm, con tằm"
+    "m": "con tằm"
   },
   "讃": {
     "hv": "TÁN",
@@ -6312,13 +6312,13 @@ const KANJI_DATA = {
     "hv": "THÍCH",
     "on": "シ",
     "kun": "さ・す, さ・さる, さ・し, さし, とげ",
-    "m": "tiêm, chích, châm, chọc, danh thiếp (âm thứ), tiêm, chích, châm, chọc"
+    "m": "tiêm, chích, châm, chọc, danh thiếp (âm thứ)"
   },
   "司": {
     "hv": "TY",
     "on": "シ",
     "kun": "つかさど・る",
-    "m": "chủ trì, quản lý, quan sở, chủ trì, quản lý"
+    "m": "chủ trì, quản lý, quan sở"
   },
   "史": {
     "hv": "SỬ",
@@ -6450,7 +6450,7 @@ const KANJI_DATA = {
     "hv": "CHI",
     "on": "シ",
     "kun": "あぶら",
-    "m": "mỡ tảng, sáp, nhựa, mỡ tảng"
+    "m": "mỡ tảng, sáp, nhựa"
   },
   "至": {
     "hv": "CHÍ",
@@ -6600,7 +6600,7 @@ const KANJI_DATA = {
     "hv": "THÌ",
     "on": "シ, ジ",
     "kun": "う・える, ま・く",
-    "m": "(xem: thì la 蒔蘿,莳萝), trồng, trồng lại, cấy lại"
+    "m": "(xem: thì la 蒔蘿, 莳萝), trồng, trồng lại, cấy lại"
   },
   "汐": {
     "hv": "TỊCH",
@@ -6864,7 +6864,7 @@ const KANJI_DATA = {
     "hv": "CHÚA",
     "on": "シュ, ス, シュウ",
     "kun": "ぬし, おも, あるじ",
-    "m": "người đứng đầu, người đứng đầu"
+    "m": "người đứng đầu"
   },
   "取": {
     "hv": "THỦ",
@@ -6876,7 +6876,7 @@ const KANJI_DATA = {
     "hv": "THÚ",
     "on": "シュ, ス",
     "kun": "まも・る, まも・り, もり, -もり, かみ",
-    "m": "giữ, coi, đợi, giữ, coi"
+    "m": "giữ, coi, đợi"
   },
   "手": {
     "hv": "THỦ",
@@ -6888,7 +6888,7 @@ const KANJI_DATA = {
     "hv": "CHU",
     "on": "シュ",
     "kun": "あけ",
-    "m": "màu đỏ, màu đỏ"
+    "m": "màu đỏ"
   },
   "殊": {
     "hv": "THÙ",
@@ -6996,7 +6996,7 @@ const KANJI_DATA = {
     "hv": "CHU",
     "on": "シュウ",
     "kun": "まわ・り",
-    "m": "vòng quanh, đời nhà Chu, vòng quanh"
+    "m": "vòng quanh, đời nhà Chu"
   },
   "宗": {
     "hv": "TÔNG",
@@ -7056,7 +7056,7 @@ const KANJI_DATA = {
     "hv": "CHU",
     "on": "シュウ",
     "kun": "ふね, ふな-, -ぶね",
-    "m": "cái thuyền, cái thuyền"
+    "m": "cái thuyền"
   },
   "衆": {
     "hv": "CHÚNG",
@@ -7200,7 +7200,7 @@ const KANJI_DATA = {
     "hv": "XUẤT",
     "on": "シュツ, スイ",
     "kun": "で・る, -で, だ・す, -だ・す, い・でる, い・だす",
-    "m": "ra ngoài, đi ra, một tấn (một đoạn) trong vở tuồng, một tấn (một đoạn) trong vở tuồng"
+    "m": "ra ngoài, đi ra, một tấn (một đoạn) trong vở tuồng"
   },
   "述": {
     "hv": "THUẬT",
@@ -7446,7 +7446,7 @@ const KANJI_DATA = {
     "hv": "CHIÊU",
     "on": "ショウ",
     "kun": "め・す",
-    "m": "kêu gọi, mời đến, kêu gọi, mời đến"
+    "m": "kêu gọi, mời đến"
   },
   "哨": {
     "hv": "TIÊU",
@@ -7650,7 +7650,7 @@ const KANJI_DATA = {
     "hv": "TIÊU",
     "on": "ショウ",
     "kun": "—",
-    "m": "đá ngầm, san hô, đá ngầm"
+    "m": "đá ngầm, san hô"
   },
   "祥": {
     "hv": "TƯỜNG",
@@ -7782,7 +7782,7 @@ const KANJI_DATA = {
     "hv": "THƯỚNG",
     "on": "ジョウ, ショウ, シャン",
     "kun": "うえ, -うえ, うわ-, かみ, あ・げる, -あ・げる, あ・がる, -あ・がる, あ・がり, -あ・がり, のぼ・る, のぼ・り, のぼ・せる, のぼ・す, たてまつ・る",
-    "m": "đi lên, ở phía trên, đi lên"
+    "m": "đi lên, ở phía trên"
   },
   "丈": {
     "hv": "TRƯỢNG",
@@ -8100,7 +8100,7 @@ const KANJI_DATA = {
     "hv": "TÂM",
     "on": "シン",
     "kun": "—",
-    "m": "bấc đèn, (xem: đăng tâm 燈芯,灯芯)"
+    "m": "bấc đèn, (xem: đăng tâm 燈芯, 灯芯)"
   },
   "薪": {
     "hv": "TÂN",
@@ -8142,7 +8142,7 @@ const KANJI_DATA = {
     "hv": "CHÂM",
     "on": "シン",
     "kun": "はり",
-    "m": "cái kim, cái kim"
+    "m": "cái kim"
   },
   "震": {
     "hv": "CHẤN",
@@ -8160,7 +8160,7 @@ const KANJI_DATA = {
     "hv": "NHẪN",
     "on": "ジン, ニン",
     "kun": "は, やいば, き・る",
-    "m": "mũi nhọn, mũi nhọn"
+    "m": "mũi nhọn"
   },
   "壬": {
     "hv": "NHÂM",
@@ -8184,7 +8184,7 @@ const KANJI_DATA = {
     "hv": "TẪN",
     "on": "ジン, サン",
     "kun": "つ・きる, つ・くす, つ・かす, -づ・く, -ず・く, ことごと・く",
-    "m": "hết, nhất, lớn nhất, to nhất, hết"
+    "m": "hết, nhất, lớn nhất, to nhất"
   },
   "腎": {
     "hv": "THẬN",
@@ -8238,7 +8238,7 @@ const KANJI_DATA = {
     "hv": "XUY",
     "on": "スイ",
     "kun": "ふ・く",
-    "m": "thổi, thổi"
+    "m": "thổi"
   },
   "垂": {
     "hv": "THUỲ",
@@ -8250,7 +8250,7 @@ const KANJI_DATA = {
     "hv": "SOÁI",
     "on": "スイ",
     "kun": "—",
-    "m": "tướng cầm đầu, thống suất, làm gương, tướng cầm đầu, thống suất"
+    "m": "tướng cầm đầu, thống suất, làm gương"
   },
   "推": {
     "hv": "SUY",
@@ -8394,7 +8394,7 @@ const KANJI_DATA = {
     "hv": "CƯ",
     "on": "キョ, コ",
     "kun": "すそ",
-    "m": "vạt áo, vạt áo"
+    "m": "vạt áo"
   },
   "澄": {
     "hv": "TRỪNG",
@@ -8814,7 +8814,7 @@ const KANJI_DATA = {
     "hv": "TIÊN",
     "on": "セン",
     "kun": "せん・じる, い・る, に・る",
-    "m": "nấu, sắc, cất, ngâm, nấu, sắc, cất"
+    "m": "nấu, sắc, cất, ngâm"
   },
   "旋": {
     "hv": "TOÀN",
@@ -9060,7 +9060,7 @@ const KANJI_DATA = {
     "hv": "THƯƠNG",
     "on": "ソウ",
     "kun": "くら",
-    "m": "kho, vựa, (xem: thảng thốt 倉猝), kho, vựa"
+    "m": "kho, vựa, (xem: thảng thốt 倉猝)"
   },
   "喪": {
     "hv": "TÁNG",
@@ -9150,7 +9150,7 @@ const KANJI_DATA = {
     "hv": "SANG",
     "on": "ソウ, ショウ",
     "kun": "やり",
-    "m": "cái thương (binh khí), khẩu súng, cái thương (binh khí)"
+    "m": "cái thương (binh khí), khẩu súng"
   },
   "槽": {
     "hv": "TÀO",
@@ -9276,7 +9276,7 @@ const KANJI_DATA = {
     "hv": "TƯƠNG",
     "on": "ゾウ",
     "kun": "—",
-    "m": "hình dáng, giống như, hình dáng"
+    "m": "hình dáng, giống như"
   },
   "増": {
     "hv": "TĂNG",
@@ -9426,7 +9426,7 @@ const KANJI_DATA = {
     "hv": "TỒN",
     "on": "ソン, ゾン",
     "kun": "ながら・える, あ・る, たも・つ, と・う",
-    "m": "còn, xét tới, đang, còn"
+    "m": "còn, xét tới, đang"
   },
   "孫": {
     "hv": "TÔN",
@@ -9474,7 +9474,7 @@ const KANJI_DATA = {
     "hv": "THÁI",
     "on": "タ, タイ",
     "kun": "おご・る, にご・る, よな・げる",
-    "m": "quá mức, thải đi, bỏ đi, quá mức"
+    "m": "quá mức, thải đi, bỏ đi"
   },
   "唾": {
     "hv": "THOÁ",
@@ -9534,7 +9534,7 @@ const KANJI_DATA = {
     "hv": "ĐÔI",
     "on": "タイ, ツイ",
     "kun": "うずたか・い",
-    "m": "đắp, đống, đắp, đống"
+    "m": "đắp, đống"
   },
   "対": {
     "hv": "ĐỐI",
@@ -9570,7 +9570,7 @@ const KANJI_DATA = {
     "hv": "ĐÁI",
     "on": "タイ",
     "kun": "いただ・く",
-    "m": "đội (mũ), đội (mũ)"
+    "m": "đội (mũ)"
   },
   "替": {
     "hv": "THẾ",
@@ -9612,7 +9612,7 @@ const KANJI_DATA = {
     "hv": "THOÁI",
     "on": "タイ",
     "kun": "しりぞ・く, しりぞ・ける, ひ・く, の・く, の・ける, ど・く",
-    "m": "lui, lùi lại, lui, lùi lại"
+    "m": "lui, lùi lại"
   },
   "逮": {
     "hv": "ĐÃI",
@@ -9648,7 +9648,7 @@ const KANJI_DATA = {
     "hv": "THAI",
     "on": "ダイ, タイ",
     "kun": "うてな, われ, つかさ",
-    "m": "sao Thai, cái đài, lầu, cái đài, lầu"
+    "m": "sao Thai, cái đài, lầu"
   },
   "第": {
     "hv": "ĐỆ",
@@ -9774,7 +9774,7 @@ const KANJI_DATA = {
     "hv": "THÌN",
     "on": "シン, ジン",
     "kun": "たつ",
-    "m": "Thìn (ngôi thứ 5 của hàng Chi), Thìn (ngôi thứ 5 của hàng Chi)"
+    "m": "Thìn (ngôi thứ 5 của hàng Chi)"
   },
   "奪": {
     "hv": "ĐOẠT",
@@ -9828,7 +9828,7 @@ const KANJI_DATA = {
     "hv": "ĐAN",
     "on": "タン",
     "kun": "に",
-    "m": "đỏ, thuốc viên, đỏ"
+    "m": "đỏ, thuốc viên"
   },
   "単": {
     "hv": "ĐAN",
@@ -9846,7 +9846,7 @@ const KANJI_DATA = {
     "hv": "ĐAM",
     "on": "タン",
     "kun": "かつ・ぐ, にな・う",
-    "m": "khiêng, mang, vác, đồ để mang vác, khiêng, mang, vác"
+    "m": "khiêng, mang, vác, đồ để mang vác"
   },
   "探": {
     "hv": "THÁM",
@@ -9912,7 +9912,7 @@ const KANJI_DATA = {
     "hv": "ĐOÀN",
     "on": "タン",
     "kun": "きた・える",
-    "m": "rèn (kim loại), rèn (kim loại)"
+    "m": "rèn (kim loại)"
   },
   "団": {
     "hv": "ĐOÀN",
@@ -10056,7 +10056,7 @@ const KANJI_DATA = {
     "hv": "DẬT",
     "on": "チツ",
     "kun": "—",
-    "m": "thứ tự, trật (10 năm), thứ tự"
+    "m": "thứ tự, trật (10 năm)"
   },
   "窒": {
     "hv": "TRẤT",
@@ -10188,7 +10188,7 @@ const KANJI_DATA = {
     "hv": "THIẾP",
     "on": "チョウ, ジョウ",
     "kun": "かきもの",
-    "m": "tấm thiếp, tấm thiệp, tấm thiếp, tấm thiệp"
+    "m": "tấm thiếp, tấm thiệp"
   },
   "帳": {
     "hv": "TRƯỚNG",
@@ -10200,7 +10200,7 @@ const KANJI_DATA = {
     "hv": "SẢNH",
     "on": "チョウ, テイ",
     "kun": "やくしょ",
-    "m": "phòng khách, chỗ quan ngồi làm việc, phòng khách"
+    "m": "phòng khách, chỗ quan ngồi làm việc"
   },
   "弔": {
     "hv": "ĐIẾU",
@@ -10248,7 +10248,7 @@ const KANJI_DATA = {
     "hv": "TRIỀU",
     "on": "チョウ",
     "kun": "しお, うしお",
-    "m": "thuỷ triều, thuỷ triều"
+    "m": "thuỷ triều"
   },
   "町": {
     "hv": "ĐINH",
@@ -10278,7 +10278,7 @@ const KANJI_DATA = {
     "hv": "TRÀNG",
     "on": "チョウ",
     "kun": "はらわた, わた",
-    "m": "ruột, ruột"
+    "m": "ruột"
   },
   "蝶": {
     "hv": "ĐIỆP",
@@ -10320,7 +10320,7 @@ const KANJI_DATA = {
     "hv": "ĐÍNH",
     "on": "チョウ",
     "kun": "いただ・く, いただき",
-    "m": "đỉnh đầu, chỗ cao nhất, đỉnh đầu"
+    "m": "đỉnh đầu, chỗ cao nhất"
   },
   "鳥": {
     "hv": "ĐIỂU",
@@ -10428,7 +10428,7 @@ const KANJI_DATA = {
     "hv": "TRŨNG",
     "on": "チョウ",
     "kun": "つか, -づか",
-    "m": "mồ, mả đắp cao, lớn nhất, cao nhất, mồ, mả đắp cao"
+    "m": "mồ, mả đắp cao, lớn nhất, cao nhất"
   },
   "槻": {
     "hv": "QUY",
@@ -10722,7 +10722,7 @@ const KANJI_DATA = {
     "hv": "CHÍCH",
     "on": "テキ",
     "kun": "しずく, したた・る",
-    "m": "giọt nước, giọt nước, giọt nước"
+    "m": "giọt nước"
   },
   "的": {
     "hv": "ĐÍCH",
@@ -11169,10 +11169,10 @@ const KANJI_DATA = {
     "m": "cùng nhau"
   },
   "堂": {
-    "hv": "ĐÀNG",
+    "hv": "ĐƯỜNG",
     "on": "ドウ",
     "kun": "—",
-    "m": "nhà chính, gian nhà giữa, nhà chính, gian nhà giữa"
+    "m": "nhà chính, gian nhà giữa, hội trường"
   },
   "導": {
     "hv": "ĐẠO",
@@ -11550,7 +11550,7 @@ const KANJI_DATA = {
     "hv": "NHIÊN",
     "on": "ネン",
     "kun": "よ・る, よ・れる, より, ひね・る",
-    "m": "cầm, xoe, gảy, xéo, dẫm, cầm, xoe, gảy, xéo, dẫm, cầm, xoe, gảy, xéo, dẫm"
+    "m": "cầm, xoe, gảy, xéo, dẫm"
   },
   "燃": {
     "hv": "NHIÊN",
@@ -11844,7 +11844,7 @@ const KANJI_DATA = {
     "hv": "BẠC",
     "on": "ハク",
     "kun": "—",
-    "m": "thuyền lớn, thuyền lớn"
+    "m": "thuyền lớn"
   },
   "薄": {
     "hv": "BẠC",
@@ -12024,7 +12024,7 @@ const KANJI_DATA = {
     "hv": "BAN",
     "on": "ハン",
     "kun": "—",
-    "m": "trừ hết, dọn sạch, chuyển đi, dời đi, trừ hết, dọn sạch"
+    "m": "trừ hết, dọn sạch, chuyển đi, dời đi"
   },
   "斑": {
     "hv": "BAN",
@@ -12096,7 +12096,7 @@ const KANJI_DATA = {
     "hv": "PHIẾN",
     "on": "ハン",
     "kun": "—",
-    "m": "mua rẻ bán đắt, buôn bán, mua rẻ bán đắt"
+    "m": "mua rẻ bán đắt, buôn bán"
   },
   "範": {
     "hv": "PHẠM",
@@ -12120,7 +12120,7 @@ const KANJI_DATA = {
     "hv": "PHÃN",
     "on": "ハン",
     "kun": "めし",
-    "m": "cơm, ăn cơm, cơm"
+    "m": "cơm, ăn cơm"
   },
   "番": {
     "hv": "PHIÊN",
@@ -12396,7 +12396,7 @@ const KANJI_DATA = {
     "hv": "VIÊN",
     "on": "エン",
     "kun": "ひめ",
-    "m": "con gái đẹp, con gái đẹp"
+    "m": "con gái đẹp"
   },
   "俵": {
     "hv": "BIỂU",
@@ -12576,7 +12576,7 @@ const KANJI_DATA = {
     "hv": "BỐ",
     "on": "フ, ホ",
     "kun": "こわ・い, こわ・がる, お・じる, おそ・れる",
-    "m": "sợ hãi, doạ nạt, sợ hãi"
+    "m": "sợ hãi, doạ nạt"
   },
   "扶": {
     "hv": "PHÙ",
@@ -12606,7 +12606,7 @@ const KANJI_DATA = {
     "hv": "BỒ",
     "on": "フ",
     "kun": "—",
-    "m": "phù hiệu, thẻ bài, cái bùa trừ ma, phù hiệu, thẻ bài"
+    "m": "phù hiệu, thẻ bài, cái bùa trừ ma"
   },
   "腐": {
     "hv": "HỦ",
@@ -12630,7 +12630,7 @@ const KANJI_DATA = {
     "hv": "PHẢ",
     "on": "フ",
     "kun": "—",
-    "m": "phả chép phân chia thứ tự, khúc nhạc, phả chép phân chia thứ tự"
+    "m": "phả chép phân chia thứ tự, khúc nhạc"
   },
   "負": {
     "hv": "PHỤ",
@@ -12678,7 +12678,7 @@ const KANJI_DATA = {
     "hv": "VÕ",
     "on": "ブ, ム",
     "kun": "たけ, たけ・し",
-    "m": "võ thuật, quân sự, võ thuật"
+    "m": "võ thuật, quân sự"
   },
   "舞": {
     "hv": "VŨ",
@@ -12690,7 +12690,7 @@ const KANJI_DATA = {
     "hv": "BỘ",
     "on": "ブ",
     "kun": "-べ",
-    "m": "bộ, khoa, ngành, ban, bộ (sách, phim,...)"
+    "m": "bộ, khoa, ngành, ban, bộ (sách, phim, ...)"
   },
   "封": {
     "hv": "PHONG",
@@ -12822,7 +12822,7 @@ const KANJI_DATA = {
     "hv": "PHÂN",
     "on": "フン",
     "kun": "くそ",
-    "m": "phân, cứt, bón phân, phân, cứt"
+    "m": "phân, cứt, bón phân"
   },
   "紛": {
     "hv": "PHÂN",
@@ -13062,7 +13062,7 @@ const KANJI_DATA = {
     "hv": "BẠ",
     "on": "ボ",
     "kun": "—",
-    "m": "sổ sách, sổ sách"
+    "m": "sổ sách"
   },
   "菩": {
     "hv": "BỒ",
@@ -13092,7 +13092,7 @@ const KANJI_DATA = {
     "hv": "NGAI",
     "on": "ホウ",
     "kun": "ほけ・る, ぼ・ける, あき・れる, おろか",
-    "m": "ngây ngô, ngớ ngẩn, ngu đần, ngây ngô, ngớ ngẩn, ngu đần"
+    "m": "ngây ngô, ngớ ngẩn, ngu đần"
   },
   "奉": {
     "hv": "PHỤNG",
@@ -13104,7 +13104,7 @@ const KANJI_DATA = {
     "hv": "BẢO",
     "on": "ホウ",
     "kun": "たから",
-    "m": "quý giá, quý giá"
+    "m": "quý giá"
   },
   "峰": {
     "hv": "PHONG",
@@ -13206,7 +13206,7 @@ const KANJI_DATA = {
     "hv": "PHÓNG",
     "on": "ホウ",
     "kun": "おとず・れる, たず・ねる, と・う",
-    "m": "thăm viếng, hỏi thăm, dò xét, thăm viếng, hỏi thăm"
+    "m": "thăm viếng, hỏi thăm, dò xét"
   },
   "豊": {
     "hv": "PHONG",
@@ -13230,7 +13230,7 @@ const KANJI_DATA = {
     "hv": "PHƯỢNG",
     "on": "ホウ, フウ",
     "kun": "—",
-    "m": "chim phượng hoàng (con đực), chim phượng hoàng (con đực)"
+    "m": "chim phượng hoàng (con đực)"
   },
   "鵬": {
     "hv": "BẰNG",
@@ -13254,7 +13254,7 @@ const KANJI_DATA = {
     "hv": "BÀNG",
     "on": "ボウ",
     "kun": "かたわ・ら, わき, おか-, はた, そば",
-    "m": "một bên, bên cạnh, một bên"
+    "m": "một bên, bên cạnh"
   },
   "剖": {
     "hv": "PHẪU",
@@ -13524,7 +13524,7 @@ const KANJI_DATA = {
     "hv": "MÔ",
     "on": "マク",
     "kun": "—",
-    "m": "màng da, cúng bái, màng da"
+    "m": "màng da, cúng bái"
   },
   "枕": {
     "hv": "CHẨM",
@@ -13938,7 +13938,7 @@ const KANJI_DATA = {
     "hv": "DÃ",
     "on": "ヤ, エ",
     "kun": "なり, か, また",
-    "m": "cũng, vậy, cũng"
+    "m": "cũng, vậy"
   },
   "冶": {
     "hv": "DÃ",
@@ -13950,7 +13950,7 @@ const KANJI_DATA = {
     "hv": "DA",
     "on": "ヤ, ジャ",
     "kun": "か",
-    "m": "vậy ư (chỉ sự còn ngờ vực), vậy ư (chỉ sự còn ngờ vực)"
+    "m": "vậy ư (chỉ sự còn ngờ vực)"
   },
   "野": {
     "hv": "DÃ",
@@ -13968,7 +13968,7 @@ const KANJI_DATA = {
     "hv": "THI",
     "on": "シ",
     "kun": "や",
-    "m": "tên (bắn cung), tên (bắn cung)"
+    "m": "tên (bắn cung)"
   },
   "厄": {
     "hv": "ÁCH",
@@ -14220,7 +14220,7 @@ const KANJI_DATA = {
     "hv": "DONG",
     "on": "ヨウ",
     "kun": "い・れる",
-    "m": "chứa đựng, dáng dấp, hình dong, chứa đựng"
+    "m": "chứa đựng, dáng dấp, hình dong"
   },
   "庸": {
     "hv": "DONG",
@@ -14238,7 +14238,7 @@ const KANJI_DATA = {
     "hv": "DAO",
     "on": "ヨウ",
     "kun": "ゆ・れる, ゆ・る, ゆ・らぐ, ゆ・るぐ, ゆ・する, ゆ・さぶる, ゆ・すぶる, うご・く",
-    "m": "lay động, quấy nhiễu, lay động"
+    "m": "lay động, quấy nhiễu"
   },
   "擁": {
     "hv": "ỦNG",
@@ -14334,7 +14334,7 @@ const KANJI_DATA = {
     "hv": "DƯỠNG",
     "on": "ヨウ, リョウ",
     "kun": "やしな・う",
-    "m": "nuôi dưỡng, dâng biếu, nuôi dưỡng"
+    "m": "nuôi dưỡng, dâng biếu"
   },
   "抑": {
     "hv": "ỨC",
@@ -14388,7 +14388,7 @@ const KANJI_DATA = {
     "hv": "KHOẢ",
     "on": "ラ",
     "kun": "はだか",
-    "m": "lộ ra, hiện ra, trần truồng, lộ ra, hiện ra"
+    "m": "lộ ra, hiện ra, trần truồng"
   },
   "頼": {
     "hv": "LẠI",
@@ -14508,7 +14508,7 @@ const KANJI_DATA = {
     "hv": "LY",
     "on": "リ",
     "kun": "—",
-    "m": "(xem: pha ly 玻璃, lưu ly 琉璃), (xem: pha ly 玻璃, lưu ly 琉璃)"
+    "m": "(xem: pha ly 玻璃, lưu ly 琉璃)"
   },
   "痢": {
     "hv": "LỊ",
@@ -14544,7 +14544,7 @@ const KANJI_DATA = {
     "hv": "LÔ",
     "on": "ソツ, リツ, シュツ",
     "kun": "ひき・いる",
-    "m": "noi theo, quản lãnh, noi theo"
+    "m": "noi theo, quản lãnh"
   },
   "略": {
     "hv": "LƯỢC",
@@ -14748,7 +14748,7 @@ const KANJI_DATA = {
     "hv": "LÃNH",
     "on": "リョウ",
     "kun": "えり",
-    "m": "cổ áo, lĩnh, nhận, cổ áo"
+    "m": "cổ áo, lĩnh, nhận"
   },
   "力": {
     "hv": "LỰC",
@@ -14928,7 +14928,7 @@ const KANJI_DATA = {
     "hv": "LỆ",
     "on": "レイ",
     "kun": "うるわ・しい, うら・らか",
-    "m": "(xem: cao ly 高麗,高丽), đẹp đẽ, dính, bám"
+    "m": "(xem: cao ly 高麗, 高丽), đẹp đẽ, dính, bám"
   },
   "齢": {
     "hv": "LINH",
@@ -15012,7 +15012,7 @@ const KANJI_DATA = {
     "hv": "LÃ",
     "on": "ロ, リョ",
     "kun": "せぼね",
-    "m": "xương sống, họ Lã, họ Lữ, xương sống"
+    "m": "xương sống, họ Lã, họ Lữ"
   },
   "魯": {
     "hv": "LỖ",
@@ -15024,7 +15024,7 @@ const KANJI_DATA = {
     "hv": "LÔ",
     "on": "ロ",
     "kun": "いろり",
-    "m": "lò lửa, lò lửa"
+    "m": "lò lửa"
   },
   "賂": {
     "hv": "LỘ",
@@ -15072,7 +15072,7 @@ const KANJI_DATA = {
     "hv": "LANG",
     "on": "ロウ",
     "kun": "—",
-    "m": "con sóng, con sóng"
+    "m": "con sóng"
   },
   "漏": {
     "hv": "LẬU",
@@ -15150,7 +15150,7 @@ const KANJI_DATA = {
     "hv": "OA",
     "on": "ワイ, エ",
     "kun": "いが・む, いびつ, ひず・む, ゆが・む",
-    "m": "méo, lệch, méo, lệch"
+    "m": "méo, lệch"
   },
   "賄": {
     "hv": "HỐI",
@@ -15684,7 +15684,7 @@ const KANJI_DATA = {
     "hv": "UNG",
     "on": "オウ",
     "kun": "かめ, みか",
-    "m": "vò, chum, vại, hũ, vò, chum, vại, hũ"
+    "m": "vò, chum, vại, hũ"
   },
   "甦": {
     "hv": "TÔ",
@@ -15702,7 +15702,7 @@ const KANJI_DATA = {
     "hv": "LƯU",
     "on": "リュウ, ル",
     "kun": "こぶ",
-    "m": "nổi cục máu, khối u, nổi cục máu"
+    "m": "nổi cục máu, khối u"
   },
   "皓": {
     "hv": "HẠO",
@@ -15714,7 +15714,7 @@ const KANJI_DATA = {
     "hv": "LÔ",
     "on": "ロ",
     "kun": "—",
-    "m": "màu đen, màu đen"
+    "m": "màu đen"
   },
   "眞": {
     "hv": "CHÂN",
@@ -15780,7 +15780,7 @@ const KANJI_DATA = {
     "hv": "THOA",
     "on": "サ, サイ",
     "kun": "みの",
-    "m": "áo tơi, áo tơi"
+    "m": "áo tơi"
   },
   "籠": {
     "hv": "LUNG",
@@ -15864,7 +15864,7 @@ const KANJI_DATA = {
     "hv": "MINH",
     "on": "ミョウ, メイ",
     "kun": "ちゃ",
-    "m": "nõn chè, mầm chè, chè, trà, nõn chè, mầm chè"
+    "m": "nõn chè, mầm chè, chè, trà"
   },
   "莉": {
     "hv": "LỊ",
@@ -16026,7 +16026,7 @@ const KANJI_DATA = {
     "hv": "CHÂM",
     "on": "シン",
     "kun": "はり, さ・す",
-    "m": "cái kim, cái kim"
+    "m": "cái kim"
   },
   "闊": {
     "hv": "KHOÁT",
@@ -16123,6 +16123,21 @@ function getHanViet(text) {
   return hasKanji ? result.join(' ') : '';
 }
 
+function cleanKanjiMeaning(text) {
+  if (!text) return '';
+  const parts = text.split(/[,，;；]/).map(s => s.trim()).filter(Boolean);
+  const seen = new Set();
+  const deduped = [];
+  for (const p of parts) {
+    const lower = p.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      deduped.push(p);
+    }
+  }
+  return deduped.join(', ');
+}
+
 /**
  * Bóc tách chi tiết từng chữ Kanji trong từ ghép (Kanji Decomposition)
  * @param {string} word Từ ghép tiếng Nhật (ví dụ: "日本語", "経済学", "学校")
@@ -16142,7 +16157,7 @@ function decomposeKanji(word) {
           hv: KANJI_DATA[char].hv,
           on: KANJI_DATA[char].on,
           kun: KANJI_DATA[char].kun,
-          m: KANJI_DATA[char].m
+          m: cleanKanjiMeaning(KANJI_DATA[char].m)
         });
       } else {
         list.push({
@@ -16169,6 +16184,13 @@ function isKanji(char) {
 }
 
 // Xuất ra môi trường
+if (typeof window !== 'undefined') {
+  window.KANJI_DATA = KANJI_DATA;
+  window.getHanViet = getHanViet;
+  window.decomposeKanji = decomposeKanji;
+  window.isKanji = isKanji;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { KANJI_DATA, getHanViet, decomposeKanji, isKanji };
 }
+

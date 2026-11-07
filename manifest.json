@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "JP Furigana Hover - Phiên âm Tiếng Nhật",
-  "version": "1.2.0",
-  "description": "Rê chuột hiển thị phiên âm tiếng Nhật (Hiragana, Romaji, Hán-Việt, Nghĩa từ). Sổ tay từ vựng, Flashcard, Dịch câu, phím tắt Alt+J.",
+  "name": "JP Furigana Hover - Phiên âm & Học Tiếng Nhật Pro",
+  "version": "1.4.2",
+  "description": "Rê chuột hiển thị Furigana, Hán-Việt, Nét vẽ Kanji, Dịch câu, Phụ đề YouTube/Netflix, AnkiConnect & SRS Flashcard.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -11,7 +11,7 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "JP Furigana Hover",
+    "default_title": "JP Furigana Hover Pro",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -27,6 +27,10 @@
     "activeTab",
     "clipboardWrite"
   ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*"
+  ],
   "commands": {
     "toggle-hover": {
       "suggested_key": {
@@ -34,6 +38,13 @@
         "mac": "Alt+J"
       },
       "description": "Bật / Tắt nhanh chế độ phiên âm tiếng Nhật"
+    },
+    "quick-search": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
+      "description": "Mở thanh tra cứu nhanh tiếng Nhật (Quick Search)"
     }
   },
   "content_scripts": [
@@ -42,10 +53,19 @@
         "<all_urls>"
       ],
       "js": [
+        "utils/helpers.js",
+        "utils/storage.js",
+        "utils/audio.js",
+        "utils/anki.js",
+        "utils/kanji_strokes.js",
         "data/kanji_hanviet.js",
         "content/romaji.js",
+        "data/grammar_rules.js",
+        "data/dictionary_expanded.js",
         "data/dictionary.js",
         "content/engine.js",
+        "content/subtitles.js",
+        "content/quick_search.js",
         "content/content.js"
       ],
       "run_at": "document_end"
@@ -55,7 +75,11 @@
     {
       "resources": [
         "content/tooltip.css",
-        "icons/*"
+        "icons/*",
+        "flashcards.html",
+        "flashcards.css",
+        "flashcards.js",
+        "data/*"
       ],
       "matches": [
         "<all_urls>"

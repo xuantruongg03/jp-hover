@@ -1,5 +1,5 @@
-// Background Service Worker (Manifest V3)
-// Quản lý phím tắt Alt+J, Badge icon trạng thái và đồng bộ cài đặt
+// Background Service Worker (Manifest V3 - v1.4.0)
+// Quản lý phím tắt Alt+J, Alt+F, Alt+S, AnkiConnect Proxy, Badge icon trạng thái và đồng bộ cài đặt
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -8,15 +8,49 @@ const DEFAULT_SETTINGS = {
   showRomaji: true,
   showHanViet: true,
   showMeaning: true,
+  showKanjiBreakdown: true,
+  showPitchAccent: true,
+  enableVisualHighlight: true,
+  enableSelectionTranslate: true,
+  enableOnlineFallback: true,
   autoPlayAudio: false,
-  speechRate: 0.95
+  speechRate: 0.95,
+  speechPitch: 1.0,
+  voiceUri: '',
+  translationEngine: 'google',
+  geminiApiKey: '',
+
+  // AnkiConnect
+  ankiEnabled: true,
+  ankiHost: 'http://127.0.0.1:8765',
+  ankiDeckName: 'JP Hover Notebook',
+  ankiModelName: 'Basic',
+
+  // Subtitles
+  enableSubtitleHover: true,
+  autoPauseVideoOnHover: false,
+
+  // SRS & Decks
+  activeDeck: 'Mặc định'
 };
 
 // Cập nhật Badge trên biểu tượng Extension
 function updateBadge(enabled) {
   if (enabled) {
-    chrome.action.setBadgeText({ text: 'ON' });
-    chrome.action.setBadgeBackgroundColor({ color: '#10b981' }); // Màu xanh lục tươi
+    // Kiểm tra xem có bao nhiêu từ đến hạn ôn tập hôm nay
+    chrome.storage.local.get(['jpSavedWords'], (res) => {
+      const words = Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
+      const now = Date.now();
+      const dueCount = words.filter(w => w.srs && w.srs.nextReview && w.srs.nextReview <= now).length;
+
+      if (dueCount > 0) {
+        chrome.action.setBadgeText({ text: `${dueCount}` });
+        chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' }); // Màu cam báo có từ cần ôn
+      } else {
+        chrome.action.setBadgeText({ text: 'ON' });
+        chrome.action.setBadgeBackgroundColor({ color: '#10b981' }); // Màu xanh lục tươi
+      }
+    });
   } else {
     chrome.action.setBadgeText({ text: 'OFF' });
     chrome.action.setBadgeBackgroundColor({ color: '#64748b' }); // Màu xám
@@ -45,45 +79,94 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Lắng nghe thay đổi storage để cập nhật badge kịp thời
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.jpSettings) {
-    const newSettings = changes.jpSettings.newValue;
-    if (newSettings && typeof newSettings.enabled !== 'undefined') {
-      updateBadge(newSettings.enabled);
+  if (area === 'local') {
+    if (changes.jpSettings || changes.jpSavedWords) {
+      chrome.storage.local.get(['jpSettings'], (res) => {
+        const enabled = res && res.jpSettings ? res.jpSettings.enabled !== false : true;
+        updateBadge(enabled);
+      });
     }
   }
 });
 
-// Lắng nghe phím tắt toàn cục (Định nghĩa trong manifest commands: toggle-hover)
+// Lắng nghe phím tắt toàn cục
 chrome.commands.onCommand.addListener((command) => {
-  if (command === 'toggle-hover') {
-    chrome.storage.local.get(['jpSettings'], (res) => {
-      const current = res && res.jpSettings ? res.jpSettings : DEFAULT_SETTINGS;
-      const newEnabled = current.enabled === false ? true : false;
-      const updated = { ...current, enabled: newEnabled };
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (!tabs || !tabs[0] || !tabs[0].id) return;
+    const tabId = tabs[0].id;
 
-      chrome.storage.local.set({ jpSettings: updated }, () => {
-        updateBadge(newEnabled);
+    if (command === 'toggle-hover') {
+      chrome.storage.local.get(['jpSettings'], (res) => {
+        const current = res && res.jpSettings ? res.jpSettings : DEFAULT_SETTINGS;
+        const newEnabled = current.enabled === false ? true : false;
+        const updated = { ...current, enabled: newEnabled };
 
-        // Gửi trạng thái chính xác tuyệt đối (SET_STATE) đến tab đang hoạt động
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs[0] && tabs[0].id) {
-            chrome.tabs.sendMessage(tabs[0].id, { 
-              action: 'SET_STATE', 
-              enabled: newEnabled 
-            }).catch(() => {
-              // Bỏ qua lỗi nếu tab không cho phép content script (e.g. chrome://)
-            });
-          }
+        chrome.storage.local.set({ jpSettings: updated }, () => {
+          updateBadge(newEnabled);
+          chrome.tabs.sendMessage(tabId, { action: 'SET_STATE', enabled: newEnabled }).catch(() => {});
         });
       });
-    });
-  }
+    } else if (command === 'quick-search') {
+      chrome.tabs.sendMessage(tabId, { action: 'TOGGLE_QUICK_SEARCH' }).catch(() => {});
+    }
+  });
 });
 
-// Lắng nghe yêu cầu mở trang Flashcards & Sổ tay toàn màn hình
+// Lắng nghe yêu cầu từ Content Scripts & Popups
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // 1. Mở trang Flashcards & Sổ tay toàn màn hình
   if (msg.action === 'OPEN_FLASHCARDS') {
     chrome.tabs.create({ url: chrome.runtime.getURL('flashcards.html') });
     sendResponse({ success: true });
+    return true;
+  }
+
+  // 2. AnkiConnect Proxy Request (vượt qua CORS và Mixed Content)
+  if (msg.action === 'ANKI_PROXY_REQUEST') {
+    const host = msg.host || 'http://127.0.0.1:8765';
+    fetch(host, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msg.payload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          sendResponse({ success: false, error: data.error });
+        } else {
+          sendResponse({ success: true, result: data.result });
+        }
+      })
+      .catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // Cho biết phản hồi bất đồng bộ
+  }
+
+  // 3. Tải SVG Nét viết Kanji (Vượt CSP trên ChatGPT, GitHub, X...)
+  if (msg.action === 'FETCH_KANJI_SVG') {
+    const hex = msg.hex;
+    const cdnUrls = [
+      `https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg/kanji/${hex}.svg`,
+      `https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${hex}.svg`
+    ];
+
+    (async () => {
+      for (const url of cdnUrls) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+          if (res.ok) {
+            const svgText = await res.text();
+            sendResponse({ success: true, svg: svgText });
+            return;
+          }
+        } catch (_) {}
+      }
+      sendResponse({ success: false });
+    })();
+    return true;
   }
 });

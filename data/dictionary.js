@@ -1394,6 +1394,27 @@ const JP_DICTIONARY = {
     "pos": "n",
     "p": 2
   },
+  "部屋": {
+    "r": "へや",
+    "m": "Căn phòng, gian phòng",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 2
+  },
+  "本屋": {
+    "r": "ほんや",
+    "m": "Hiệu sách, tiệm sách",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 1
+  },
+  "場所": {
+    "r": "ばしょ",
+    "m": "Địa điểm, nơi chốn, chỗ",
+    "t": "Danh từ N4",
+    "pos": "n",
+    "p": 0
+  },
   "水": {
     "r": "みず",
     "m": "Nước lọc",
@@ -1792,6 +1813,41 @@ const JP_DICTIONARY = {
     "t": "Danh từ N5",
     "pos": "n",
     "p": 0
+  },
+  "子ども": {
+    "r": "こども",
+    "m": "Trẻ con, con cái",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 0
+  },
+  "お菓子": {
+    "r": "おかし",
+    "m": "Bánh kẹo, đồ ngọt",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 2
+  },
+  "買い物": {
+    "r": "かいもの",
+    "m": "Mua sắm",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 0
+  },
+  "乗り物": {
+    "r": "のりもの",
+    "m": "Phương tiện giao thông, xe cộ",
+    "t": "Danh từ N4",
+    "pos": "n",
+    "p": 0
+  },
+  "建物": {
+    "r": "たてもの",
+    "m": "Tòa nhà, công trình kiến trúc",
+    "t": "Danh từ N5",
+    "pos": "n",
+    "p": 2
   },
   "父": {
     "r": "ちち",
@@ -4890,59 +4946,711 @@ const GRAMMAR_DEINFLECT_PATTERNS = [
   }
 ];
 
+// Bổ sung các quy tắc biến hình Ngữ pháp Nhóm 1 (Causative, Passive, Potential, Volitional)
+const EXTRA_DEINFLECT_RULES = [
+  // Nhóm 1 Thể Sai khiến (〜せる)
+  { suffix: 'かせる', replace: ['く'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'がせる', replace: ['ぐ'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'わせる', replace: ['う'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'たせる', replace: ['つ'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'なせる', replace: ['ぬ'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'ばせる', replace: ['ぶ'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'ませる', replace: ['む'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+  { suffix: 'らせる', replace: ['る'], tag: 'Thể Sai khiến (〜せる)', form: 'Sai khiến' },
+
+  // Nhóm 1 Thể Sai khiến Bị động rút gọn [Bị bắt làm]
+  { suffix: 'かされる', replace: ['く'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'がされる', replace: ['ぐ'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'わされる', replace: ['う'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'たされる', replace: ['つ'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'ばされる', replace: ['ぶ'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'まされる', replace: ['む'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+  { suffix: 'らされる', replace: ['る'], tag: 'Thể Sai khiến Bị động [Bị bắt làm]', form: 'Sai khiến + Bị động' },
+
+  // Nhóm 1 Thể Bị động / Khả năng (〜れる)
+  { suffix: 'かれる', replace: ['く'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'がれる', replace: ['ぐ'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'われる', replace: ['う'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'たれる', replace: ['つ'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'なれる', replace: ['ぬ'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'ばれる', replace: ['ぶ'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+  { suffix: 'まれる', replace: ['む'], tag: 'Thể Bị động / Khả năng (〜れる)', form: 'Bị động' },
+
+  // Nhóm 1 Thể Khả năng (〜える)
+  { suffix: 'ける', replace: ['く'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'げる', replace: ['ぐ'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'える', replace: ['う'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'てる', replace: ['つ'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'ねる', replace: ['ぬ'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'べる', replace: ['ぶ'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'める', replace: ['む'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+  { suffix: 'れる', replace: ['る'], tag: 'Thể Khả năng (〜える)', form: 'Khả năng' },
+
+  // Nhóm 1 Thể Ý chí (〜おう)
+  { suffix: 'こう', replace: ['く'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'ごう', replace: ['ぐ'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'おう', replace: ['う'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'とう', replace: ['つ'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'のう', replace: ['ぬ'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'ぼう', replace: ['ぶ'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'もう', replace: ['む'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+  { suffix: 'ろう', replace: ['る'], tag: 'Thể Ý chí (〜おう)', form: 'Ý chí' },
+
+  // Động từ Nhóm 1 (Godan) - Thể Lịch sự (〜ます, 〜ません, 〜ました, 〜ませんでした, 〜ましょう)
+  { suffix: 'きます', replace: ['く'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'ぎます', replace: ['ぐ'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'します', replace: ['す'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'ちます', replace: ['つ'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'にます', replace: ['ぬ'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'びます', replace: ['ぶ'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'みます', replace: ['む'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'います', replace: ['う'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: 'ります', replace: ['る'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+
+  { suffix: 'きません', replace: ['く'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'ぎません', replace: ['ぐ'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'しません', replace: ['す'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'ちません', replace: ['つ'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'にません', replace: ['ぬ'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'びません', replace: ['ぶ'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'みません', replace: ['む'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'いません', replace: ['う'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: 'りません', replace: ['る'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+
+  { suffix: 'きました', replace: ['く'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'ぎました', replace: ['ぐ'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'しました', replace: ['す'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'ちました', replace: ['つ'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'にました', replace: ['ぬ'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'びました', replace: ['ぶ'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'みました', replace: ['む'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'いました', replace: ['う'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: 'りました', replace: ['る'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+
+  { suffix: 'きませんでした', replace: ['く'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'ぎませんでした', replace: ['ぐ'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'しませんでした', replace: ['す'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'ちませんでした', replace: ['つ'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'にませんでした', replace: ['ぬ'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'びませんでした', replace: ['ぶ'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'みませんでした', replace: ['む'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'いませんでした', replace: ['う'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: 'りませんでした', replace: ['る'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+
+  { suffix: 'きましょう', replace: ['く'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'ぎましょう', replace: ['ぐ'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'しましょう', replace: ['す'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'ちましょう', replace: ['つ'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'にましょう', replace: ['ぬ'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'びましょう', replace: ['ぶ'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'みましょう', replace: ['む'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'いましょう', replace: ['う'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+  { suffix: 'りましょう', replace: ['る'], tag: 'Thể Lịch sự Ý chí / Rủ rê (〜ましょう)', form: 'Rủ rê Lịch sự' },
+
+  // Động từ Nhóm 1 (Godan) - Thể Phủ định (〜ない, 〜なかった)
+  { suffix: 'かない', replace: ['く'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'がない', replace: ['ぐ'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'さない', replace: ['す'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'たない', replace: ['つ'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'なない', replace: ['ぬ'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'ばない', replace: ['ぶ'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'まない', replace: ['む'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'わない', replace: ['う'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: 'らない', replace: ['る'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+
+  { suffix: 'かなかった', replace: ['く'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'がなかった', replace: ['ぐ'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'さなかった', replace: ['す'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'たなかった', replace: ['つ'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'ななかった', replace: ['ぬ'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'ばなかった', replace: ['ぶ'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'まなかった', replace: ['む'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'わなかった', replace: ['う'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'らなかった', replace: ['る'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+
+  // Động từ Nhóm 1 (Godan) - Thể Điều kiện (〜ば)
+  { suffix: 'けば', replace: ['く'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'げば', replace: ['ぐ'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'せば', replace: ['す'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'てば', replace: ['つ'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'ねば', replace: ['ぬ'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'べば', replace: ['ぶ'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'めば', replace: ['む'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'えば', replace: ['う'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: 'れば', replace: ['る'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+
+  // Động từ Bất quy tắc 来る
+  { suffix: '来ます', replace: ['来る'], tag: 'Thể Lịch sự (〜ます)', form: 'Khẳng định Lịch sự' },
+  { suffix: '来ません', replace: ['来る'], tag: 'Thể Lịch sự Phủ định (〜ません)', form: 'Phủ định Lịch sự' },
+  { suffix: '来ました', replace: ['来る'], tag: 'Thể Lịch sự Quá khứ (〜ました)', form: 'Quá khứ Lịch sự' },
+  { suffix: '来ませんでした', replace: ['来る'], tag: 'Thể Lịch sự Phủ định Quá khứ (〜ませんでした)', form: 'Quá khứ Phủ định Lịch sự' },
+  { suffix: '来ない', replace: ['来る'], tag: 'Thể Phủ định (〜ない)', form: 'Phủ định' },
+  { suffix: '来なかった', replace: ['来る'], tag: 'Thể Phủ định Quá khứ (〜なかった)', form: 'Phủ định Quá khứ' },
+  { suffix: '来れば', replace: ['来る'], tag: 'Thể Điều kiện (〜ば)', form: 'Điều kiện' },
+  { suffix: '来よう', replace: ['来る'], tag: 'Thể Ý chí (〜よう)', form: 'Ý chí' },
+  { suffix: '来てください', replace: ['来る'], tag: 'Thể Yêu cầu Lịch sự (〜てください)', form: 'Yêu cầu Lịch sự' },
+  { suffix: '来て', replace: ['来る'], tag: 'Thể て', form: 'Liên kết Thể て' },
+  { suffix: '来た', replace: ['来る'], tag: 'Thể Quá khứ (〜た)', form: 'Quá khứ' },
+
+  // Tính từ đuôi -i (Adjectives) biến hình
+  { suffix: 'そう', replace: ['い'], tag: 'Thể Có vẻ như (〜そう)', form: 'Phỏng đoán / Trông có vẻ' },
+  { suffix: 'すぎる', replace: ['い'], tag: 'Thể Quá mức (〜すぎる)', form: 'Quá mức' },
+  { suffix: 'すぎた', replace: ['い'], tag: 'Thể Quá mức Quá khứ (〜すぎた)', form: 'Quá mức Quá khứ' },
+  { suffix: 'く', replace: ['い'], tag: 'Thể Phó từ hóa (〜く)', form: 'Phó từ' },
+  { suffix: 'くて', replace: ['い'], tag: 'Thể Liên kết (〜くて)', form: 'Liên kết Thể て' },
+  { suffix: 'かった', replace: ['い'], tag: 'Thể Quá khứ (〜かった)', form: 'Quá khứ' },
+  { suffix: 'くない', replace: ['い'], tag: 'Thể Phủ định (〜くない)', form: 'Phủ định' },
+  { suffix: 'くなかった', replace: ['い'], tag: 'Thể Phủ định Quá khứ (〜くなかった)', form: 'Phủ định Quá khứ' },
+  { suffix: 'ければ', replace: ['い'], tag: 'Thể Điều kiện (〜ければ)', form: 'Điều kiện' },
+
+  // Tính từ đặc biệt 良い (いい / よい)
+  { suffix: 'よくない', replace: ['良い'], tag: 'Thể Phủ định (〜くない)', form: 'Phủ định' },
+  { suffix: 'よかった', replace: ['良い'], tag: 'Thể Quá khứ (〜かった)', form: 'Quá khứ' },
+  { suffix: 'よければ', replace: ['良い'], tag: 'Thể Điều kiện (〜ければ)', form: 'Điều kiện' },
+  { suffix: 'よく', replace: ['良い'], tag: 'Thể Phó từ hóa (〜く)', form: 'Phó từ' },
+  { suffix: 'よさそう', replace: ['良い'], tag: 'Thể Trông có vẻ (〜そう)', form: 'Phỏng đoán' },
+
+  // Động từ dạng văn nói & liên kết rút gọn
+  { suffix: 'ちゃう', replace: ['る', 'く', 'す'], tag: 'Thể Lỡ làm / Làm xong mất (〜てしまう)', form: 'Hoàn thành / Nuối tiếc (Văn nói)' },
+  { suffix: 'ちゃった', replace: ['る', 'く', 'す'], tag: 'Thể Lỡ làm Quá khứ (〜てしまった)', form: 'Hoàn thành Quá khứ (Văn nói)' },
+  { suffix: 'ちゃって', replace: ['る', 'く', 'す'], tag: 'Thể Lỡ làm Thể て (〜てしまって)', form: 'Hoàn thành Thể て (Văn nói)' },
+  { suffix: 'じゃう', replace: ['ぐ', 'ぶ', 'む'], tag: 'Thể Lỡ làm / Làm xong mất (〜でしまう)', form: 'Hoàn thành / Nuối tiếc (Văn nói)' },
+  { suffix: 'じゃった', replace: ['ぐ', 'ぶ', 'む'], tag: 'Thể Lỡ làm Quá khứ (〜でしまった)', form: 'Hoàn thành Quá khứ (Văn nói)' },
+  { suffix: 'じゃって', replace: ['ぐ', 'ぶ', 'む'], tag: 'Thể Lỡ làm Thể て (〜でしまって)', form: 'Hoàn thành Thể て (Văn nói)' },
+  { suffix: 'とく', replace: ['る', 'く', 'う'], tag: 'Thể Làm sẵn (〜ておく)', form: 'Chuẩn bị trước (Văn nói)' },
+  { suffix: 'といた', replace: ['る', 'く', 'う'], tag: 'Thể Làm sẵn Quá khứ (〜ておいた)', form: 'Chuẩn bị trước Quá khứ' },
+  { suffix: 'といて', replace: ['る', 'く', 'つ', 'う'], tag: 'Văn nói (〜といて) [Làm sẵn]', form: 'Chuẩn bị trước (Văn nói)' },
+  { suffix: 'とかない', replace: ['る', 'く', 'つ', 'う'], tag: 'Văn nói (〜とかない) [Không làm sẵn]', form: 'Chuẩn bị trước Phủ định' },
+  { suffix: 'とこう', replace: ['る', 'く', 'つ', 'う'], tag: 'Văn nói (〜とこう) [Hãy làm sẵn nào]', form: 'Chuẩn bị trước Ý chí' },
+  { suffix: 'んどく', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜んどく) [Làm sẵn]', form: 'Chuẩn bị trước (Văn nói)' },
+  { suffix: 'んどいた', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜んどいた) [Đã làm sẵn]', form: 'Chuẩn bị trước Quá khứ' },
+  { suffix: 'んどいて', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜んどいて) [Làm sẵn]', form: 'Chuẩn bị trước (Văn nói)' },
+  { suffix: 'んどかない', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜んどかない) [Không làm sẵn]', form: 'Chuẩn bị trước Phủ định' },
+  { suffix: 'んどこう', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜んどこう) [Hãy làm sẵn nào]', form: 'Chuẩn bị trước Ý chí' },
+  { suffix: 'やすい', replace: ['る', 'く', 'ぐ', 'す', 'つ', 'ぬ', 'ぶ', 'む', 'う'], tag: 'Thể Dễ làm (〜やすい)', form: 'Dễ thực hiện' },
+  { suffix: 'にくい', replace: ['る', 'く', 'ぐ', 'す', 'つ', 'ぬ', 'ぶ', 'む', 'う'], tag: 'Thể Khó làm (〜にくい)', form: 'Khó thực hiện' },
+
+  // Văn nói bắt buộc (〜なくちゃ / 〜なきゃ / 〜なくっちゃ)
+  { suffix: 'かなくちゃ', replace: ['く'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'がなくちゃ', replace: ['ぐ'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'さなくちゃ', replace: ['す'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'たなくちゃ', replace: ['つ'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'ななくちゃ', replace: ['ぬ'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'ばなくちゃ', replace: ['ぶ'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'まなくちゃ', replace: ['む'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'らなくちゃ', replace: ['る'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'わなくちゃ', replace: ['う'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'なくちゃ', replace: ['る'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'しなくちゃ', replace: ['する'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: '来なくちゃ', replace: ['来る'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'こなくちゃ', replace: ['来る'], tag: 'Văn nói (〜なくちゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+
+  { suffix: 'かなきゃ', replace: ['く'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'がなきゃ', replace: ['ぐ'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'さなきゃ', replace: ['す'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'たなきゃ', replace: ['つ'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'ななきゃ', replace: ['ぬ'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'ばなきゃ', replace: ['ぶ'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'まなきゃ', replace: ['む'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'らなきゃ', replace: ['る'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'わなきゃ', replace: ['う'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'なきゃ', replace: ['る'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'しなきゃ', replace: ['する'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: '来なきゃ', replace: ['来る'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+  { suffix: 'こなきゃ', replace: ['来る'], tag: 'Văn nói (〜なきゃ) [Phải làm]', form: 'Bắt buộc (Văn nói)' },
+
+  // Văn nói chuyển động & tiếp diễn (〜てく / 〜てくる)
+  { suffix: 'てく', replace: ['る', 'つ', 'う', 'く'], tag: 'Văn nói (〜てく) [Làm rồi đi]', form: 'Hướng đi / Tiếp diễn' },
+  { suffix: 'てった', replace: ['る', 'つ', 'う', 'く'], tag: 'Văn nói (〜てった) [Đã đi mất]', form: 'Hướng đi Quá khứ' },
+  { suffix: 'てって', replace: ['る', 'つ', 'う', 'く', 'す'], tag: 'Văn nói (〜てって) [Làm rồi đi]', form: 'Hướng đi Thể て' },
+  { suffix: 'でく', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜でく) [Làm rồi đi]', form: 'Hướng đi / Tiếp diễn' },
+  { suffix: 'でった', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜でった) [Đã đi mất]', form: 'Hướng đi Quá khứ' },
+  { suffix: 'でって', replace: ['む', 'ぶ', 'ぐ'], tag: 'Văn nói (〜でって) [Làm rồi đi]', form: 'Hướng đi Thể て' },
+  { suffix: 'てきて', replace: ['る', 'つ', 'う', 'く', 'す'], tag: 'Thể Làm rồi lại đây (〜てきて)', form: 'Hướng lại / Khởi phát' },
+  { suffix: 'てきた', replace: ['る', 'つ', 'う', 'く', 'す'], tag: 'Thể Làm rồi lại đây (〜てきた)', form: 'Hướng lại Quá khứ' },
+  { suffix: 'てくる', replace: ['る', 'つ', 'う', 'く', 'す'], tag: 'Thể Làm rồi lại đây (〜てくる)', form: 'Hướng lại' },
+
+  // Khả năng dạng nói (Ra-nuki)
+  { suffix: 'れる', replace: ['る'], tag: 'Thể Khả năng Văn nói (Ra-nuki)', form: 'Khả năng (Văn nói)' },
+  { suffix: 'れない', replace: ['る'], tag: 'Thể Khả năng Phủ định (Ra-nuki)', form: 'Khả năng Phủ định' },
+  { suffix: 'れた', replace: ['る'], tag: 'Thể Khả năng Quá khứ (Ra-nuki)', form: 'Khả năng Quá khứ' },
+
+  // Sai khiến rút gọn (Godan Causative-Passive)
+  { suffix: 'かされる', replace: ['く'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'がされる', replace: ['ぐ'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'たされる', replace: ['つ'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'ばされる', replace: ['ぶ'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'まされる', replace: ['む'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'わされる', replace: ['う'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+  { suffix: 'らされる', replace: ['る'], tag: 'Thể Bị ép làm (〜される)', form: 'Bị động Sai khiến rút gọn' },
+
+  // Dở dang / Suýt nữa
+  { suffix: 'かけ', replace: ['る', 'く', 'ぐ', 'す', 'つ', 'ぬ', 'ぶ', 'む', 'う'], tag: 'Thể Dở dang (〜かけ)', form: 'Đang dở dang' },
+  { suffix: 'かけた', replace: ['る', 'く', 'ぐ', 'す', 'つ', 'ぬ', 'ぶ', 'む', 'う'], tag: 'Thể Suýt nữa / Dở dang (〜かけた)', form: 'Suýt nữa / Dở dang' },
+
+  // Cụm động từ chuyển động liên kết (〜てくる / 〜ていく)
+  { suffix: 'てきて', replace: ['てくる', 'て来る'], tag: 'Thể Làm rồi lại đây (〜てきて)', form: 'Hướng lại Thể て' },
+  { suffix: 'てきた', replace: ['てくる', 'て来る'], tag: 'Thể Làm rồi lại đây (〜てきた)', form: 'Hướng lại Quá khứ' },
+  { suffix: 'てって', replace: ['ていく', 'て行く'], tag: 'Văn nói (〜てって) [Làm rồi đi]', form: 'Hướng đi Thể て (Văn nói)' },
+  { suffix: 'てった', replace: ['ていく', 'て行く'], tag: 'Văn nói (〜てった) [Làm rồi đi]', form: 'Hướng đi Quá khứ (Văn nói)' },
+  { suffix: 'てく', replace: ['ていく', 'て行く'], tag: 'Văn nói (〜てく) [Làm rồi đi]', form: 'Hướng đi (Văn nói)' }
+];
+
+GRAMMAR_DEINFLECT_PATTERNS.push(...EXTRA_DEINFLECT_RULES);
+// Sắp xếp quy tắc theo độ dài đuôi giảm dần (Greedy Longest-Suffix Match) để ưu tiên nhận diện chuẩn xác nhất
+GRAMMAR_DEINFLECT_PATTERNS.sort((a, b) => b.suffix.length - a.suffix.length);
+
+
+// Kho từ vựng mở rộng bổ sung các từ thông dụng JLPT N5 - N2, thành ngữ & cụm quán ngữ
+const JP_DICTIONARY_EXTENSIONS = {
+  // Trợ từ thông dụng trong câu (tránh bị map nhầm sang từ đồng âm như 歯, 二, 蚊)
+  "は": { r: "わ", speechText: "わ", m: "Trợ từ Chủ đề / Chủ ngữ câu (phát âm là [wa])", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "へ": { r: "え", speechText: "え", m: "Trợ từ chỉ Hướng di chuyển 'Tới / Đến' (phát âm là [e])", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "を": { r: "お", speechText: "お", m: "Trợ từ Tân ngữ trực tiếp chịu tác động của hành động", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "に": { r: "に", speechText: "に", m: "Trợ từ chỉ Nơi chốn, thời gian, mục đích, đối tượng", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "で": { r: "で", speechText: "で", m: "Trợ từ chỉ Nơi diễn ra hành động, phương tiện, phương pháp, nguyên nhân", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "が": { r: "が", speechText: "が", m: "Trợ từ Chủ ngữ trực tiếp / Nhưng, tuy nhiên", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "と": { r: "と", speechText: "と", m: "Trợ từ 'Và', 'Cùng với' / Đánh dấu trích dẫn lời nói", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "も": { r: "も", speechText: "も", m: "Trợ từ 'Cũng' (đồng nhất tính chất)", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "か": { r: "か", speechText: "か", m: "Trợ từ Nghi vấn cuối câu 'Có phải không?' / Hoặc là", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "の": { r: "の", speechText: "の", m: "Trợ từ Sở hữu 'Của' / Danh từ hóa", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "から": { r: "から", speechText: "から", m: "Trợ từ 'Từ' (điểm bắt đầu) / Vì vậy, bởi vì", t: "Trợ từ N5", pos: "prt", p: 1 },
+  "まで": { r: "まで", speechText: "まで", m: "Trợ từ 'Đến tận' (điểm kết thúc, giới hạn)", t: "Trợ từ N5", pos: "prt", p: 1 },
+  "より": { r: "より", speechText: "より", m: "Trợ từ So sánh 'Hơn so với'", t: "Trợ từ N5", pos: "prt", p: 0 },
+  "日": { r: "ひ", speechText: "ひ", m: "Mặt trời, ban ngày, ngày", t: "Danh từ N5", pos: "n", p: 0 },
+  "時": { r: "とき", speechText: "とき", m: "Thời gian, lúc, khi (子供の時: lúc còn nhỏ)", t: "Danh từ N5", pos: "n", p: 2 },
+  "年": { r: "とし", speechText: "とし", m: "Năm, tuổi tác (年を取る: thêm tuổi)", t: "Danh từ N5", pos: "n", p: 2 },
+  "分": { r: "ぶん", speechText: "ぶん", m: "Phần, tỷ lệ, bổn phận (自分の分: phần của mình)", t: "Danh từ N4", pos: "n", p: 1 },
+  "方": { r: "ほう", speechText: "ほう", m: "Phía, bên, phương diện so sánh / Vị (ngài - đọc kata)", t: "Danh từ N5", pos: "n", p: 1 },
+  "何": { r: "なに", speechText: "なに", m: "Cái gì? Gì? (khi đứng trước です, だ hoặc Lượng từ đọc là [なん])", t: "Nghi vấn từ N5", pos: "pn", p: 1 },
+  "仕事": { r: "しごと", m: "Công việc, nghề nghiệp", t: "Danh từ N5", pos: "n", p: 0 },
+  "問題": { r: "もんだい", m: "Vấn đề, câu hỏi, sự phiền toái", t: "Danh từ N4", pos: "n", p: 0 },
+  "世界": { r: "せかい", m: "Thế giới, vũ trụ", t: "Danh từ N4", pos: "n", p: 1 },
+  "将来": { r: "しょうらい", m: "Tương lai (gần, tiền đồ)", t: "Danh từ N4", pos: "n", p: 1 },
+  "未来": { r: "みらい", m: "Tương lai (xa)", t: "Danh từ N3", pos: "n", p: 1 },
+  "方法": { r: "ほうほう", m: "Phương pháp, cách thức", t: "Danh từ N4", pos: "n", p: 0 },
+  "関係": { r: "かんけい", m: "Quan hệ, liên quan", t: "Danh từ N4", pos: "n", p: 0 },
+  "結果": { r: "けっか", m: "Kết quả, chung cuộc", t: "Danh từ N4", pos: "n", p: 0 },
+  "成功": { r: "せいこう", m: "Thành công", t: "Danh từ N3", pos: "n,vs", p: 0 },
+  "失敗": { r: "しっぱい", m: "Thất bại", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "約束": { r: "やくそく", m: "Lời hứa, cuộc hẹn", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "連絡": { r: "れんらく", m: "Liên lạc, thông báo", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "相談": { r: "そうだん", m: "Thảo luận, trao đổi ý kiến", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "準備": { r: "じゅんび", m: "Chuẩn bị, sắp xếp", t: "Danh từ N4", pos: "n,vs", p: 1 },
+  "注意": { r: "ちゅうい", m: "Chú ý, nhắc nhở, cẩn thận", t: "Danh từ N4", pos: "n,vs", p: 1 },
+  "生活": { r: "せいかつ", m: "Đời sống, sinh hoạt", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "最近": { r: "さいきん", m: "Gần đây, dạo này", t: "Phó từ / Danh từ N4", pos: "n,adv", p: 0 },
+  "最初": { r: "さいしょ", m: "Đầu tiên, lúc đầu", t: "Danh từ N4", pos: "n", p: 0 },
+  "最後": { r: "さいご", m: "Cuối cùng, sau chót", t: "Danh từ N4", pos: "n", p: 1 },
+  "経験": { r: "けいけん", m: "Kinh nghiệm, trải nghiệm", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "質問": { r: "しつもん", m: "Câu hỏi, thắc mắc", t: "Danh từ N5", pos: "n,vs", p: 0 },
+  "理由": { r: "りゆう", m: "Lý do, nguyên nhân", t: "Danh từ N4", pos: "n", p: 0 },
+  "意味": { r: "いみ", m: "Ý nghĩa", t: "Danh từ N4", pos: "n,vs", p: 1 },
+  "計画": { r: "けいかく", m: "Kế hoạch, dự định", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "意見": { r: "いけん", m: "Ý kiến, quan điểm", t: "Danh từ N4", pos: "n", p: 1 },
+  "説明": { r: "せつめい", m: "Giải thích, thuyết minh", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "案内": { r: "あんない", m: "Hướng dẫn, dẫn đường", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "紹介": { r: "しょうかい", m: "Giới thiệu", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "参加": { r: "さんか", m: "Tham gia", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "利用": { r: "りよう", m: "Sử dụng, tận dụng", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "研究": { r: "けんきゅう", m: "Nghiên cứu", t: "Danh từ N4", pos: "n,vs", p: 0 },
+  "変化": { r: "へんか", m: "Biến hóa, sự thay đổi", t: "Danh từ N3", pos: "n,vs", p: 1 },
+  "簡単": { r: "かんたん", m: "Đơn giản, dễ dàng", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "複雑": { r: "ふくざつ", m: "Phức tạp, rắc rối", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "安全": { r: "あんぜん", m: "An toàn", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "危険": { r: "きけん", m: "Nguy hiểm", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "自由": { r: "じゆう", m: "Tự do", t: "Tính từ -na N4", pos: "adj-na", p: 2 },
+  "親切": { r: "しんせつ", m: "Tốt bụng, thân thiện, tử tế", t: "Tính từ -na N5", pos: "adj-na", p: 1 },
+  "丁寧": { r: "ていねい", m: "Lịch sự, cẩn thận, chu đáo", t: "Tính từ -na N4", pos: "adj-na", p: 1 },
+  "大切": { r: "たいせつ", m: "Quan trọng, quý giá", t: "Tính từ -na N5", pos: "adj-na", p: 0 },
+  "大事": { r: "だいじ", m: "Hệ trọng, quan trọng", t: "Tính từ -na N4", pos: "adj-na", p: 3 },
+  "有名": { r: "ゆうめい", m: "Nổi tiếng", t: "Tính từ -na N5", pos: "adj-na", p: 0 },
+  "便利": { r: "べんり", m: "Tiện lợi, thuận tiện", t: "Tính từ -na N5", pos: "adj-na", p: 1 },
+  "不便": { r: "ふべん", m: "Bất tiện", t: "Tính từ -na N4", pos: "adj-na", p: 1 },
+  "静か": { r: "しずか", m: "Yên tĩnh, thanh bình", t: "Tính từ -na N5", pos: "adj-na", p: 1 },
+  "賑やか": { r: "にぎやか", m: "Náo nhiệt, sôi động", t: "Tính từ -na N5", pos: "adj-na", p: 2 },
+  "必要": { r: "ひつよう", m: "Cần thiết", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "特別": { r: "とくべつ", m: "Đặc biệt", t: "Tính từ -na N4", pos: "adj-na", p: 0 },
+  "嬉しい": { r: "うれしい", m: "Vui mừng, sung sướng", t: "Tính từ -i N4", pos: "adj-i", p: 3 },
+  "悲しい": { r: "かなしい", m: "Đau buồn, thương tâm", t: "Tính từ -i N4", pos: "adj-i", p: 3 },
+  "寂しい": { r: "さびしい", m: "Cô đơn, buồn bã", t: "Tính từ -i N4", pos: "adj-i", p: 3 },
+  "優しい": { r: "やさしい", m: "Dịu dàng, hiền lành, nhân hậu", t: "Tính từ -i N5", pos: "adj-i", p: 0 },
+  "易しい": { r: "やさしい", m: "Dễ, đơn giản", t: "Tính từ -i N5", pos: "adj-i", p: 0 },
+  "忙しい": { r: "いそがしい", m: "Bận rộn", t: "Tính từ -i N5", pos: "adj-i", p: 4 },
+  "可愛い": { r: "かわいい", m: "Dễ thương, đáng yêu", t: "Tính từ -i N4", pos: "adj-i", p: 3 },
+  "綺麗": { r: "きれい", m: "Đẹp, sạch sẽ", t: "Tính từ -na N5", pos: "adj-na", p: 1 },
+  "痛い": { r: "いたい", m: "Đau, nhức", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "暑い": { r: "あつい", m: "Nóng (thời tiết)", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "熱い": { r: "あつい", m: "Nóng (nhiệt độ đồ vật, nước)", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "寒い": { r: "さむい", m: "Lạnh (thời tiết)", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "冷たい": { r: "つめたい", m: "Lạnh (đồ vật, nước, tính cách)", t: "Tính từ -i N5", pos: "adj-i", p: 0 },
+  "早い": { r: "はやい", m: "Sớm (thời gian)", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "速い": { r: "はやい", m: "Nhanh (tốc độ)", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "遅い": { r: "おそい", m: "Chậm chạp, muộn", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "狭い": { r: "せまい", m: "Hẹp, chật chội", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "広い": { r: "ひろい", m: "Rộng rãi", t: "Tính từ -i N5", pos: "adj-i", p: 2 },
+  "暗い": { r: "くらい", m: "Tối tăm, u ám", t: "Tính từ -i N5", pos: "adj-i", p: 0 },
+  "明るい": { r: "あかるい", m: "Sáng sủa, tươi vui", t: "Tính từ -i N5", pos: "adj-i", p: 0 },
+
+  // Thành ngữ 4 chữ (Yojijukugo) & Cụm quán ngữ tiếng Nhật
+  "一期一会": { r: "いちごいちえ", m: "Nhất kỳ nhất hội: Đời người chỉ gặp một lần, hãy trân trọng khoảnh khắc", t: "Thành ngữ 4 chữ", pos: "exp,yoji", p: 0 },
+  "手に入れる": { r: "てにいれる", m: "Đạt được, sở hữu trong tay", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "気にする": { r: "きにする", m: "Để ý, bận tâm, lo nghĩ", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "気になる": { r: "きになる", m: "Tò mò, lo lắng, băn khoăn", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "役に立つ": { r: "やくにたつ", m: "Có ích, hữu dụng", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "世話をする": { r: "せわをする", m: "Chăm sóc, giúp đỡ", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "思い切って": { r: "おもいきって", m: "Dứt khoát, quyết tâm, đánh bạo làm", t: "Phó từ quán ngữ", pos: "adv", p: 3 },
+  "言うまでもない": { r: "いうまでもない", m: "Không cần phải nói cũng biết, dĩ nhiên", t: "Cụm quán ngữ", pos: "exp", p: 0 },
+  "お疲れ様": { r: "おつかれさま", m: "Bạn đã vất vả rồi (lời chào sau giờ làm việc)", t: "Chào hỏi thông dụng", pos: "exp", p: 0 },
+  "お世話になります": { r: "おせわになります", m: "Cảm ơn vì đã luôn chiếu cố, giúp đỡ", t: "Kính ngữ thông dụng", pos: "exp", p: 0 },
+  "よろしくお願いいたします": { r: "よろしくおねがいいたします", m: "Rất mong nhận được sự giúp đỡ của quý vị (kính ngữ cao)", t: "Kính ngữ thông dụng", pos: "exp", p: 0 },
+
+  // Từ lặp chữ Hán (Rendaku - Biến âm lặp từ 々)
+  "人々": { r: "ひとびと", speechText: "ひとびと", m: "Mọi người, con người, quần chúng", t: "Danh từ N4", pos: "n", p: 2 },
+  "日々": { r: "ひび", speechText: "ひび", m: "Mỗi ngày, ngày qua ngày, chuỗi ngày", t: "Danh từ N3", pos: "n", p: 1 },
+  "島々": { r: "しまじま", speechText: "しまじま", m: "Các hòn đảo, quần đảo", t: "Danh từ N3", pos: "n", p: 2 },
+  "国々": { r: "くにぐに", speechText: "くにぐに", m: "Các quốc gia, các nước", t: "Danh từ N3", pos: "n", p: 2 },
+  "木々": { r: "きぎ", speechText: "きぎ", m: "Các hàng cây, cây cối", t: "Danh từ N3", pos: "n", p: 1 },
+  "様々": { r: "さまざま", speechText: "さまざま", m: "Đa dạng, phong phú, nhiều vẻ", t: "Tính từ -na N4", pos: "adj-na,n", p: 2 },
+  "近々": { r: "ちかぢか", speechText: "ちかぢか", m: "Sắp tới, trong tương lai gần", t: "Phó từ N3", pos: "adv", p: 1 },
+  "山々": { r: "やまやま", speechText: "やまやま", m: "Các dãy núi, nhiều núi / Rất muốn (yếu tố tâm lý)", t: "Danh từ N3", pos: "n", p: 2 },
+  "色々": { r: "いろいろ", speechText: "いろいろ", m: "Nhiều loại, phong phú, đủ thứ", t: "Tính từ -na N5", pos: "adj-na,adv", p: 0 },
+
+  // Từ nghi vấn và Lượng từ đặc biệt thường gặp
+  "何人": { r: "なんにん", speechText: "なんにん", m: "Mấy người? (Đọc là [なんにん] khi hỏi số lượng người; đọc là [なにじん] khi hỏi quốc tịch)", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何時": { r: "なんじ", speechText: "なんじ", m: "Mấy giờ?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何分": { r: "なんぷん", speechText: "なんぷん", m: "Mấy phút?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何月": { r: "なんがつ", speechText: "なんがつ", m: "Tháng mấy?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何日": { r: "なんにち", speechText: "なんにち", m: "Ngày mấy? Mấy ngày?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何年": { r: "なんねん", speechText: "なんねん", m: "Năm mấy? Mấy năm?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "何歳": { r: "なんさい", speechText: "なんさい", m: "Mấy tuổi?", t: "Nghi vấn từ N5", pos: "num", p: 1 },
+  "一日": { r: "ついたち", speechText: "ついたち", m: "Ngày mùng 1 đầu tháng (Đọc [ついたち]); Khoảng thời gian 1 ngày (Đọc [いちにち])", t: "Danh từ / Số từ N5", pos: "n,num", p: 4 },
+  "一人": { r: "ひとり", speechText: "ひとり", m: "1 người, một mình (Đặc biệt thuần Nhật)", t: "Số từ N5", pos: "n,num", p: 2 },
+  "二人": { r: "ふたり", speechText: "ふたり", m: "2 người, hai người (Đặc biệt thuần Nhật)", t: "Số từ N5", pos: "n,num", p: 3 },
+  "四人": { r: "よにん", speechText: "よにん", m: "4 người (Đọc chuẩn là [よにん])", t: "Số từ N5", pos: "num", p: 2 },
+  "二十日": { r: "はつか", speechText: "はつか", m: "Ngày 20 trong tháng (Đặc biệt: [はつか])", t: "Số từ N5", pos: "n,num", p: 0 },
+  "二十歳": { r: "はたち", speechText: "はたち", m: "20 tuổi (Tuổi trưởng thành - Đặc biệt: [はたち])", t: "Số từ N5", pos: "n,num", p: 1 },
+
+  // Các từ đa âm, từ ghép phổ biến dễ bị phát âm sai
+  "何故": { r: "なぜ", speechText: "なぜ", m: "Tại sao? Vì sao?", t: "Phó từ N4", pos: "adv", p: 1 },
+  "何で": { r: "なんで", speechText: "なんで", m: "Tại sao? / Bằng phương tiện gì?", t: "Phó từ N5", pos: "adv", p: 0 },
+  "何と": { r: "なんと", speechText: "なんと", m: "Cái gì / Xiết bao, biết bao (thán từ)", t: "Phó từ N3", pos: "adv", p: 1 },
+  "何曜日": { r: "なんようび", speechText: "なんようび", m: "Thứ mấy?", t: "Nghi vấn từ N5", pos: "num", p: 3 },
+  "日本人": { r: "にほんじん", speechText: "にほんじん", m: "Người Nhật Bản", t: "Danh từ N5", pos: "n", p: 4 },
+  "外国人": { r: "がいこくじん", speechText: "がいこくじん", m: "Người nước ngoài", t: "Danh từ N5", pos: "n", p: 4 },
+  "アメリカ人": { r: "あめりかじん", speechText: "あめりかじん", m: "Người Mỹ", t: "Danh từ N5", pos: "n", p: 4 },
+  "ベトナム人": { r: "べとなむじん", speechText: "べとなむじん", m: "Người Việt Nam", t: "Danh từ N5", pos: "n", p: 4 },
+  "誕生日": { r: "たんじょうび", speechText: "たんじょうび", m: "Ngày sinh nhật", t: "Danh từ N5", pos: "n", p: 3 },
+  "生ビール": { r: "なまビール", speechText: "なまビール", m: "Bia tươi", t: "Danh từ N4", pos: "n", p: 3 },
+  "一方": { r: "いっぽう", speechText: "いっぽう", m: "Một mặt, một phía / Ngày càng", t: "Danh từ N3", pos: "n,adv", p: 0 },
+  "味方": { r: "みかた", speechText: "みかた", m: "Đồng minh, người cùng phe", t: "Danh từ N3", pos: "n", p: 0 },
+  "あの方": { r: "あのかた", speechText: "あのかた", m: "Vị ấy, ngài ấy (kính ngữ của あの人)", t: "Đại từ N5", pos: "pn", p: 0 },
+  "読み方": { r: "よみかた", speechText: "よみかた", m: "Cách đọc, cách phát âm", t: "Danh từ N5", pos: "n", p: 3 },
+  "書き方": { r: "かきかた", speechText: "かきかた", m: "Cách viết", t: "Danh từ N5", pos: "n", p: 3 },
+  "使い方": { r: "つかいかた", speechText: "つかいかた", m: "Cách dùng, cách sử dụng", t: "Danh từ N5", pos: "n", p: 3 },
+  "見方": { r: "みかた", speechText: "みかた", m: "Cách nhìn, quan điểm", t: "Danh từ N3", pos: "n", p: 3 },
+  "話し方": { r: "はなしかた", speechText: "はなしかた", m: "Cách nói chuyện", t: "Danh từ N4", pos: "n", p: 3 },
+  "作り方": { r: "つくりかた", speechText: "つくりかた", m: "Cách làm, cách nấu", t: "Danh từ N5", pos: "n", p: 3 },
+  "やり方": { r: "やりかた", speechText: "やりかた", m: "Cách làm, phương pháp", t: "Danh từ N4", pos: "n", p: 0 },
+  "食べ物": { r: "たべもの", speechText: "たべもの", m: "Đồ ăn, thức ăn", t: "Danh từ N5", pos: "n", p: 3 },
+  "飲み物": { r: "のみもの", speechText: "のみもの", m: "Đồ uống, nước giải khát", t: "Danh từ N5", pos: "n", p: 2 },
+  "買い物": { r: "かいもの", speechText: "かいもの", m: "Mua sắm", t: "Danh từ N5", pos: "n", p: 0 },
+  "乗り物": { r: "のりもの", speechText: "のりもの", m: "Phương tiện giao thông", t: "Danh từ N4", pos: "n", p: 0 },
+  "一生": { r: "いっしょう", speechText: "いっしょう", m: "Cả đời, một đời", t: "Danh từ N3", pos: "n,adv", p: 0 },
+  "半分": { r: "はんぶん", speechText: "はんぶん", m: "Một nửa", t: "Danh từ N5", pos: "n", p: 0 },
+  "素人": { r: "しろうと", speechText: "しろうと", m: "Người nghiệp dư, chưa có kinh nghiệm", t: "Danh từ N3", pos: "n", p: 1 },
+  "玄人": { r: "くろうと", speechText: "くろうと", m: "Chuyên gia, người trong nghề", t: "Danh từ N1", pos: "n", p: 1 },
+  "人気": { r: "にんき", speechText: "にんき", m: "Được yêu thích, nổi tiếng", t: "Danh từ N4", pos: "n,adj-na", p: 0 },
+  "行列": { r: "ぎょうれつ", speechText: "ぎょうれつ", m: "Hàng người, đám rước", t: "Danh từ N3", pos: "n", p: 0 }
+};
+
+// Gộp từ vựng mở rộng vào từ điển chính
+Object.assign(JP_DICTIONARY, JP_DICTIONARY_EXTENSIONS);
+
+if (typeof JP_DICTIONARY_EXPANDED !== 'undefined') {
+  Object.assign(JP_DICTIONARY, JP_DICTIONARY_EXPANDED);
+} else if (typeof require !== 'undefined') {
+  try {
+    const ext = require('./dictionary_expanded.js');
+    if (ext && ext.JP_DICTIONARY_EXPANDED) {
+      Object.assign(JP_DICTIONARY, ext.JP_DICTIONARY_EXPANDED);
+    }
+  } catch (_) {}
+}
+
+// 3. Xây dựng Bảng Chỉ mục Tra chéo Kana -> Kanji (Bidirectional Reading Index)
+const READING_TO_WORDS_MAP = new Map();
+
+function buildReadingIndex() {
+  for (const [w, item] of Object.entries(JP_DICTIONARY)) {
+    if (item && item.r && item.r !== w) {
+      if (!READING_TO_WORDS_MAP.has(item.r)) {
+        READING_TO_WORDS_MAP.set(item.r, []);
+      }
+      READING_TO_WORDS_MAP.get(item.r).push(w);
+    }
+  }
+}
+buildReadingIndex();
+
+// Bộ nhớ đệm tra cứu nhanh LRU Cache
+const LOOKUP_CACHE = new Map();
+
 /**
- * Tra từ điển tiếng Nhật với giải thuật de-inflection ngữ pháp sâu
+ * Tìm kiếm mục từ điển theo từ viết bằng Kanji hoặc đọc bằng Kana
+ */
+function findDictionaryEntry(text) {
+  if (JP_DICTIONARY[text]) {
+    return { baseWord: text, item: JP_DICTIONARY[text], isKanaMatch: false };
+  }
+  if (READING_TO_WORDS_MAP.has(text)) {
+    const kanjiKey = READING_TO_WORDS_MAP.get(text)[0];
+    return { baseWord: kanjiKey, item: JP_DICTIONARY[kanjiKey], isKanaMatch: true };
+  }
+  return null;
+}
+
+/**
+ * Tính toán cách đọc Furigana / Kana chính xác cho từ bề mặt sau khi biến hình chia đuôi (Surface Reading)
+ * Tránh lỗi hiển thị thể nguyên mẫu (như [起きます] bị hiển thị nhầm thành [おきる] thay vì [おきます])
+ * @param {string} surfaceWord Từ đang hiển thị trên web (ví dụ: 起きます, 食べた, 美しかった, 連れて来ます)
+ * @param {string} baseWord Từ gốc nguyên mẫu (ví dụ: 起きる, 食べる, 美しい, 連れて来る)
+ * @param {string} baseReading Cách đọc từ gốc (ví dụ: おきる, たべる, うつくしい, つれてくる)
+ * @returns {string} Cách đọc chính xác của từ bề mặt (ví dụ: おきます, たべた, うつくしかった, つれてきます)
+ */
+/**
+ * Tách và căn chỉnh cách đọc Kana tương ứng cho từng khối Kanji trong từ gốc
+ * Dựa trên các mỏ neo Hiragana (Okurigana) bất biến
+ */
+function alignKanjiReading(baseWord, baseReading) {
+  const blocks = [];
+  let i = 0;
+  while (i < baseWord.length) {
+    const isK = /[一-龯]/.test(baseWord[i]);
+    let j = i + 1;
+    while (j < baseWord.length && (/[一-龯]/.test(baseWord[j]) === isK)) {
+      j++;
+    }
+    blocks.push({ text: baseWord.slice(i, j), isKanji: isK });
+    i = j;
+  }
+
+  // Nếu baseWord gồm 1 Kanji block và 1 Kana block ở cuối (ví dụ: 良い, 食べる, 行く, 美しい...)
+  if (blocks.length === 2 && blocks[0].isKanji && !blocks[1].isKanji) {
+    const okurigana = blocks[1].text;
+    if (baseReading.endsWith(okurigana)) {
+      blocks[0].reading = baseReading.slice(0, baseReading.length - okurigana.length);
+      blocks[1].reading = okurigana;
+      const m = new Map();
+      m.set(blocks[0].text, blocks[0].reading);
+      return m;
+    }
+  }
+
+  // Căn chỉnh 2 đầu (Right-to-Left cho Okurigana đuôi và Left-to-Right cho tiền tố)
+  let rEnd = baseReading.length;
+  let bEnd = blocks.length - 1;
+  while (bEnd >= 0 && !blocks[bEnd].isKanji) {
+    const ok = blocks[bEnd].text;
+    if (baseReading.slice(0, rEnd).endsWith(ok)) {
+      blocks[bEnd].reading = ok;
+      rEnd -= ok.length;
+      bEnd--;
+    } else {
+      break;
+    }
+  }
+
+  let rStart = 0;
+  let bStart = 0;
+  while (bStart <= bEnd && !blocks[bStart].isKanji) {
+    const pre = blocks[bStart].text;
+    if (baseReading.slice(rStart, rEnd).startsWith(pre)) {
+      blocks[bStart].reading = pre;
+      rStart += pre.length;
+      bStart++;
+    } else {
+      break;
+    }
+  }
+
+  if (bStart === bEnd && blocks[bStart].isKanji) {
+    blocks[bStart].reading = baseReading.slice(rStart, rEnd);
+  } else {
+    let rIdx = rStart;
+    for (let b = bStart; b <= bEnd; b++) {
+      const block = blocks[b];
+      if (!block.isKanji) {
+        const foundPos = baseReading.lastIndexOf(block.text, rEnd);
+        if (foundPos !== -1 && foundPos >= rIdx) {
+          if (b > bStart && blocks[b - 1].isKanji && !blocks[b - 1].reading) {
+            blocks[b - 1].reading = baseReading.slice(rIdx, foundPos);
+          }
+          block.reading = block.text;
+          rIdx = foundPos + block.text.length;
+        }
+      } else if (b === bEnd) {
+        block.reading = baseReading.slice(rIdx, rEnd);
+      }
+    }
+  }
+
+  const kanjiMap = new Map();
+  for (const b of blocks) {
+    if (b.isKanji && b.reading) {
+      kanjiMap.set(b.text, b.reading);
+    }
+  }
+  return kanjiMap;
+}
+
+/**
+ * Tính toán cách đọc Furigana / Kana chính xác cho từ bề mặt sau khi biến hình chia đuôi (Surface Reading)
+ * Tránh lỗi hiển thị thể nguyên mẫu (như [起きます] bị hiển thị nhầm thành [おきる] thay vì [おきます])
+ * @param {string} surfaceWord Từ đang hiển thị trên web (ví dụ: 連れてって, 立ち上がった, 食べた, 美しかった)
+ * @param {string} baseWord Từ gốc nguyên mẫu (ví dụ: 連れて行く, 立ち上がる, 食べる, 美しい)
+ * @param {string} baseReading Cách đọc từ gốc (ví dụ: つれていく, たちあがる, たべる, うつくしい)
+ * @returns {string} Cách đọc chính xác của từ bề mặt (ví dụ: つれてって, たちあがった, たべた, うつくしかった)
+ */
+function computeSurfaceReading(surfaceWord, baseWord, baseReading) {
+  if (!surfaceWord || !baseWord || !baseReading) return baseReading || surfaceWord || '';
+  if (surfaceWord === baseWord) return baseReading;
+  if (/^[\u3040-\u309Fー]+$/.test(surfaceWord)) return surfaceWord;
+
+  // Xử lý động từ đặc biệt 来る (kuru / ki / ko)
+  let workingSurface = surfaceWord;
+  if (baseWord === '来る' || baseWord.endsWith('来る')) {
+    if (/来(ま|た|て|ち)/.test(workingSurface)) {
+      workingSurface = workingSurface.replace(/来/g, 'き');
+    } else if (/来(な|よ|ら|さ|せ)/.test(workingSurface)) {
+      workingSurface = workingSurface.replace(/来/g, 'こ');
+    } else {
+      workingSurface = workingSurface.replace(/来/g, 'く');
+    }
+  }
+
+  // Căn chỉnh Kanji và bóc tách thay thế chính xác từng chữ Hán
+  const kanjiMap = alignKanjiReading(baseWord, baseReading);
+  let res = workingSurface;
+  for (const [kText, kReading] of kanjiMap.entries()) {
+    res = res.split(kText).join(kReading);
+  }
+
+  // Fallback: nếu vẫn còn Kanji chưa chuyển đổi (ví dụ cụm từ đặc biệt)
+  if (/[一-龯]/.test(res)) {
+    let commonPrefixLen = 0;
+    while (commonPrefixLen < surfaceWord.length && commonPrefixLen < baseWord.length && surfaceWord[commonPrefixLen] === baseWord[commonPrefixLen]) {
+      commonPrefixLen++;
+    }
+    const baseSuffix = baseWord.slice(commonPrefixLen);
+    const surfaceSuffix = surfaceWord.slice(commonPrefixLen);
+    if (baseReading.endsWith(baseSuffix) && baseSuffix.length > 0) {
+      const readingStem = baseReading.slice(0, baseReading.length - baseSuffix.length);
+      return readingStem + surfaceSuffix;
+    }
+  }
+
+  return res;
+}
+
+/**
+ * Tra từ điển tiếng Nhật với giải thuật De-inflection Đệ quy Đa tầng (Recursive Multi-pass BFS)
  * @param {string} word 
- * @returns {object|null} { word, baseWord, reading, meaning, type, pos, pitch, grammarTags, grammarForm }
+ * @returns {object|null} { word, baseWord, reading, baseReading, meaning, type, pos, pitch, grammarTags, grammarForm }
  */
 function lookupJapaneseWord(word) {
-  if (!word) return null;
+  if (!word || typeof word !== 'string') return null;
   const cleanWord = word.trim();
+  if (!cleanWord) return null;
 
-  // 1. Khớp từ điển trực tiếp
-  if (JP_DICTIONARY[cleanWord]) {
-    const item = JP_DICTIONARY[cleanWord];
-    return {
+  if (LOOKUP_CACHE.has(cleanWord)) {
+    return LOOKUP_CACHE.get(cleanWord);
+  }
+
+  // 1. Khớp từ điển trực tiếp (Kanji hoặc Kana)
+  const direct = findDictionaryEntry(cleanWord);
+  if (direct) {
+    const result = {
       word: cleanWord,
-      baseWord: cleanWord,
-      reading: item.r,
-      meaning: item.m,
-      type: item.t,
-      pos: item.pos || '',
-      pitch: typeof item.p !== 'undefined' ? item.p : null,
+      baseWord: direct.baseWord,
+      reading: direct.item.r,
+      baseReading: direct.item.r,
+      meaning: direct.item.m,
+      type: direct.item.t,
+      pos: direct.item.pos || '',
+      pitch: typeof direct.item.p !== 'undefined' ? direct.item.p : null,
       grammarTags: [],
       grammarForm: 'Nguyên mẫu (辞書形)'
     };
+    cacheLookup(cleanWord, result);
+    return result;
   }
 
-  // 2. Tra cứu qua De-inflection
-  for (const rule of GRAMMAR_DEINFLECT_PATTERNS) {
-    if (cleanWord.endsWith(rule.suffix)) {
-      const stem = cleanWord.slice(0, -rule.suffix.length);
-      for (const rep of rule.replace) {
-        const candidate = stem + rep;
-        if (JP_DICTIONARY[candidate]) {
-          const item = JP_DICTIONARY[candidate];
-          return {
-            word: cleanWord,
-            baseWord: candidate,
-            reading: item.r,
-            meaning: `[Gốc: ${candidate}]: ${item.m}`,
-            type: item.t,
-            pos: item.pos || '',
-            pitch: typeof item.p !== 'undefined' ? item.p : null,
-            grammarTags: [rule.tag],
-            grammarForm: rule.form
-          };
+  // 2. Tra cứu đệ quy BFS qua cây biến hình ngữ pháp (tối đa 4 tầng de-inflection)
+  const queue = [{ text: cleanWord, tags: [], forms: [], depth: 0 }];
+  const visited = new Set([cleanWord]);
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    if (cur.depth >= 4) continue;
+
+    for (const rule of GRAMMAR_DEINFLECT_PATTERNS) {
+      if (cur.text.endsWith(rule.suffix)) {
+        const stem = cur.text.slice(0, -rule.suffix.length);
+        for (const rep of rule.replace) {
+          const candidate = stem + rep;
+          if (visited.has(candidate)) continue;
+          visited.add(candidate);
+
+          const nextTags = [...cur.tags, rule.tag];
+          const nextForms = [...cur.forms, rule.form];
+
+          const found = findDictionaryEntry(candidate);
+          if (found) {
+            const surfaceReading = computeSurfaceReading(cleanWord, found.baseWord, found.item.r);
+            const result = {
+              word: cleanWord,
+              baseWord: found.baseWord,
+              reading: surfaceReading,
+              baseReading: found.item.r,
+              meaning: `[Gốc: ${found.baseWord}]: ${found.item.m}`,
+              type: found.item.t,
+              pos: found.item.pos || '',
+              pitch: typeof found.item.p !== 'undefined' ? found.item.p : null,
+              grammarTags: nextTags,
+              grammarForm: nextForms.join(' + ')
+            };
+            cacheLookup(cleanWord, result);
+            return result;
+          }
+
+          if (cur.depth + 1 < 4) {
+            queue.push({
+              text: candidate,
+              tags: nextTags,
+              forms: nextForms,
+              depth: cur.depth + 1
+            });
+          }
         }
       }
     }
   }
 
+  cacheLookup(cleanWord, null);
   return null;
+}
+
+function cacheLookup(word, result) {
+  if (LOOKUP_CACHE.size > 500) {
+    const oldest = LOOKUP_CACHE.keys().next().value;
+    LOOKUP_CACHE.delete(oldest);
+  }
+  LOOKUP_CACHE.set(word, result);
 }
 
 // Xuất ra môi trường
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { JP_DICTIONARY, lookupJapaneseWord, GRAMMAR_DEINFLECT_PATTERNS };
+  module.exports = { JP_DICTIONARY, lookupJapaneseWord, GRAMMAR_DEINFLECT_PATTERNS, READING_TO_WORDS_MAP, computeSurfaceReading };
 }
+

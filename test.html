@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧪 JP Furigana Hover - Trang Kiểm Thử Toàn Diện</title>
+  <title>🧪 JP Furigana Hover Pro (v1.4.0) - Trang Kiểm Thử Toàn Diện</title>
   <style>
     :root {
       --bg: #090d16;
@@ -168,6 +168,31 @@
       color: #fcd34d;
     }
 
+    .simulated-video-container {
+      position: relative;
+      background: #020617;
+      border-radius: 12px;
+      height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .simulated-subtitle-box {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 18px;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
     ruby {
       ruby-position: over;
     }
@@ -188,43 +213,78 @@
 <body>
   <div class="container">
     <header>
-      <div class="header-badge">TEST BENCH • KIỂM THỬ TIỆN ÍCH</div>
-      <h1>🇯🇵 JP Furigana Hover Test Suite</h1>
-      <p class="subtitle">Trang kiểm thử toàn diện các trường hợp nhận diện từ vựng, chia đuôi ngữ pháp, số đếm lượng từ, âm Hán-Việt Joyo Kanji, bôi đen dịch câu và sổ tay từ vựng.</p>
+      <div class="header-badge">TEST BENCH • KIỂM THỬ TIỆN ÍCH (v1.4.0)</div>
+      <h1>🇯🇵 JP Furigana Hover Pro Test Suite</h1>
+      <p class="subtitle">Trang kiểm thử toàn diện các tính năng mới: Tra từ siêu tốc, Nét vẽ Kanji SVG, Furigana toàn trang, Phụ đề YouTube/Netflix, AnkiConnect 1-Click & SRS Spaced Repetition.</p>
     </header>
 
     <!-- Thẻ hướng dẫn nhanh -->
     <div class="instructions-card">
       <div class="instruction-item">
-        <span>Rê chuột:</span>
-        <strong>Xem phiên âm & nghĩa</strong>
-      </div>
-      <div class="instruction-item">
         <span>Bật/Tắt:</span>
         <kbd>Alt + J</kbd>
       </div>
       <div class="instruction-item">
-        <span>Mở rộng từ:</span>
-        <kbd>D</kbd> / <kbd>A</kbd>
+        <span>Thanh tra nhanh:</span>
+        <kbd>Alt + S</kbd>
       </div>
       <div class="instruction-item">
-        <span>Lưu vào sổ tay:</span>
-        <span>Bấm <strong>⭐</strong></span>
+        <span>Đẩy Anki:</span>
+        <kbd>E</kbd>
       </div>
       <div class="instruction-item">
-        <span>Sao chép:</span>
-        <span>Bấm <strong>📋</strong></span>
+        <span>Phát âm:</span>
+        <kbd>S</kbd>
       </div>
       <div class="instruction-item">
-        <span>Học Flashcard:</span>
-        <a href="flashcards.html" target="_blank" style="color:#38bdf8;text-decoration:none;font-weight:bold;">🎴 Mở trang Flashcards ➔</a>
+        <span>Xem nét:</span>
+        <span>Click <strong>✍️</strong></span>
+      </div>
+      <div class="instruction-item">
+        <a href="flashcards.html" target="_blank" style="color:#38bdf8;text-decoration:none;font-weight:bold;">🎴 Mở Flashcards SRS ➔</a>
       </div>
     </div>
 
-    <!-- 1. Từ vựng căn bản N5 - N4 -->
+    <!-- 1. Tính năng mới: Thanh tra cứu nhanh & Xem nét vẽ Kanji -->
+    <section class="test-section" style="border-color: rgba(56, 189, 248, 0.4);">
+      <h2 class="section-title">✨ 1. Thanh Tra cứu nhanh nổi (Alt+S) & Nét vẽ Kanji SVG</h2>
+      <div class="highlight-tip">
+        👉 <strong>Thử ngay:</strong> Nhấn tổ hợp phím <kbd>Alt + S</kbd> trên bàn phím. Một thanh Command Palette sẽ xuất hiện giữa màn hình để bạn gõ tìm kiếm bất kỳ từ nào, nghe phát âm, bấm <strong>✍️ Xem nét</strong> để xem hoạt ảnh thứ tự từng nét viết chữ Hán hoặc bấm <strong>📥 Anki</strong>!
+      </div>
+      <div class="jp-box">
+        <span class="jp-word">桜</span> (Anh - Hoa anh đào) • <span class="jp-word">夢</span> (Mộng - Ước mơ) • <span class="jp-word">道</span> (Đạo - Con đường) • <span class="jp-word">愛</span> (Ái - Tình yêu) • <span class="jp-word">心</span> (Tâm - Trái tim)
+      </div>
+    </section>
+
+    <!-- 2. Tính năng mới: Chèn Furigana toàn trang web (Alt+R) -->
+    <section class="test-section" style="border-color: rgba(16, 185, 129, 0.4);">
+      <h2 class="section-title">✨ 2. Chèn Furigana toàn trang web (Alt+R hoặc Alt+F)</h2>
+      <div class="highlight-tip" style="background: rgba(16, 185, 129, 0.1); border-left-color: #10b981; color: #6ee7b7;">
+        👉 <strong>Thử ngay:</strong> Nhấn <kbd>Alt + R</kbd> trên bàn phím (hoặc bấm nút trong popup). Toàn bộ chữ Kanji trên đoạn văn bên dưới sẽ tự động được gán thẻ phiên âm Furigana trên đầu! Nhấn lại <kbd>Alt + R</kbd> để gỡ bỏ sạch sẽ.
+      </div>
+      <div class="jp-box">
+        日本の首都は東京です。富士山は日本で一番高い山として知られています。<br>
+        春になると、全国各地の公園や川沿いで桜が美しく咲き誇り、多くの観光客が訪れます。<br>
+        日本語の文法と漢字を熱心に勉強することで、新しい世界への扉が開かれます。
+      </div>
+    </section>
+
+    <!-- 3. Tính năng mới: Rê chuột tra từ trên Phụ đề Video (YouTube & Netflix) -->
+    <section class="test-section" style="border-color: rgba(236, 72, 153, 0.4);">
+      <h2 class="section-title">🎬 3. Tra từ trực tiếp trên Phụ đề Video (Immersion Learning)</h2>
+      <p class="section-desc">Mô phỏng lớp phụ đề HTML5 của YouTube/Netflix. Bạn có thể rê chuột vào từng từ bên trong phụ đề bên dưới để tra nghĩa ngay lập tức:</p>
+      <div class="simulated-video-container">
+        <div style="color: #64748b; font-size: 14px;">[Khung video mô phỏng bài giảng / Anime tiếng Nhật]</div>
+        <div class="simulated-subtitle-box">
+          <span class="ytp-caption-segment">諦めないで、最後まで自分の力を信じて進もう！</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Từ vựng căn bản N5 - N4 & Anki 1-Click (Phím E) -->
     <section class="test-section">
-      <h2 class="section-title">1. Từ vựng & Kanji thông dụng (N5 - N4)</h2>
-      <p class="section-desc">Rê chuột vào bất kỳ từ nào để kiểm tra Furigana, Âm Hán-Việt (ví dụ: 学校 = HỌC HIỆU), Nghĩa tiếng Việt và Phát âm chuẩn.</p>
+      <h2 class="section-title">4. Từ vựng thông dụng & Đẩy Anki 1-Click (Phím E)</h2>
+      <p class="section-desc">Rê chuột vào từ để mở tooltip, sau đó bấm phím <kbd>E</kbd> hoặc nút <strong>📥 Anki</strong> trên tooltip để nạp thẳng từ vào Anki Desktop:</p>
       <div class="jp-box">
         <span class="jp-word">私</span> は <span class="jp-word">毎日</span> <span class="jp-word">学校</span> へ <span class="jp-word">行きます</span>。<br>
         <span class="jp-word">教室</span> で <span class="jp-word">先生</span> と <span class="jp-word">日本語</span> を <span class="jp-word">勉強します</span>。<br>
@@ -233,10 +293,10 @@
       </div>
     </section>
 
-    <!-- 2. Bóc tách chữ Hán (Joyo Kanji) & Từ ghép khó -->
+    <!-- 5. Bóc tách chữ Hán (Joyo Kanji) & Hoạt ảnh nét viết -->
     <section class="test-section">
-      <h2 class="section-title">2. Từ ghép nhiều chữ Kanji & Bóc tách Joyo Kanji (N3 - N1)</h2>
-      <p class="section-desc">Kiểm tra tính năng phân tích từng chữ Hán cấu thành (Kanji Decomposition) và quy tắc âm On (Hán).</p>
+      <h2 class="section-title">5. Từ ghép nhiều chữ Kanji & Bóc tách Joyo Kanji (N3 - N1)</h2>
+      <p class="section-desc">Rê chuột vào các từ phức hợp dưới đây, bấm vào chữ Hán hoặc nút ✍️ trong bảng bóc tách để xem thứ tự từng nét viết:</p>
       <div class="jp-box">
         <span class="jp-word">東京大学</span> で <span class="jp-word">経済学</span> と <span class="jp-word">情報技術</span> を <span class="jp-word">研究する</span>。<br>
         <span class="jp-word">現代社会</span> における <span class="jp-word">自然環境</span> の <span class="jp-word">保護</span> は、<span class="jp-word">人類</span> 全体の <span class="jp-word">重大</span> な <span class="jp-word">責任</span> である。<br>
@@ -244,10 +304,9 @@
       </div>
     </section>
 
-    <!-- 3. Động từ chia đuôi & De-inflection -->
+    <!-- 6. Động từ chia đuôi & De-inflection -->
     <section class="test-section">
-      <h2 class="section-title">3. Bộ phân tích chia đuôi Ngữ pháp (De-inflection Engine)</h2>
-      <p class="section-desc">Kiểm tra khả năng khôi phục về thể từ điển (nguyên mẫu) cho các thể ngữ pháp đa dạng.</p>
+      <h2 class="section-title">6. Bộ phân tích chia đuôi Ngữ pháp (De-inflection 109 quy tắc)</h2>
       <div class="grid-2">
         <div class="jp-box">
           <div style="font-size:13px;color:#38bdf8;font-weight:bold;margin-bottom:6px;">Thể Thường & Tiếp diễn:</div>
@@ -259,6 +318,9 @@
         <div class="jp-box">
           <div style="font-size:13px;color:#38bdf8;font-weight:bold;margin-bottom:6px;">Sai khiến, Bị động & Văn nói:</div>
           <span class="jp-word">食べさせられた</span> (Bị bắt ăn)<br>
+          <span class="jp-word">食べさせたくなかった</span> (Đã không muốn bắt ăn)<br>
+          <span class="jp-word">行かせたかった</span> (Đã muốn cho đi)<br>
+          <span class="jp-word">飲ませられる</span> (Bị bắt uống)<br>
           <span class="jp-word">食べちゃった</span> (Lỡ ăn mất rồi)<br>
           <span class="jp-word">飲みやすい</span> (Dễ uống)<br>
           <span class="jp-word">高すぎる</span> (Quá đắt)
@@ -266,35 +328,11 @@
       </div>
     </section>
 
-    <!-- 4. Số đếm và Lượng từ động -->
+    <!-- 7. Dịch câu khi Bôi đen -->
     <section class="test-section">
-      <h2 class="section-title">4. Số đếm & Lượng từ động (Japanese Counters)</h2>
-      <p class="section-desc">Kiểm tra bộ phân tích động số từ kèm đơn vị đếm (người, cái, tiền Yên, chai, phút, ngày...).</p>
-      <div class="jp-box">
-        <span class="jp-word">1つ</span>、<span class="jp-word">2つ</span>、<span class="jp-word">3つ</span> の りんご。<br>
-        教室 に 学生 が <span class="jp-word">3人</span> います。会議 は <span class="jp-word">10時30分</span> に 始まります。<br>
-        この 本 は <span class="jp-word">1500円</span> です。<span class="jp-word">5本</span> の ペン を 買いました。<br>
-        彼は <span class="jp-word">20歳</span> で、日本 に <span class="jp-word">2年間</span> 住んでいます。
-      </div>
-    </section>
-
-    <!-- 5. Thẻ Ruby & Furigana có sẵn trên trang -->
-    <section class="test-section">
-      <h2 class="section-title">5. Tương thích thẻ HTML Ruby & Furigana trong ngoặc</h2>
-      <p class="section-desc">Tiện ích ưu tiên lấy Furigana chính xác từ thẻ &lt;ruby&gt; của trang web mà không bao giờ làm sai lệch từ gốc.</p>
-      <div class="jp-box">
-        <ruby>大<rt>おお</rt></ruby>きい <ruby>会<rt>かい</rt>社<rt>しゃ</rt></ruby> で <ruby>働<rt>はたら</rt></ruby>く。<br>
-        <ruby>新<rt>しん</rt>幹<rt>かん</rt>線<rt>せん</rt></ruby> に <ruby>乗<rt>の</rt></ruby>って <ruby>京<rt>きょう</rt>都<rt>と</rt></ruby> へ 行きました。<br>
-        富士山 (ふじさん) は 日本一 (にほんいち) の 山 です。<br>
-        すみません、この時計（とけい）はいくらですか。
-      </div>
-    </section>
-
-    <!-- 6. Thử nghiệm Dịch câu khi Bôi đen (Selection Translate) -->
-    <section class="test-section">
-      <h2 class="section-title">6. Thử nghiệm Bôi đen dịch cả câu (Selection Translate)</h2>
+      <h2 class="section-title">7. Thử nghiệm Bôi đen dịch cả câu (Selection Translate)</h2>
       <div class="highlight-tip">
-        👉 <strong>Thử ngay:</strong> Dùng chuột kéo bôi đen toàn bộ một câu tiếng Nhật bất kỳ bên dưới, một nút mini <strong>"🇯🇵 Dịch câu"</strong> sẽ hiện ra để dịch trọn vẹn ngữ nghĩa cả câu!
+        👉 <strong>Thử ngay:</strong> Bôi đen một câu tiếng Nhật bất kỳ bên dưới để hiện nút dịch câu trực tiếp!
       </div>
       <div class="jp-box" style="user-select: text;">
         日本の春には、桜の花がとても綺麗に咲きます。多くの人々が公園に集まって、お花見を楽しみます。<br>
@@ -303,15 +341,36 @@
     </section>
 
     <footer>
-      JP Furigana Hover Pro • Tiện ích Tra cứu & Phiên âm Tiếng Nhật Cao Cấp
+      JP Furigana Hover Pro (v1.4.0) • Công cụ Học & Tra cứu Tiếng Nhật Toàn Diện Nhất
     </footer>
   </div>
 
   <!-- Nạp scripts extension cho môi trường test độc lập -->
-  <script src="data/kanji_hanviet.js"></script>
-  <script src="content/romaji.js"></script>
-  <script src="data/dictionary.js"></script>
-  <script src="content/engine.js"></script>
-  <script src="content/content.js"></script>
+  <script>
+    if (!document.documentElement.hasAttribute('data-jp-hover-injected')) {
+      const testScripts = [
+        "utils/helpers.js",
+        "utils/storage.js",
+        "utils/audio.js",
+        "utils/anki.js",
+        "utils/kanji_strokes.js",
+        "data/kanji_hanviet.js",
+        "content/romaji.js",
+        "data/grammar_rules.js",
+        "data/dictionary_expanded.js",
+        "data/dictionary.js",
+        "content/engine.js",
+        "content/subtitles.js",
+        "content/quick_search.js",
+        "content/content.js"
+      ];
+      testScripts.forEach(src => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = false;
+        document.body.appendChild(s);
+      });
+    }
+  </script>
 </body>
 </html>
