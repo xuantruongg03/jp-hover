@@ -271,6 +271,25 @@ class KanjiStrokeAnimator {
       this.playTimer = null;
     }
   }
+
+  /**
+   * Hiển thị ngay toàn bộ nét vẽ của chữ Hán mà không cần chờ hoạt ảnh
+   */
+  showAllStrokes(containerElement, strokeColor = '#0284c7') {
+    if (!containerElement) return;
+    this.stopAnimation();
+
+    const paths = Array.from(containerElement.querySelectorAll('path[data-stroke-idx]'));
+    if (!paths.length) return;
+
+    paths.forEach(p => {
+      p.style.strokeDasharray = 'none';
+      p.style.strokeDashoffset = '0';
+      p.style.opacity = '1';
+      p.style.stroke = strokeColor;
+      p.style.transition = 'none';
+    });
+  }
 }
 
 // Global instance

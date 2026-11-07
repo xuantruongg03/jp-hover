@@ -14,7 +14,7 @@
         <img src="../icons/icon48.png" class="logo-img" alt="JP Hover Logo">
         <div>
           <h1 class="title">JP Hover Pro</h1>
-          <p class="subtitle">Phiên âm, Tra cứu & SRS Tiếng Nhật (v1.4.0)</p>
+          <p class="subtitle">Phiên âm, Tra cứu & SRS Flashcards (v1.6.3)</p>
         </div>
       </div>
       
@@ -41,21 +41,44 @@
       <!-- Shortcut Panel -->
       <div class="shortcut-panel">
         <div class="shortcut-panel-title">
-          <span>⚡ Phím tắt nhanh trên trang web</span>
+          <span>⚡ Bảng phím tắt thao tác nhanh</span>
         </div>
         <div class="shortcut-grid">
           <div class="shortcut-chip">
             <kbd>Alt+J</kbd>
-            <span class="chip-label">Bật / Tắt tiện ích</span>
+            <span class="chip-label">Bật/Tắt hover</span>
           </div>
           <div class="shortcut-chip">
             <kbd>Alt+S</kbd>
             <span class="chip-label">Tra từ nhanh</span>
           </div>
           <div class="shortcut-chip">
-            <kbd>E</kbd>
-            <span class="chip-label">Lưu vào Anki</span>
+            <kbd>S</kbd>
+            <span class="chip-label">Nghe phát âm</span>
           </div>
+          <div class="shortcut-chip">
+            <kbd>P</kbd>
+            <span class="chip-label">Ghim popup</span>
+          </div>
+          <div class="shortcut-chip">
+            <kbd>W</kbd>
+            <span class="chip-label">Lưu Sổ tay</span>
+          </div>
+          <div class="shortcut-chip">
+            <kbd>E</kbd>
+            <span class="chip-label">Thêm Anki</span>
+          </div>
+          <div class="shortcut-chip">
+            <kbd>C</kbd>
+            <span class="chip-label">Sao chép từ</span>
+          </div>
+          <div class="shortcut-chip">
+            <kbd>Esc</kbd>
+            <span class="chip-label">Đóng popup</span>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
+          💡 <em>Để tránh chật chội, popup khi rê chuột chỉ hiển thị các phím tắt chính. Tất cả 8 phím tắt trên đều hoạt động tức thì mọi lúc!</em>
         </div>
       </div>
 
@@ -63,7 +86,7 @@
       <div class="quick-action-bar">
         <button type="button" id="btn-open-quick-search" class="quick-action-btn btn-action-search" style="flex: 1;">
           <span class="btn-icon">🔍</span>
-          <span>Tra từ nhanh (Alt+S)</span>
+          <span>Tra từ nhanh Nhật ⇄ Việt (Alt+S)</span>
         </button>
       </div>
 
@@ -117,7 +140,7 @@
         <div class="anki-config-row">
           <div class="anki-field">
             <label class="anki-label" for="anki-deck-name">Bộ thẻ (Deck Name):</label>
-            <input type="text" id="anki-deck-name" class="custom-api-input" value="JP Hover Notebook" placeholder="Tên Deck trong Anki">
+            <input type="text" id="anki-deck-name" class="custom-api-input" value="Sổ tay từ vựng" placeholder="Tên Deck trong Anki">
           </div>
           <div class="anki-field">
             <label class="anki-label" for="anki-model-name">Loại thẻ (Model):</label>
@@ -156,14 +179,37 @@
 
       <!-- Display options -->
       <section class="section">
-        <h2 class="section-title">Nội dung hiển thị & Tính năng nâng cao</h2>
+        <h2 class="section-title">Nội dung hiển thị & Phiên âm</h2>
+
+        <!-- Tùy chọn kiểu phiên âm: Hiragana, Katakana, Cả hai -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;">
+          <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;" for="select-reading-format">
+            🎌 Kiểu phiên âm ưu tiên hiển thị:
+          </label>
+          <div class="select-wrapper">
+            <select id="select-reading-format" class="custom-select" style="width: 100%;">
+              <option value="hiragana" selected>Hiragana (Mặc định: しょくどう)</option>
+              <option value="katakana">Katakana (ショクドウ)</option>
+              <option value="both">Cả hai (Hiragana & Katakana song song)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="options-list">
           <label class="option-item">
             <div class="option-label">
               <span class="option-icon">🎌</span>
-              <span>Cách đọc Hiragana / Furigana</span>
+              <span>Bật cách đọc phiên âm (Furigana)</span>
             </div>
             <input type="checkbox" id="opt-reading" checked>
+          </label>
+
+          <label class="option-item">
+            <div class="option-label">
+              <span class="option-icon">🈸</span>
+              <span>Hiển thị thêm phiên âm Katakana</span>
+            </div>
+            <input type="checkbox" id="opt-katakana" checked>
           </label>
 
           <label class="option-item">
@@ -200,8 +246,16 @@
 
           <label class="option-item">
             <div class="option-label">
+              <span class="option-icon">📖</span>
+              <span>Quy tắc âm đọc On/Kun & Thể ngữ pháp</span>
+            </div>
+            <input type="checkbox" id="opt-onkun-rule" checked>
+          </label>
+
+          <label class="option-item">
+            <div class="option-label">
               <span class="option-icon">🎼</span>
-              <span>Trọng âm tiếng Nhật (Pitch Accent)</span>
+              <span>Trọng âm (Pitch Accent)</span>
             </div>
             <input type="checkbox" id="opt-pitch-accent" checked>
           </label>
@@ -236,6 +290,47 @@
               <span>Tự động phát âm giọng đọc khi hover</span>
             </div>
             <input type="checkbox" id="opt-auto-audio">
+          </label>
+        </div>
+      </section>
+
+      <!-- Tùy chỉnh nút bấm Tooltip & Phím tắt (Gọn gàng không vỡ layout) -->
+      <section class="section">
+        <h2 class="section-title">🎛️ Nút bấm trên Tooltip (Chống vỡ giao diện)</h2>
+        <p style="font-size: 11.5px; color: #94a3b8; margin-bottom: 8px; line-height: 1.4;">
+          Tắt bớt các nút ít dùng để thanh tiêu đề gọn gàng. Bạn vẫn có thể thao tác tức thì bằng phím tắt bất kỳ lúc nào:
+        </p>
+        <div class="options-list">
+          <label class="option-item">
+            <div class="option-label">
+              <span class="option-icon">📥</span>
+              <span>Nút Anki (Phím tắt: <strong>E</strong>)</span>
+            </div>
+            <input type="checkbox" id="opt-show-anki-btn">
+          </label>
+
+          <label class="option-item">
+            <div class="option-label">
+              <span class="option-icon">📋</span>
+              <span>Nút Sao chép (Phím tắt: <strong>C</strong> hoặc click vào từ)</span>
+            </div>
+            <input type="checkbox" id="opt-show-copy-btn">
+          </label>
+
+          <label class="option-item">
+            <div class="option-label">
+              <span class="option-icon">🔍</span>
+              <span>Nút Tra từ điển Mazii (Phím tắt: <strong>Alt+S</strong>)</span>
+            </div>
+            <input type="checkbox" id="opt-show-lookup-btn">
+          </label>
+
+          <label class="option-item">
+            <div class="option-label">
+              <span class="option-icon">📌</span>
+              <span>Nút Ghim Tooltip (Phím tắt: <strong>P</strong>)</span>
+            </div>
+            <input type="checkbox" id="opt-show-pin-btn" checked>
           </label>
         </div>
       </section>

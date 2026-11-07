@@ -1311,6 +1311,46 @@ class JapaneseEngine {
   }
 
   /**
+   * Gọi API Google Translate thông qua Background Service Worker để vượt CSP/CORS
+   * Tự động dự phòng gọi fetch trực tiếp nếu background proxy không phản hồi
+   */
+  async callGoogleTranslateAPI(text, sl = 'ja', tl = 'vi', signal = null) {
+    if (!text || typeof text !== 'string') return null;
+    const clean = text.trim();
+    if (!clean) return null;
+
+    // 1. Gửi qua background proxy (vượt CSP trên ChatGPT, YouTube, Facebook, Twitter...)
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+        const bgRes = await new Promise((resolve) => {
+          chrome.runtime.sendMessage(
+            { action: 'GOOGLE_TRANSLATE_API', text: clean, sl, tl },
+            (response) => {
+              if (chrome.runtime.lastError || !response || !response.success) {
+                resolve(null);
+              } else {
+                resolve(response.data);
+              }
+            }
+          );
+        });
+        if (bgRes) return bgRes;
+      } catch (_) {}
+    }
+
+    // 2. Dự phòng gọi trực tiếp nếu chạy ngoài Chrome Extension context
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(tl)}&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(clean)}`;
+      const response = await fetch(url, { signal });
+      if (response && response.ok) {
+        return await response.json();
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  /**
    * Tra cứu dự phòng Trực tuyến (Online Fallback)
    */
   async fetchOnlineData(word, signal) {
@@ -1323,11 +1363,9 @@ class JapaneseEngine {
 
     try {
       const queryText = this.normalizeTextForTranslation(cleanWord);
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=vi&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(queryText)}`;
-      const response = await fetch(url, { signal });
-      if (!response.ok) return null;
+      const data = await this.callGoogleTranslateAPI(queryText, 'ja', 'vi', signal);
+      if (!data) return null;
 
-      const data = await response.json();
       let translation = '';
       let onlineRomaji = '';
       const synonyms = [];
@@ -1384,9 +1422,107 @@ class JapaneseEngine {
   }
 
   /**
+   * Kiểm tra xem chuỗi có phải tiếng Việt hay không (để tự động đổi hướng dịch)
+   */
+  isVietnameseText(text) {
+    if (!text || typeof text !== 'string') return false;
+    const s = text.trim();
+    if (!s) return false;
+    if (typeof isVietnameseQuery === 'function') return isVietnameseQuery(s);
+    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(s)) return false;
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(s)) return true;
+    return false;
+  }
+
+  /**
+   * Tra cứu dịch ngược từ tiếng Việt sang tiếng Nhật (Reverse Lookup / Translation)
+   * Sử dụng Google Translate API qua background proxy với khử khuẩn dữ liệu đầu ra nghiêm ngặt
+   * @param {string} text - Từ hoặc câu tiếng Việt cần tra cứu
+   * @param {AbortSignal} [signal] - Signal hủy request khi người dùng gõ tiếp
+   * @returns {Promise<object|null>}
+   */
+  async translateVietnameseToJapanese(text, signal) {
+    if (!text || typeof text !== 'string') return null;
+    const cleanText = text.trim();
+    if (!cleanText) return null;
+
+    const cacheKey = `rev_vi_ja_${cleanText.toLowerCase()}`;
+    if (this.onlineCache.has(cacheKey)) {
+      return this.onlineCache.get(cacheKey);
+    }
+
+    try {
+      const data = await this.callGoogleTranslateAPI(cleanText, 'vi', 'ja', signal);
+      if (!data) return null;
+
+      let translation = '';
+      let onlineRomaji = '';
+      const synonyms = [];
+
+      if (data && data[0] && Array.isArray(data[0])) {
+        const rawTrans = data[0].map(item => item[0]).filter(Boolean).join('').trim();
+        translation = this.sanitizeRemoteText(rawTrans);
+        const romajiItem = data[0].find(item => item && item[3]);
+        if (romajiItem && romajiItem[3]) {
+          onlineRomaji = this.sanitizeRemoteText(romajiItem[3]);
+        }
+      }
+
+      if (data && data[1] && Array.isArray(data[1])) {
+        for (const posGroup of data[1]) {
+          if (posGroup && Array.isArray(posGroup[1])) {
+            posGroup[1].slice(0, 4).forEach(syn => {
+              const cleanSyn = this.sanitizeRemoteText(syn);
+              if (cleanSyn && !synonyms.includes(cleanSyn) && cleanSyn !== translation) {
+                synonyms.push(cleanSyn);
+              }
+            });
+          }
+        }
+      }
+
+      let onlineReading = '';
+      if (onlineRomaji && typeof romajiToHiragana === 'function') {
+        onlineReading = romajiToHiragana(onlineRomaji);
+      }
+
+      // Nếu từ điển có sẵn từ tiếng Nhật này, lấy reading chuẩn từ từ điển
+      if (translation && typeof lookupJapaneseWord === 'function') {
+        const dictEntry = lookupJapaneseWord(translation);
+        if (dictEntry && dictEntry.reading) {
+          onlineReading = dictEntry.reading;
+        }
+      }
+
+      if (translation) {
+        const result = {
+          japanese: translation,
+          word: translation,
+          reading: onlineReading,
+          romaji: onlineRomaji,
+          synonyms: synonyms,
+          sourceText: cleanText,
+          fromOnline: true,
+          provider: 'Google Translate'
+        };
+        if (this.onlineCache.size > 200) {
+          const firstKey = this.onlineCache.keys().next().value;
+          this.onlineCache.delete(firstKey);
+        }
+        this.onlineCache.set(cacheKey, result);
+        return result;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') return null;
+    }
+    return null;
+  }
+
+  /**
    * Dịch câu hoàn chỉnh sử dụng API bên ngoài (Google Translate API hoặc Gemini AI API)
-   * @param {string} text - Câu tiếng Nhật cần dịch
-   * @param {object} [options] - Tuỳ chọn { engine: 'google' | 'gemini', apiKey: string }
+   * Tự động nhận diện hướng dịch Việt ➔ Nhật hoặc Nhật ➔ Việt
+   * @param {string} text - Câu tiếng Nhật hoặc tiếng Việt cần dịch
+   * @param {object} [options] - Tuỳ chọn { engine: 'google' | 'gemini', apiKey: string, direction: 'auto' | 'ja-vi' | 'vi-ja' }
    */
   async translateSentence(text, options = {}) {
     if (!text || typeof text !== 'string') return null;
@@ -1394,7 +1530,11 @@ class JapaneseEngine {
     if (!cleanText) return null;
 
     const engineType = options.engine || 'google';
-    const cacheKey = `sent_${engineType}_${cleanText}`;
+    const isVi = options.direction === 'vi-ja' || (options.direction !== 'ja-vi' && this.isVietnameseText(cleanText));
+    const sl = isVi ? 'vi' : 'ja';
+    const tl = isVi ? 'ja' : 'vi';
+
+    const cacheKey = `sent_${sl}_${tl}_${engineType}_${cleanText}`;
     if (this.onlineCache.has(cacheKey)) {
       return this.onlineCache.get(cacheKey);
     }
@@ -1403,7 +1543,9 @@ class JapaneseEngine {
     if (engineType === 'gemini' && options.apiKey) {
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(options.apiKey)}`;
-        const prompt = `Bạn là chuyên gia dịch thuật tiếng Nhật - tiếng Việt. Hãy dịch chính xác câu tiếng Nhật sau sang tiếng Việt tự nhiên và chuẩn nghĩa nhất (chú ý số đếm, lượng từ, Hiragana/Katakana và kính ngữ). Chỉ trả về duy nhất nội dung câu dịch tiếng Việt, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`;
+        const prompt = isVi
+          ? `Bạn là chuyên gia dịch thuật tiếng Việt - tiếng Nhật. Hãy dịch chính xác câu/đoạn tiếng Việt sau sang tiếng Nhật tự nhiên, chuẩn xác và đúng ngữ cảnh nhất. Chỉ trả về duy nhất nội dung câu dịch tiếng Nhật, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`
+          : `Bạn là chuyên gia dịch thuật tiếng Nhật - tiếng Việt. Hãy dịch chính xác câu tiếng Nhật sau sang tiếng Việt tự nhiên và chuẩn nghĩa nhất (chú ý số đếm, lượng từ, Hiragana/Katakana và kính ngữ). Chỉ trả về duy nhất nội dung câu dịch tiếng Việt, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`;
 
         const res = await fetch(geminiUrl, {
           method: 'POST',
@@ -1419,7 +1561,7 @@ class JapaneseEngine {
           const out = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
           if (out) {
             const cleanOut = this.sanitizeRemoteText(out);
-            const result = { meaning: cleanOut, provider: 'Gemini AI API' };
+            const result = { meaning: cleanOut, provider: 'Gemini AI API', direction: isVi ? 'vi-ja' : 'ja-vi' };
             this.onlineCache.set(cacheKey, result);
             return result;
           }
@@ -1432,7 +1574,7 @@ class JapaneseEngine {
     // 2. Mặc định: Gọi API ngoài của Google Translate (translate.googleapis.com)
     try {
       const queryText = this.normalizeTextForTranslation(cleanText);
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=vi&dt=t&q=${encodeURIComponent(queryText)}`;
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(queryText)}`;
       const response = await fetch(url);
       if (!response.ok) return null;
 
@@ -1444,7 +1586,7 @@ class JapaneseEngine {
       }
 
       if (translation) {
-        const result = { meaning: translation, provider: 'Google Translate API' };
+        const result = { meaning: translation, provider: 'Google Translate API', direction: isVi ? 'vi-ja' : 'ja-vi' };
         this.onlineCache.set(cacheKey, result);
         return result;
       }
@@ -1520,6 +1662,12 @@ class JapaneseEngine {
 
 // Khởi tạo instance toàn cục
 const japaneseEngine = new JapaneseEngine();
+if (typeof window !== 'undefined') {
+  window.japaneseEngine = japaneseEngine;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.japaneseEngine = japaneseEngine;
+}
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { JapaneseEngine, japaneseEngine };

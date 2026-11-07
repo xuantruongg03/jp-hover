@@ -8979,6 +8979,12 @@ const JP_DICTIONARY_EXPANDED = {
 };
 
 // Xuất ra môi trường
+if (typeof window !== 'undefined') {
+  window.JP_DICTIONARY_EXPANDED = JP_DICTIONARY_EXPANDED;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.JP_DICTIONARY_EXPANDED = JP_DICTIONARY_EXPANDED;
+}
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { JP_DICTIONARY_EXPANDED };
 }

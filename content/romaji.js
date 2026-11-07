@@ -157,8 +157,20 @@ function isJapaneseText(str) {
  * Chuyển Katakana thành Hiragana
  */
 function katakanaToHiragana(str) {
+  if (!str || typeof str !== 'string') return '';
   return str.replace(/[\u30a1-\u30f6]/g, match => {
     const code = match.charCodeAt(0) - 0x60;
+    return String.fromCharCode(code);
+  });
+}
+
+/**
+ * Chuyển đổi Hiragana sang Katakana
+ */
+function hiraganaToKatakana(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/[\u3041-\u3096]/g, match => {
+    const code = match.charCodeAt(0) + 0x60;
     return String.fromCharCode(code);
   });
 }
@@ -247,7 +259,15 @@ function romajiToHiragana(romaji) {
 }
 
 // Xuất ra môi trường browser hoặc module
+if (typeof window !== 'undefined') {
+  window.toRomaji = toRomaji;
+  window.isJapaneseText = isJapaneseText;
+  window.katakanaToHiragana = katakanaToHiragana;
+  window.hiraganaToKatakana = hiraganaToKatakana;
+  window.romajiToHiragana = romajiToHiragana;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { toRomaji, isJapaneseText, katakanaToHiragana, romajiToHiragana };
+  module.exports = { toRomaji, isJapaneseText, katakanaToHiragana, hiraganaToKatakana, romajiToHiragana };
 }
 

@@ -1,6 +1,8 @@
 // Content Script chính - Xử lý bắt vị trí chuột, nhận diện từ tiếng Nhật, hiển thị Tooltip & Sổ tay từ vựng
 
 (function () {
+  console.log('%c[JP Furigana Hover] v1.5.7 Loaded successfully!', 'color:#38bdf8;font-weight:bold;font-size:12px;');
+
   // Tránh inject trùng lặp trên cùng context
   if (window.__JP_HOVER_EXTENSION_INJECTED__) return;
   window.__JP_HOVER_EXTENSION_INJECTED__ = true;
@@ -13,16 +15,26 @@
     enabled: true,
     activationMode: 'always', // 'always' | 'shift' | 'alt'
     showReading: true,
+    showKatakana: true,
+    readingFormat: 'hiragana', // 'hiragana' | 'katakana' | 'both'
     showRomaji: true,
     showHanViet: true,
     showMeaning: true,
     showKanjiBreakdown: true,
     showPitchAccent: true,
-    enableVisualHighlight: true,
+    showOnKunRule: true,
+    showAnkiBtn: false,
+    showCopyBtn: false,
+    showLookupBtn: false,
+    showPinBtn: true,
+    showCloseBtn: true,
+    enableVisualHighlight: false,
     enableOnlineFallback: true,
     enableSelectionTranslate: true,
     autoPlayAudio: false,
     speechRate: 0.95,
+    speechPitch: 1.0,
+    voiceUri: '',
     translationEngine: 'google',
     geminiApiKey: ''
   };
@@ -49,6 +61,7 @@
   let currentSelectedText = '';
   let savedWordsSet = new Set();
   let currentContextSentence = '';
+  let lastUserTypingTime = 0;
   let strokeModalOverlay = null;
   let currentStrokeChar = '';
   let showStrokeNumbers = true;
@@ -86,6 +99,11 @@
   getStorageData(['jpSettings', 'jpSavedWords'], (res) => {
     if (res && res.jpSettings) {
       settings = { ...settings, ...res.jpSettings };
+      window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
+      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (qs && qs.setEnabled) {
+        qs.setEnabled(settings.enabled !== false);
+      }
     }
     if (res && Array.isArray(res.jpSavedWords)) {
       savedWordsSet = new Set(res.jpSavedWords.map(item => item.word));
@@ -97,6 +115,11 @@
       if (area === 'local') {
         if (changes.jpSettings) {
           settings = { ...settings, ...changes.jpSettings.newValue };
+          window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
+          const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+          if (qs && qs.setEnabled) {
+            qs.setEnabled(settings.enabled !== false);
+          }
           if (!settings.enabled) {
             hideAllPopups(true);
           }
@@ -179,32 +202,33 @@
         <div class="jp-word-box">
           <div class="jp-reading-row">
             <span class="jp-reading" id="jp-reading"></span>
+            <span class="jp-reading-kata" id="jp-reading-kata" style="display:none;" title="Phiên âm Katakana"></span>
             <span class="jp-pitch-badge" id="jp-pitch-badge" style="display:none;"></span>
           </div>
-          <div class="jp-main-word" id="jp-word"></div>
+          <div class="jp-main-word" id="jp-word" title="Click để sao chép từ vựng"></div>
         </div>
         <div class="jp-actions">
-          <button class="jp-anki-btn" id="jp-anki-btn" title="Thêm vào Anki Desktop 1-Click (Phím E)">📥 Anki</button>
-          <button class="jp-icon-btn jp-audio-btn" id="jp-audio-btn" title="Phát âm tiếng Nhật">
+          <button class="jp-anki-btn" id="jp-anki-btn" title="Thêm vào Anki Desktop 1-Click (Phím E)" style="display:none;">📥 Anki</button>
+          <button class="jp-icon-btn jp-audio-btn" id="jp-audio-btn" title="Phát âm tiếng Nhật (Phím S)">
             <svg viewBox="0 0 24 24">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </button>
-          <button class="jp-icon-btn jp-star-btn" id="jp-star-btn" title="Lưu vào Sổ tay từ vựng">⭐</button>
-          <button class="jp-icon-btn jp-copy-btn" id="jp-copy-btn" title="Sao chép từ">
+          <button class="jp-icon-btn jp-star-btn" id="jp-star-btn" title="Lưu vào Sổ tay từ vựng (Phím W)">⭐</button>
+          <button class="jp-icon-btn jp-copy-btn" id="jp-copy-btn" title="Sao chép từ (Phím C)" style="display:none;">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <button class="jp-icon-btn jp-lookup-btn" id="jp-lookup-btn" title="Tra cứu từ điển chi tiết (Mazii)">
+          <button class="jp-icon-btn jp-lookup-btn" id="jp-lookup-btn" title="Tra cứu Mazii" style="display:none;">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
           </button>
-          <button class="jp-icon-btn" id="jp-pin-btn" title="Ghim popup cố định">📌</button>
-          <button class="jp-icon-btn" id="jp-close-btn" title="Đóng">✕</button>
+          <button class="jp-icon-btn" id="jp-pin-btn" title="Ghim popup cố định (Phím P)">📌</button>
+          <button class="jp-icon-btn" id="jp-close-btn" title="Đóng (Esc)">✕</button>
         </div>
       </div>
       
@@ -237,12 +261,11 @@
 
       <div class="jp-footer">
         <div class="jp-footer-left">
-          <span class="jp-footer-title">🇯🇵 Phím tắt:</span>
-          <span class="jp-kbd" title="Phát âm từ đang hover">S</span> Nghe
-          <span class="jp-kbd" title="Thêm vào Anki (1-click)">E</span> Anki
-          <span class="jp-kbd" title="Tra cứu nhanh">Alt+S</span> Tra từ
+          <span class="jp-kbd" title="Phát âm từ đang hover (Phím S)">S</span> Nghe
+          <span class="jp-kbd" title="Ghim popup cố định (Phím P)">P</span> Ghim
+          <span class="jp-kbd" title="Tra cứu nhanh (Phím Alt+S)">Alt+S</span> Tra từ
         </div>
-        <div class="jp-shortcut-hint" title="Bật / Tắt tiện ích">
+        <div class="jp-shortcut-hint" title="Bật / Tắt tiện ích (Phím Alt+J)">
           <span class="jp-kbd">Alt+J</span>
           <span>Bật/Tắt</span>
         </div>
@@ -254,7 +277,7 @@
     // 3. Tạo Floating Selection Badge & Sentence Card
     selectionBadge = document.createElement('div');
     selectionBadge.className = 'jp-selection-badge';
-    selectionBadge.innerHTML = `<span>🇯🇵</span><span>Dịch câu</span>`;
+    selectionBadge.innerHTML = `<span>📖</span><span>Dịch & Luyện đọc</span>`;
     shadowRoot.appendChild(selectionBadge);
 
     sentenceCard = document.createElement('div');
@@ -278,8 +301,9 @@
           <div style="color: #94a3b8; font-size: 13px;">Đang tải nét vẽ...</div>
         </div>
         <div class="jp-stroke-controls">
-          <button class="jp-stroke-btn" id="jp-stroke-play-btn">▶️ Phát lại nét</button>
-          <button class="jp-stroke-btn" id="jp-stroke-toggle-numbers">🔢 Bật/Tắt số nét</button>
+          <button class="jp-stroke-btn jp-stroke-show-all-btn" id="jp-stroke-show-all-btn" title="Hiển thị ngay toàn bộ nét chữ không cần chờ vẽ">⚡ Hiện toàn bộ</button>
+          <button class="jp-stroke-btn" id="jp-stroke-play-btn" title="Phát hoạt ảnh vẽ từng nét theo thứ tự">▶️ Vẽ từng nét</button>
+          <button class="jp-stroke-btn" id="jp-stroke-toggle-numbers" title="Bật hoặc tắt số thứ tự nét">🔢 Bật/Tắt số nét</button>
         </div>
         <div class="jp-stroke-info" id="jp-stroke-info"></div>
       </div>
@@ -293,6 +317,13 @@
     });
     strokeModalOverlay.addEventListener('click', (e) => {
       if (e.target === strokeModalOverlay) closeStrokeModal();
+    });
+    strokeModalOverlay.querySelector('#jp-stroke-show-all-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
+      if (canvasBox && typeof kanjiStrokeAnimator !== 'undefined') {
+        kanjiStrokeAnimator.showAllStrokes(canvasBox);
+      }
     });
     strokeModalOverlay.querySelector('#jp-stroke-play-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -308,8 +339,13 @@
         const rawSvg = await kanjiStrokeAnimator.fetchKanjiSvg(currentStrokeChar);
         const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
         if (rawSvg && canvasBox) {
+          const wasPlaying = kanjiStrokeAnimator.isPlaying;
           kanjiStrokeAnimator.renderAnimatedSvg(canvasBox, rawSvg, { showNumbers: showStrokeNumbers });
-          kanjiStrokeAnimator.startAnimation(canvasBox);
+          if (wasPlaying) {
+            kanjiStrokeAnimator.startAnimation(canvasBox);
+          } else {
+            kanjiStrokeAnimator.showAllStrokes(canvasBox);
+          }
         }
       }
     });
@@ -382,140 +418,75 @@
       }
     });
 
-    // Nút Lưu từ vựng vào Sổ tay (Bookmark Star ⭐)
-    const starBtn = cardElem.querySelector('#jp-star-btn');
-    starBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const targetWord = currentWord;
-      if (!targetWord) return;
-
-      getStorageData(['jpSavedWords'], (res) => {
-        let list = res && Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
-        const idx = list.findIndex(item => item.word === targetWord);
-
-        if (idx >= 0) {
-          list.splice(idx, 1);
-          savedWordsSet.delete(targetWord);
-          starBtn.classList.remove('active');
-          starBtn.title = 'Lưu vào Sổ tay từ vựng (⭐)';
-          showToast(`Đã bỏ lưu [${targetWord}]`);
-        } else {
-          const newItem = {
-            word: targetWord,
-            reading: currentReading || targetWord,
-            hanviet: currentHanViet || '',
-            meaning: currentMeaning || '',
-            romaji: (currentWordData && currentWordData.romaji) ? currentWordData.romaji : '',
-            type: (currentWordData && currentWordData.type) ? currentWordData.type : '',
-            sentence: currentContextSentence || '',
-            deck: settings.activeDeck || 'Mặc định',
-            status: 'learning',
-            savedAt: Date.now(),
-            srs: {
-              interval: 1,
-              repetition: 0,
-              easeFactor: 2.5,
-              nextReview: Date.now(),
-              history: []
-            }
-          };
-          list.unshift(newItem);
-          savedWordsSet.add(targetWord);
-          starBtn.classList.add('active');
-          starBtn.title = 'Bỏ lưu khỏi Sổ tay từ vựng';
-          showToast(`⭐ Đã lưu [${targetWord}] vào Sổ tay!`);
-        }
-
-        setStorageData({ jpSavedWords: list });
+    // Click vào chữ từ vựng để sao chép nhanh
+    const wordElem = cardElem.querySelector('#jp-word');
+    if (wordElem) {
+      wordElem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyCurrentWord();
       });
-    });
+    }
 
-    // Nút Sao chép (Quick Copy 📋)
+    // Nút Lưu từ vựng vào Sổ tay (Bookmark Star ⭐ - Phím W)
+    const starBtn = cardElem.querySelector('#jp-star-btn');
+    if (starBtn) {
+      starBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        toggleCurrentWordSaved();
+      });
+    }
+
+    // Nút Sao chép (Quick Copy 📋 - Phím C)
     const copyBtn = cardElem.querySelector('#jp-copy-btn');
-    copyBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      const copyWord = currentWord;
-      if (!copyWord) return;
-
-      // Chỉ sao chép nội dung từ vựng đang chọn / hover (không copy nghĩa)
-      const copyStr = copyWord;
-
-      const notifySuccess = () => {
-        copyBtn.classList.add('copied');
-        showToast(`📋 Đã sao chép: ${copyWord}`);
-        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
-      };
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(copyStr).then(notifySuccess).catch(() => {
-          fallbackCopyText(copyStr, notifySuccess);
-        });
-      } else {
-        fallbackCopyText(copyStr, notifySuccess);
-      }
-    });
-
-    function fallbackCopyText(text, callback) {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.top = '-9999px';
-      textarea.style.left = '-9999px';
-      textarea.setAttribute('readonly', '');
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        const successful = document.execCommand('copy');
-        if (successful && callback) callback();
-      } catch (_) {}
-      document.body.removeChild(textarea);
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        copyCurrentWord();
+      });
     }
 
     // Nút Kính lúp tra cứu từ điển trực tuyến (Mazii)
     const lookupBtn = cardElem.querySelector('#jp-lookup-btn');
-    lookupBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (currentWord) {
-        const isSingleKanji = currentWord.length === 1 && typeof isKanji === 'function' && isKanji(currentWord);
-        const searchUrl = isSingleKanji 
-          ? `https://mazii.net/vi-VN/search/kanji/javi/${encodeURIComponent(currentWord)}`
-          : `https://mazii.net/vi-VN/search/word/javi/${encodeURIComponent(currentWord)}`;
-        window.open(searchUrl, '_blank');
-      }
-    });
+    if (lookupBtn) {
+      lookupBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (currentWord) {
+          const isSingleKanji = currentWord.length === 1 && typeof isKanji === 'function' && isKanji(currentWord);
+          const searchUrl = isSingleKanji 
+            ? `https://mazii.net/vi-VN/search/kanji/javi/${encodeURIComponent(currentWord)}`
+            : `https://mazii.net/vi-VN/search/word/javi/${encodeURIComponent(currentWord)}`;
+          window.open(searchUrl, '_blank');
+        }
+      });
+    }
 
-    // Nút Ghim cố định (Pin)
+    // Nút Ghim cố định (Pin - Phím P)
     const pinBtn = cardElem.querySelector('#jp-pin-btn');
-    pinBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      isPinned = !isPinned;
-      if (isPinned) {
-        pinBtn.classList.add('active');
-        cardElem.classList.add('pinned');
-        pinBtn.title = 'Bỏ ghim popup';
-      } else {
-        pinBtn.classList.remove('active');
-        cardElem.classList.remove('pinned');
-        pinBtn.title = 'Ghim popup cố định';
-      }
-    });
+    if (pinBtn) {
+      pinBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        togglePinTooltip();
+      });
+    }
 
-    // Nút Đóng
+    // Nút Đóng (Esc)
     const closeBtn = cardElem.querySelector('#jp-close-btn');
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      isPinned = false;
-      pinBtn.classList.remove('active');
-      cardElem.classList.remove('pinned');
-      hideTooltip(true);
-    });
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        isPinned = false;
+        if (pinBtn) pinBtn.classList.remove('active');
+        cardElem.classList.remove('pinned');
+        hideTooltip(true);
+      });
+    }
 
+    // Giữ Tooltip mở khi chuột di vào trong Card hoặc Sentence Card
     cardElem.addEventListener('mouseenter', () => {
       isMouseOverTooltip = true;
       cancelHideSchedule();
@@ -527,6 +498,154 @@
         scheduleHide(350);
       }
     });
+
+    if (sentenceCard) {
+      sentenceCard.addEventListener('mouseenter', () => {
+        isMouseOverTooltip = true;
+        cancelHideSchedule();
+      });
+
+      sentenceCard.addEventListener('mouseleave', () => {
+        isMouseOverTooltip = false;
+        if (!isPinned) {
+          scheduleHide(350);
+        }
+      });
+
+      sentenceCard.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        cancelHideSchedule();
+      });
+    }
+
+    updateActionButtonsVisibility();
+  }
+
+  // Cập nhật ẩn/hiển thị các nút thao tác trên Tooltip theo cài đặt
+  function updateActionButtonsVisibility() {
+    if (!cardElem) return;
+    const ankiBtn = cardElem.querySelector('#jp-anki-btn');
+    const copyBtn = cardElem.querySelector('#jp-copy-btn');
+    const lookupBtn = cardElem.querySelector('#jp-lookup-btn');
+    const pinBtn = cardElem.querySelector('#jp-pin-btn');
+    const closeBtn = cardElem.querySelector('#jp-close-btn');
+
+    if (ankiBtn) ankiBtn.style.display = settings.showAnkiBtn ? 'inline-flex' : 'none';
+    if (copyBtn) copyBtn.style.display = settings.showCopyBtn ? 'inline-flex' : 'none';
+    if (lookupBtn) lookupBtn.style.display = settings.showLookupBtn ? 'inline-flex' : 'none';
+    if (pinBtn) pinBtn.style.display = settings.showPinBtn !== false ? 'inline-flex' : 'none';
+    if (closeBtn) closeBtn.style.display = settings.showCloseBtn !== false ? 'inline-flex' : 'none';
+  }
+
+  // Sao chép từ vựng hiện tại (Click vào từ hoặc Phím C)
+  function copyCurrentWord() {
+    const copyWord = currentWord;
+    if (!copyWord) return;
+
+    const notifySuccess = () => {
+      const copyBtn = cardElem ? cardElem.querySelector('#jp-copy-btn') : null;
+      if (copyBtn) {
+        copyBtn.classList.add('copied');
+        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
+      }
+      showToast(`📋 Đã sao chép: ${copyWord}`);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(copyWord).then(notifySuccess).catch(() => {
+        fallbackCopyText(copyWord, notifySuccess);
+      });
+    } else {
+      fallbackCopyText(copyWord, notifySuccess);
+    }
+  }
+
+  function fallbackCopyText(text, callback) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    textarea.setAttribute('readonly', '');
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      const successful = document.execCommand('copy');
+      if (successful && callback) callback();
+    } catch (_) {}
+    document.body.removeChild(textarea);
+  }
+
+  // Bật/tắt lưu từ vào Sổ tay từ vựng (⭐ - Phím W)
+  function toggleCurrentWordSaved() {
+    const targetWord = currentWord;
+    if (!targetWord) return;
+    const starBtn = cardElem ? cardElem.querySelector('#jp-star-btn') : null;
+
+    getStorageData(['jpSavedWords'], (res) => {
+      let list = res && Array.isArray(res.jpSavedWords) ? res.jpSavedWords : [];
+      const idx = list.findIndex(item => item.word === targetWord);
+
+      if (idx >= 0) {
+        list.splice(idx, 1);
+        savedWordsSet.delete(targetWord);
+        if (starBtn) {
+          starBtn.classList.remove('active');
+          starBtn.title = 'Lưu vào Sổ tay từ vựng (⭐ - Phím W)';
+        }
+        showToast(`Đã bỏ lưu [${targetWord}]`);
+      } else {
+        const newItem = {
+          word: targetWord,
+          reading: currentReading || targetWord,
+          hanviet: currentHanViet || '',
+          meaning: currentMeaning || '',
+          romaji: (currentWordData && currentWordData.romaji) ? currentWordData.romaji : '',
+          type: (currentWordData && currentWordData.type) ? currentWordData.type : '',
+          sentence: currentContextSentence || '',
+          deck: settings.activeDeck || 'Mặc định',
+          status: 'learning',
+          savedAt: Date.now(),
+          srs: {
+            interval: 1,
+            repetition: 0,
+            easeFactor: 2.5,
+            nextReview: Date.now(),
+            history: []
+          }
+        };
+        list.unshift(newItem);
+        savedWordsSet.add(targetWord);
+        if (starBtn) {
+          starBtn.classList.add('active');
+          starBtn.title = 'Bỏ lưu khỏi Sổ tay từ vựng (Phím W)';
+        }
+        showToast(`⭐ Đã lưu [${targetWord}] vào Sổ tay!`);
+      }
+
+      setStorageData({ jpSavedWords: list });
+    });
+  }
+
+  // Bật/tắt ghim Tooltip cố định (📌 - Phím P)
+  function togglePinTooltip() {
+    isPinned = !isPinned;
+    const pinBtn = cardElem ? cardElem.querySelector('#jp-pin-btn') : null;
+    if (isPinned) {
+      if (pinBtn) {
+        pinBtn.classList.add('active');
+        pinBtn.title = 'Bỏ ghim popup (Phím P)';
+      }
+      if (cardElem) cardElem.classList.add('pinned');
+      showToast('📌 Đã ghim popup cố định (Phím P)');
+    } else {
+      if (pinBtn) {
+        pinBtn.classList.remove('active');
+        pinBtn.title = 'Ghim popup cố định (Phím P)';
+      }
+      if (cardElem) cardElem.classList.remove('pinned');
+      showToast('Đã bỏ ghim popup');
+    }
   }
 
   // Lấy chính xác chuỗi phiên âm cần phát âm cho từ hiện tại
@@ -545,7 +664,8 @@
 
   // 3. Hiển thị thông tin lên Tooltip
   function showTooltip(data, mouseX, mouseY, wordRange = null) {
-    if (!cardElem || !shadowRoot) {
+    const host = document.getElementById('jp-hover-extension-root');
+    if (!cardElem || !shadowRoot || !host || !document.contains(host)) {
       initShadowDOM();
     }
     if (!cardElem || !shadowRoot) return;
@@ -569,16 +689,37 @@
     const kanjiSection = cardElem.querySelector('#jp-kanji-section');
     const kanjiGrid = cardElem.querySelector('#jp-kanji-grid');
 
-    // 1. Cập nhật từ chính & cách đọc
+    // 1. Cập nhật từ chính & cách đọc (Hiragana, Katakana)
     wordElem.textContent = targetWord;
-    
-    // Đảm bảo phiên âm Hiragana luôn luôn hiển thị trên Tooltip (cho cả Kanji, Katakana và Hiragana)
-    const hiraReading = typeof katakanaToHiragana === 'function' ? katakanaToHiragana(data.reading || '') : (data.reading || '');
-    if (settings.showReading !== false && (hiraReading || data.reading)) {
-      readingElem.textContent = hiraReading || data.reading;
-      readingElem.style.display = 'inline';
+    updateActionButtonsVisibility();
+
+    const rawReading = data.reading || '';
+    const hiraReading = typeof katakanaToHiragana === 'function' ? katakanaToHiragana(rawReading) : rawReading;
+    const kataReading = typeof hiraganaToKatakana === 'function' ? hiraganaToKatakana(hiraReading) : '';
+    const kataElem = cardElem.querySelector('#jp-reading-kata');
+
+    if (settings.showReading !== false && (hiraReading || rawReading)) {
+      if (settings.readingFormat === 'katakana') {
+        readingElem.textContent = kataReading ? `(${kataReading})` : rawReading;
+        readingElem.style.display = 'inline';
+        if (kataElem) kataElem.style.display = 'none';
+      } else if (settings.readingFormat === 'both' || settings.showKatakana !== false) {
+        readingElem.textContent = hiraReading || rawReading;
+        readingElem.style.display = 'inline';
+        if (kataElem && kataReading && kataReading !== hiraReading) {
+          kataElem.textContent = `(${kataReading})`;
+          kataElem.style.display = 'inline';
+        } else if (kataElem) {
+          kataElem.style.display = 'none';
+        }
+      } else {
+        readingElem.textContent = hiraReading || rawReading;
+        readingElem.style.display = 'inline';
+        if (kataElem) kataElem.style.display = 'none';
+      }
     } else {
       readingElem.style.display = 'none';
+      if (kataElem) kataElem.style.display = 'none';
     }
 
     // Trọng âm (Pitch Accent)
@@ -754,7 +895,7 @@
 
     // 5. Visual Text Highlight trên trang web
     if (settings.enableVisualHighlight && wordRange) {
-      updateVisualHighlight(wordRange);
+      updateVisualHighlight(wordRange, mouseX, mouseY);
     }
 
     // 6. Định vị và hiển thị Card
@@ -805,9 +946,18 @@
           }
           if (onlineRes.reading && settings.showReading !== false) {
             const hiraOnline = typeof katakanaToHiragana === 'function' ? katakanaToHiragana(onlineRes.reading) : onlineRes.reading;
+            const kataOnline = typeof hiraganaToKatakana === 'function' ? hiraganaToKatakana(hiraOnline) : '';
             currentReading = hiraOnline;
-            readingElem.textContent = hiraOnline;
+            readingElem.textContent = settings.readingFormat === 'katakana' ? (kataOnline ? `(${kataOnline})` : hiraOnline) : hiraOnline;
             readingElem.style.display = 'inline';
+            if (kataElem) {
+              if (settings.readingFormat !== 'katakana' && (settings.readingFormat === 'both' || settings.showKatakana !== false) && kataOnline) {
+                kataElem.textContent = `(${kataOnline})`;
+                kataElem.style.display = 'inline';
+              } else {
+                kataElem.style.display = 'none';
+              }
+            }
             if (currentWordData) {
               currentWordData.reading = hiraOnline;
               currentWordData.speechText = hiraOnline;
@@ -836,7 +986,134 @@
     }
   }
 
-  // 4. Hiển thị Card dịch câu khi bôi đen (Selection Translate)
+  // Quản lý phát âm câu/đoạn văn chuyên sâu cho luyện đọc JLPT (Dokkai)
+  let activeSentenceReading = {
+    isReading: false,
+    text: '',
+    chunks: [],
+    currentIndex: 0,
+    speed: 1.0,
+    audioBtn: null,
+    sourceElem: null
+  };
+
+  function stopSentenceReading() {
+    if (!activeSentenceReading.isReading) return;
+    activeSentenceReading.isReading = false;
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
+    const engine = window.japaneseEngine || (typeof japaneseEngine !== 'undefined' ? japaneseEngine : null);
+    if (engine && engine.currentAudio) {
+      try { engine.currentAudio.pause(); engine.currentAudio = null; } catch (_) {}
+    }
+    if (activeSentenceReading.audioBtn) {
+      activeSentenceReading.audioBtn.classList.remove('playing');
+      activeSentenceReading.audioBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      `;
+      activeSentenceReading.audioBtn.title = 'Phát âm (Luyện nghe JLPT)';
+    }
+    if (activeSentenceReading.sourceElem) {
+      activeSentenceReading.sourceElem.querySelectorAll('.reading-chunk-active').forEach(el => {
+        el.classList.remove('reading-chunk-active');
+      });
+    }
+  }
+
+  function startSentenceReading(targetText, speed, audioBtn, sourceElem) {
+    stopSentenceReading();
+    if (!targetText) return;
+
+    // Phân tách đoạn văn thành các câu độc lập theo dấu câu tiếng Nhật để luyện đọc JLPT
+    // Tránh lỗi ngắt tiếng sau 15 giây của Chrome Speech Synthesis
+    const parts = targetText.split(/([。！？\n]+)/);
+    const chunks = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      const sentence = (parts[i] || '') + (parts[i + 1] || '');
+      if (sentence.trim()) {
+        chunks.push(sentence.trim());
+      }
+    }
+    if (chunks.length === 0) chunks.push(targetText.trim());
+
+    activeSentenceReading = {
+      isReading: true,
+      text: targetText,
+      chunks: chunks,
+      currentIndex: 0,
+      speed: speed,
+      audioBtn: audioBtn,
+      sourceElem: sourceElem
+    };
+
+    if (audioBtn) {
+      audioBtn.classList.add('playing');
+      audioBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      `;
+      audioBtn.title = 'Dừng phát âm (Click để dừng)';
+    }
+
+    playCurrentSentenceChunk();
+  }
+
+  function playCurrentSentenceChunk() {
+    if (!activeSentenceReading.isReading) return;
+    const { chunks, currentIndex, speed, audioBtn, sourceElem } = activeSentenceReading;
+    if (currentIndex >= chunks.length) {
+      stopSentenceReading();
+      return;
+    }
+
+    const chunk = chunks[currentIndex];
+
+    // Highlight câu đang đọc trong box văn bản
+    if (sourceElem) {
+      sourceElem.querySelectorAll('.reading-chunk').forEach((el, idx) => {
+        if (idx === currentIndex) el.classList.add('reading-chunk-active');
+        else el.classList.remove('reading-chunk-active');
+      });
+    }
+
+    const engine = window.japaneseEngine || (typeof japaneseEngine !== 'undefined' ? japaneseEngine : null);
+    if (engine && engine.speak) {
+      engine.speak(
+        chunk,
+        {
+          rate: (settings.speechRate || 0.95) * speed,
+          pitch: settings.speechPitch || 1.0,
+          voiceUri: settings.voiceUri || ''
+        },
+        null,
+        () => {
+          if (!activeSentenceReading.isReading) return;
+          activeSentenceReading.currentIndex++;
+          setTimeout(() => {
+            if (activeSentenceReading.isReading) {
+              playCurrentSentenceChunk();
+            }
+          }, 150);
+        }
+      );
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // 4. Hiển thị Card dịch câu khi bôi đen (Selection Translate & JLPT Reading)
   async function showSentenceTranslation(text, mouseX, mouseY) {
     if (!settings.enabled || settings.enableSelectionTranslate === false) {
       hideSentenceCard();
@@ -846,75 +1123,107 @@
     if (!sentenceCard) return;
 
     hideSelectionBadge();
+    stopSentenceReading();
+
+    let currentSpeed = 1.0;
+    let translatedJapanese = '';
+
+    // Chia text thành các chunk có thể span để highlight khi phát âm
+    const parts = text.split(/([。！？\n]+)/);
+    const chunks = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      const sentence = (parts[i] || '') + (parts[i + 1] || '');
+      if (sentence.trim()) {
+        chunks.push(sentence.trim());
+      }
+    }
+    if (chunks.length === 0) chunks.push(text.trim());
+
+    const chunksHtml = chunks.map((c, idx) => `<span class="reading-chunk" data-index="${idx}">${escapeHtml(c)} </span>`).join('');
 
     sentenceCard.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px;gap:8px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-weight:bold;color:#38bdf8;font-size:13px;">📑 Dịch câu</span>
-          <span class="jp-api-badge" id="jp-sentence-api-badge">Đang gọi API ngoài...</span>
+          <span style="font-weight:bold;color:#38bdf8;font-size:13.5px;" id="jp-sentence-title">📖 Dịch câu & Luyện đọc JLPT</span>
+          <span class="jp-api-badge" id="jp-sentence-api-badge">Đang gọi API...</span>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu đang chọn">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <!-- Bộ điều khiển tốc độ đọc JLPT Dokkai -->
+          <div class="jp-jlpt-speed-bar" title="Tốc độ đọc JLPT">
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.8">0.8x</button>
+            <button type="button" class="jp-jlpt-speed-btn active" data-speed="1.0">1.0x</button>
+            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.2">1.2x</button>
+          </div>
+          <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu (Clipboard)">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <button class="jp-icon-btn jp-sentence-audio-btn" id="jp-sentence-audio" title="Nghe câu">
+          <button class="jp-icon-btn jp-sentence-play-btn" id="jp-sentence-audio" title="Phát âm (Luyện nghe JLPT)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </button>
-          <button class="jp-icon-btn" id="jp-sentence-close" title="Đóng">✕</button>
+          <button class="jp-icon-btn" id="jp-sentence-close" title="Đóng (Esc)">✕</button>
         </div>
       </div>
-      <div id="jp-sentence-source-text" style="font-size:15px;font-weight:bold;color:#ffffff;line-height:1.4;margin-top:4px;"></div>
-      <div id="jp-sentence-meaning" style="font-size:13.5px;color:#e2e8f0;background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;line-height:1.45;border-left:3px solid #38bdf8;">
-        Đang dịch câu qua API ngoài...
+      <div id="jp-sentence-source-box" class="jp-sentence-source-box">${chunksHtml}</div>
+      <div id="jp-sentence-meaning" class="jp-sentence-meaning">
+        Đang dịch câu qua API...
       </div>
     `;
 
-    const sourceElem = sentenceCard.querySelector('#jp-sentence-source-text');
-    if (sourceElem) {
-      sourceElem.textContent = text;
-    }
+    const sourceElem = sentenceCard.querySelector('#jp-sentence-source-box');
+    const audioBtn = sentenceCard.querySelector('#jp-sentence-audio');
+    const copySentenceBtn = sentenceCard.querySelector('#jp-sentence-copy');
 
-    // Định vị sentence card
-    const cardWidth = 360;
+    // Tốc độ phát âm JLPT
+    const speedBtns = sentenceCard.querySelectorAll('.jp-jlpt-speed-btn');
+    speedBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        speedBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSpeed = parseFloat(btn.getAttribute('data-speed')) || 1.0;
+        if (activeSentenceReading.isReading) {
+          const speakTarget = translatedJapanese || text;
+          startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem);
+        }
+      });
+    });
+
+    // Định vị sentence card với độ rộng lớn hơn cho bài đọc JLPT
+    const cardWidth = Math.min(600, window.innerWidth - 32);
     let left = Math.min(mouseX + 10, window.innerWidth - cardWidth - 20);
-    let top = Math.min(mouseY + 15, window.innerHeight - 200);
+    let top = Math.min(mouseY + 15, window.innerHeight - 260);
     sentenceCard.style.left = `${Math.max(16, left)}px`;
     sentenceCard.style.top = `${Math.max(16, top)}px`;
     sentenceCard.classList.add('visible');
 
-    // Nút copy câu đang chọn
-    const copySentenceBtn = sentenceCard.querySelector('#jp-sentence-copy');
+    // Nút copy câu đang chọn hoặc bản dịch
     copySentenceBtn.addEventListener('click', () => {
+      const copyTarget = translatedJapanese || text;
       const onSuccess = () => {
         copySentenceBtn.classList.add('copied');
         showToast('📋 Đã sao chép nội dung');
         setTimeout(() => copySentenceBtn.classList.remove('copied'), 1500);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopyText(text, onSuccess));
+        navigator.clipboard.writeText(copyTarget).then(onSuccess).catch(() => fallbackCopyText(copyTarget, onSuccess));
       } else {
-        fallbackCopyText(text, onSuccess);
+        fallbackCopyText(copyTarget, onSuccess);
       }
     });
 
-    // Nút audio và close
-    const audioBtn = sentenceCard.querySelector('#jp-sentence-audio');
+    // Nút audio và close với toggle play/stop
     audioBtn.addEventListener('click', () => {
-      japaneseEngine.speak(
-        text,
-        {
-          rate: settings.speechRate || 0.95,
-          pitch: settings.speechPitch || 1.0,
-          voiceUri: settings.voiceUri || ''
-        },
-        () => audioBtn.classList.add('playing'),
-        () => audioBtn.classList.remove('playing')
-      );
+      if (activeSentenceReading.isReading) {
+        stopSentenceReading();
+      } else {
+        const speakTarget = translatedJapanese || text;
+        startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem);
+      }
     });
 
     sentenceCard.querySelector('#jp-sentence-close').addEventListener('click', () => {
@@ -930,8 +1239,15 @@
       if (res && res.meaning) {
         const mElem = sentenceCard.querySelector('#jp-sentence-meaning');
         const bElem = sentenceCard.querySelector('#jp-sentence-api-badge');
+        const tElem = sentenceCard.querySelector('#jp-sentence-title');
         if (mElem) {
           mElem.textContent = res.meaning;
+        }
+        if (res.direction === 'vi-ja') {
+          translatedJapanese = res.meaning;
+          if (tElem) tElem.textContent = '📖 Dịch câu & Luyện đọc JLPT';
+          if (audioBtn) audioBtn.title = 'Phát âm tiếng Nhật đã dịch';
+          if (copySentenceBtn) copySentenceBtn.title = 'Sao chép tiếng Nhật đã dịch';
         }
         if (bElem && res.provider) {
           bElem.textContent = res.provider;
@@ -946,6 +1262,7 @@
   }
 
   function hideSentenceCard() {
+    stopSentenceReading();
     if (sentenceCard) {
       sentenceCard.classList.remove('visible');
     }
@@ -972,22 +1289,79 @@
     hideTooltip(force);
     hideSelectionBadge();
     hideSentenceCard();
+    const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+    if (qs && qs.isOpen) {
+      qs.close();
+    }
   }
 
   // 5. Vẽ lớp Visual Highlight dạ quang bao quanh từ trên trang web
-  function updateVisualHighlight(range) {
-    if (!highlightOverlay || !range) return;
+  function updateVisualHighlight(range, mouseX, mouseY) {
+    if (!highlightOverlay || !range || !settings.enableVisualHighlight) {
+      hideVisualHighlight();
+      return;
+    }
+
     try {
-      const rect = range.getBoundingClientRect();
-      if (rect && rect.width > 0 && rect.height > 0) {
-        highlightOverlay.style.left = `${rect.left - 2}px`;
-        highlightOverlay.style.top = `${rect.top - 1}px`;
-        highlightOverlay.style.width = `${rect.width + 4}px`;
-        highlightOverlay.style.height = `${rect.height + 2}px`;
+      // 1. Ưu tiên lấy ClientRects từng dòng thực tế của văn bản
+      const rects = range.getClientRects();
+      let targetRect = null;
+
+      if (rects && rects.length > 0) {
+        if (typeof mouseX === 'number' && typeof mouseY === 'number') {
+          // Tìm rect chính xác mà con trỏ chuột đang nằm trên đó
+          for (let i = 0; i < rects.length; i++) {
+            const r = rects[i];
+            if (
+              mouseX >= r.left - 30 &&
+              mouseX <= r.right + 30 &&
+              mouseY >= r.top - 30 &&
+              mouseY <= r.bottom + 30
+            ) {
+              targetRect = r;
+              break;
+            }
+          }
+        }
+        if (!targetRect) {
+          targetRect = rects[0];
+        }
+      }
+
+      // 2. Nếu getClientRects không có, fallback sang getBoundingClientRect
+      if (!targetRect) {
+        targetRect = range.getBoundingClientRect();
+      }
+
+      if (!targetRect) {
+        hideVisualHighlight();
+        return;
+      }
+
+      // 3. KIỂM TRA KÍCH THƯỚC AN TOÀN TUYỆT ĐỐI (Sanity checks):
+      // Một từ vựng tiếng Nhật (Kanji/Kana) thông thường không bao giờ rộng quá 220px
+      // hoặc cao quá 36px.
+      // Nếu vượt quá ngưỡng này -> Trình duyệt trả về bounding box của cả bảng/container -> TỪ CHỐI hiển thị highlight!
+      const maxWidth = 220;
+      const maxHeight = 36;
+
+      if (
+        targetRect.width >= 4 &&
+        targetRect.height >= 4 &&
+        targetRect.width <= maxWidth &&
+        targetRect.height <= maxHeight &&
+        targetRect.top >= -20 &&
+        targetRect.bottom <= window.innerHeight + 20
+      ) {
+        highlightOverlay.style.left = `${Math.round(targetRect.left - 2)}px`;
+        highlightOverlay.style.top = `${Math.round(targetRect.top - 1)}px`;
+        highlightOverlay.style.width = `${Math.round(targetRect.width + 4)}px`;
+        highlightOverlay.style.height = `${Math.round(targetRect.height + 2)}px`;
         highlightOverlay.classList.add('active');
         return;
       }
     } catch (_) {}
+
     hideVisualHighlight();
   }
 
@@ -1115,8 +1489,10 @@
 
   function isStrokeModalOpen() {
     if (strokeModalOverlay && strokeModalOverlay.classList.contains('active')) return true;
+    const qsObj = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+    if (qsObj && qsObj.isOpen) return true;
     const qs = document.getElementById('jp-quick-search-root');
-    if (qs && qs.style.display !== 'none' && qs.style.pointerEvents !== 'none') return true;
+    if (qs && !qs.hasAttribute('hidden') && qs.style.display !== 'none') return true;
     return false;
   }
 
@@ -1140,11 +1516,11 @@
     }
 
     if (settings.activationMode === 'shift' && !e.shiftKey) {
-      scheduleHide(150);
+      scheduleHide(350);
       return;
     }
     if (settings.activationMode === 'alt' && !e.altKey) {
-      scheduleHide(150);
+      scheduleHide(350);
       return;
     }
 
@@ -1220,13 +1596,13 @@
     }
 
     if (!textNode) {
-      scheduleHide(150);
+      scheduleHide(350);
       return;
     }
 
     const text = textNode.nodeValue;
     if (!text) {
-      scheduleHide(150);
+      scheduleHide(350);
       return;
     }
 
@@ -1273,7 +1649,7 @@
             }
           }
           if (!isInsideWord) {
-            scheduleHide(150);
+            scheduleHide(350);
             return;
           }
         }
@@ -1296,7 +1672,7 @@
 
       if (word === currentWord) {
         cancelHideSchedule();
-        if (wordRange) updateVisualHighlight(wordRange);
+        if (wordRange) updateVisualHighlight(wordRange, clientX, clientY);
         return;
       }
 
@@ -1345,7 +1721,7 @@
       }
     }
 
-    scheduleHide(150);
+    scheduleHide(350);
   }
 
   function handleDocumentClick(e) {
@@ -1461,7 +1837,7 @@
         const rawSvg = await kanjiStrokeAnimator.fetchKanjiSvg(char);
         if (rawSvg && canvasBox) {
           kanjiStrokeAnimator.renderAnimatedSvg(canvasBox, rawSvg, { showNumbers: showStrokeNumbers });
-          kanjiStrokeAnimator.startAnimation(canvasBox);
+          kanjiStrokeAnimator.showAllStrokes(canvasBox);
         }
       } catch (err) {
         console.warn('Lỗi hiển thị SVG nét vẽ:', err);
@@ -1489,39 +1865,109 @@
 
   // 11. Phím tắt toàn cục: Alt+J, Alt+R/Alt+F, Alt+S, E (Anki), S (Audio)
   function handleKeyDown(e) {
-    const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+    const isActivelyTyping = (Date.now() - lastUserTypingTime < 700);
+    const targetIsInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+    const isCardVisible = cardElem && cardElem.classList.contains('visible');
+    const canTriggerWordShortcut = isCardVisible && currentWord && (!targetIsInput || !isActivelyTyping || isMouseOverTooltip);
 
-    // Esc để đóng Stroke Modal
+    // Esc để đóng Quick Search, Sentence Card, Stroke Modal hoặc đóng Tooltip
     if (e.key === 'Escape') {
+      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (qs && qs.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        qs.close();
+        return;
+      }
+      if (sentenceCard && sentenceCard.classList.contains('visible')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        hideSentenceCard();
+        return;
+      }
       if (strokeModalOverlay && strokeModalOverlay.classList.contains('active')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         closeStrokeModal();
+        return;
+      }
+      if (isCardVisible) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        hideTooltip(true);
         return;
       }
     }
 
-    // Phím 'E' để thêm vào Anki khi có từ đang chọn / hover
-    if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.altKey && !e.metaKey && !isTyping) {
-      if (currentWord) {
+    // Phím 'S' để phát âm khi có từ đang hiển thị trên Tooltip
+    if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (canTriggerWordShortcut) {
         e.preventDefault();
         e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        cancelHideSchedule();
+        const speakText = getActiveSpeakText();
+        const audioBtn = cardElem ? cardElem.querySelector('#jp-audio-btn') : null;
+        if (speakText && typeof japaneseEngine !== 'undefined') {
+          japaneseEngine.speak(
+            speakText,
+            {
+              rate: settings.speechRate || 0.95,
+              pitch: settings.speechPitch || 1.0,
+              voiceUri: settings.voiceUri || ''
+            },
+            () => audioBtn && audioBtn.classList.add('playing'),
+            () => audioBtn && audioBtn.classList.remove('playing')
+          );
+        }
+        return;
+      }
+    }
+
+    // Phím 'E' để thêm vào Anki khi có từ đang hiển thị trên Tooltip
+    if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (canTriggerWordShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         syncCurrentWordToAnki();
         return;
       }
     }
 
-    // Phím 'S' để phát âm khi có từ đang chọn / hover
-    if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.altKey && !e.metaKey && !isTyping) {
-      if (currentWord) {
+    // Phím 'W' để lưu/bỏ lưu từ vào Sổ tay từ vựng (Bookmark ⭐)
+    if ((e.key === 'w' || e.key === 'W') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (canTriggerWordShortcut) {
         e.preventDefault();
         e.stopPropagation();
-        const speakText = getActiveSpeakText();
-        if (speakText && typeof japaneseEngine !== 'undefined') {
-          japaneseEngine.speak(speakText, {
-            rate: settings.speechRate || 0.95,
-            pitch: settings.speechPitch || 1.0,
-            voiceUri: settings.voiceUri || ''
-          });
-        }
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        toggleCurrentWordSaved();
+        return;
+      }
+    }
+
+    // Phím 'C' để sao chép từ vựng hiện tại (Copy 📋)
+    if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (canTriggerWordShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        copyCurrentWord();
+        return;
+      }
+    }
+
+    // Phím 'P' để ghim/bỏ ghim Tooltip cố định (Pin 📌)
+    if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (canTriggerWordShortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        togglePinTooltip();
         return;
       }
     }
@@ -1529,6 +1975,7 @@
     // Alt + S / Ctrl + Shift + F: Mở thanh tra cứu nhanh
     if ((e.altKey && (e.key === 's' || e.key === 'S')) || 
         (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
+      if (!settings.enabled) return; // NẾU EXTENSION ĐANG TẮT -> KHÔNG MỞ THANH TRA CỨU
       const palette = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
       if (palette) {
         e.preventDefault();
@@ -1543,6 +1990,11 @@
       e.preventDefault();
       e.stopPropagation();
       settings.enabled = !settings.enabled;
+      window.__JP_EXTENSION_ENABLED__ = settings.enabled;
+      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (qs && qs.setEnabled) {
+        qs.setEnabled(settings.enabled);
+      }
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ jpSettings: settings });
       }
@@ -1595,12 +2047,21 @@
       if (msg.action === 'SET_STATE' || msg.action === 'TOGGLE_HOVER') {
         const nextEnabled = typeof msg.enabled === 'boolean' ? msg.enabled : !settings.enabled;
         settings.enabled = nextEnabled;
+        window.__JP_EXTENSION_ENABLED__ = settings.enabled;
+        const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+        if (qs && qs.setEnabled) {
+          qs.setEnabled(settings.enabled);
+        }
         if (!settings.enabled) hideAllPopups(true);
         showToast(settings.enabled ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)' : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)');
         sendResponse({ enabled: settings.enabled });
       } else if (msg.action === 'GET_STATUS') {
         sendResponse({ enabled: settings.enabled });
       } else if (msg.action === 'TOGGLE_QUICK_SEARCH') {
+        if (!settings.enabled) {
+          sendResponse({ success: false, reason: 'disabled' });
+          return;
+        }
         if (typeof quickSearchPalette !== 'undefined') {
           quickSearchPalette.toggle();
           sendResponse({ success: true });
@@ -1651,8 +2112,9 @@
   position: fixed;
   z-index: 2147483647;
   pointer-events: auto;
-  min-width: 270px;
-  max-width: 400px;
+  min-width: 300px;
+  max-width: 480px;
+  width: max-content;
   background: rgba(15, 23, 42, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -1689,7 +2151,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 8px;
 }
@@ -1697,52 +2159,63 @@
 .jp-word-box {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   user-select: text !important;
   -webkit-user-select: text !important;
 }
 
 .jp-reading-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
+  line-height: 1.4;
 }
 
 .jp-reading {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #38bdf8; /* Xanh Cyan sáng */
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  letter-spacing: 0.3px;
+  word-break: break-word;
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
 }
 
+.jp-reading-kata {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #cbd5e1; /* Katakana bọc trong ngoặc (タカイ) rõ ràng */
+  letter-spacing: 0.3px;
+  word-break: break-word;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
 .jp-pitch-badge {
-  background: rgba(236, 72, 153, 0.2);
+  background: rgba(236, 72, 153, 0.16);
   color: #f472b6;
-  border: 1px solid rgba(236, 72, 153, 0.4);
+  border: 1px solid rgba(236, 72, 153, 0.35);
   font-size: 10px;
-  font-weight: 700;
-  padding: 1px 5px;
+  font-weight: 600;
+  padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;
   flex-shrink: 0;
+  line-height: 1.4;
+  align-self: center;
 }
 
 .jp-main-word {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: #ffffff;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  word-break: break-word;
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
@@ -2132,26 +2605,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  font-size: 10px;
+  gap: 10px;
+  font-size: 11px;
   color: #94a3b8;
-  padding-top: 6px;
+  padding-top: 8px;
   border-top: 1px dashed rgba(255, 255, 255, 0.08);
   user-select: none;
   -webkit-user-select: none;
-  flex-wrap: wrap;
+  white-space: nowrap;
 }
 
 .jp-footer-left {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.jp-footer-title {
-  color: #cbd5e1;
-  font-weight: 600;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .jp-shortcut-hint {
@@ -2159,16 +2627,18 @@
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  white-space: nowrap;
 }
 
 .jp-kbd {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   font-size: 9.5px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #cbd5e1;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 /* Nút sao lưu từ vựng (Bookmark Star) */
@@ -2253,20 +2723,23 @@
   transform: translateY(-2px) scale(1.05);
 }
 
-/* Thẻ kết quả dịch câu khi bôi đen */
+/* Thẻ kết quả dịch câu khi bôi đen & Luyện đọc JLPT */
 .jp-sentence-card {
   position: fixed;
   z-index: 2147483647;
   pointer-events: auto;
-  max-width: 440px;
-  min-width: 280px;
+  max-width: 620px;
+  min-width: 360px;
+  width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
   background: rgba(15, 23, 42, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(56, 189, 248, 0.35);
   box-shadow: 0 24px 50px -5px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(56, 189, 248, 0.2);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 14px 18px;
   color: #f8fafc;
   display: flex;
   flex-direction: column;
@@ -2275,12 +2748,85 @@
   visibility: hidden;
   transform: translateY(6px) scale(0.97);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .jp-sentence-card.visible {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scale(1);
+}
+
+.jp-jlpt-speed-bar {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.jp-jlpt-speed-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.jp-jlpt-speed-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.jp-jlpt-speed-btn.active {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.jp-sentence-play-btn.playing {
+  background: #22c55e !important;
+  color: #ffffff !important;
+  animation: jpAudioWave 1.2s infinite ease-in-out;
+}
+
+.jp-sentence-source-box {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
+  font-size: 16px;
+  line-height: 1.85;
+  color: #f8fafc;
+  letter-spacing: 0.03em;
+  margin: 8px 0 4px 0;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.jp-sentence-source-box span.reading-chunk-active {
+  background: rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.jp-sentence-meaning {
+  font-size: 14px;
+  color: #e2e8f0;
+  background: rgba(56, 189, 248, 0.08);
+  padding: 12px 14px;
+  border-radius: 8px;
+  line-height: 1.6;
+  border-left: 3px solid #38bdf8;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .jp-flashcard-btn:hover {
@@ -2446,28 +2992,41 @@
 .jp-stroke-controls {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .jp-stroke-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #f1f5f9;
-  padding: 7px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .jp-stroke-btn:hover {
   background: #38bdf8;
   color: #0f172a;
   border-color: #38bdf8;
+}
+
+.jp-stroke-show-all-btn {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.jp-stroke-show-all-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
 }
 
 .jp-stroke-info {
@@ -2497,239 +3056,14 @@ rt.jp-ext-injected-rt {
   -webkit-user-select: none !important;
 }
 
-/* ==========================================================================
-   CSS CHO THANH TRA CỨU NHANH (QUICK SEARCH PALETTE: ALT+S)
-   ========================================================================== */
-#jp-quick-search-root {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483646;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
-}
-
-.jp-qs-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 10vh;
-}
-
-.jp-qs-modal {
-  width: 90%;
-  max-width: 640px;
-  max-height: 80vh;
-  background: #0f172a;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(56, 189, 248, 0.25);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: qsFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes qsFadeIn {
-  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.jp-qs-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.jp-qs-icon {
-  font-size: 20px;
-}
-
-.jp-qs-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 17px;
-  color: #f8fafc;
-  font-weight: 500;
-}
-
-.jp-qs-input::placeholder {
-  color: #64748b;
-  font-size: 15px;
-}
-
-.jp-qs-close {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  color: #94a3b8;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.jp-qs-close:hover {
-  background: #ef4444;
-  color: #ffffff;
-}
-
-.jp-qs-tags {
-  display: flex;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  overflow-x: auto;
-}
-
-.jp-qs-tag {
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  color: #38bdf8;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.jp-qs-tag:hover {
-  background: #38bdf8;
-  color: #0f172a;
-}
-
-.jp-qs-results {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.jp-qs-empty {
-  text-align: center;
-  padding: 40px 20px;
-  color: #94a3b8;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.jp-qs-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  transition: all 0.15s ease;
-}
-
-.jp-qs-card:hover {
-  background: rgba(56, 189, 248, 0.08);
-  border-color: rgba(56, 189, 248, 0.35);
-  transform: translateX(3px);
-}
-
-.jp-qs-card-left {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.jp-qs-word-title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.jp-qs-vocab {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f8fafc;
-}
-
-.jp-qs-reading {
-  font-size: 15px;
-  color: #38bdf8;
-  font-weight: 600;
-}
-
-.jp-qs-romaji {
-  font-size: 13px;
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.jp-qs-meaning {
-  font-size: 14px;
-  color: #e2e8f0;
-}
-
-.jp-qs-type-badge {
-  font-size: 11px;
-  color: #a78bfa;
-}
-
-.jp-qs-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.jp-qs-action-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f1f5f9;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.jp-qs-action-btn:hover {
-  background: #38bdf8;
-  color: #0f172a;
-  border-color: #38bdf8;
-}
-
-.jp-qs-footer {
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.3);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.jp-qs-footer kbd {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #94a3b8;
-}
 `;
   }
 
   // Khởi động
   initShadowDOM();
+  document.addEventListener('input', () => {
+    lastUserTypingTime = Date.now();
+  }, true);
   document.addEventListener('mousedown', handleMouseDown, true);
   document.addEventListener('mouseup', handleMouseUp, true);
   document.addEventListener('mousemove', handleMouseMove, true);

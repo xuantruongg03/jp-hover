@@ -497,9 +497,13 @@
     markAnswerSRS(isMastered ? 4 : 1);
   }
 
+  let flashcardStrokeNumbers = true;
+  let currentFlashcardStrokeChar = '';
+
   async function openStrokeModalWindow(char) {
     const modal = document.getElementById('modal-stroke');
     if (!modal) return;
+    currentFlashcardStrokeChar = char;
     openModal('modal-stroke');
     document.getElementById('modal-stroke-title').textContent = `✍️ Nét viết chữ [${char}]`;
     const canvas = document.getElementById('modal-stroke-canvas');
@@ -521,16 +525,40 @@
     if (typeof kanjiStrokeAnimator !== 'undefined') {
       const svg = await kanjiStrokeAnimator.fetchKanjiSvg(char);
       if (svg) {
-        kanjiStrokeAnimator.renderAnimatedSvg(canvas, svg);
-        kanjiStrokeAnimator.startAnimation(canvas);
+        kanjiStrokeAnimator.renderAnimatedSvg(canvas, svg, { showNumbers: flashcardStrokeNumbers });
+        kanjiStrokeAnimator.showAllStrokes(canvas);
       }
     }
   }
+
+  document.getElementById('btn-stroke-show-all')?.addEventListener('click', () => {
+    const canvas = document.getElementById('modal-stroke-canvas');
+    if (canvas && typeof kanjiStrokeAnimator !== 'undefined') {
+      kanjiStrokeAnimator.showAllStrokes(canvas);
+    }
+  });
 
   document.getElementById('btn-stroke-replay')?.addEventListener('click', () => {
     const canvas = document.getElementById('modal-stroke-canvas');
     if (canvas && typeof kanjiStrokeAnimator !== 'undefined') {
       kanjiStrokeAnimator.startAnimation(canvas);
+    }
+  });
+
+  document.getElementById('btn-stroke-toggle-num')?.addEventListener('click', async () => {
+    flashcardStrokeNumbers = !flashcardStrokeNumbers;
+    const canvas = document.getElementById('modal-stroke-canvas');
+    if (currentFlashcardStrokeChar && canvas && typeof kanjiStrokeAnimator !== 'undefined') {
+      const svg = await kanjiStrokeAnimator.fetchKanjiSvg(currentFlashcardStrokeChar);
+      if (svg) {
+        const wasPlaying = kanjiStrokeAnimator.isPlaying;
+        kanjiStrokeAnimator.renderAnimatedSvg(canvas, svg, { showNumbers: flashcardStrokeNumbers });
+        if (wasPlaying) {
+          kanjiStrokeAnimator.startAnimation(canvas);
+        } else {
+          kanjiStrokeAnimator.showAllStrokes(canvas);
+        }
+      }
     }
   });
 
@@ -636,7 +664,9 @@
         const inRomaji = (item.romaji || '').toLowerCase().includes(query);
         const inHanviet = (item.hanviet || '').toLowerCase().includes(query);
         const inMeaning = (item.meaning || '').toLowerCase().includes(query);
-        return inWord || inReading || inRomaji || inHanviet || inMeaning;
+        const qNoTone = typeof removeVietnameseTones === 'function' ? removeVietnameseTones(query) : '';
+        const inMeaningNoTone = qNoTone && typeof removeVietnameseTones === 'function' ? removeVietnameseTones(item.meaning || '').includes(qNoTone) : false;
+        return inWord || inReading || inRomaji || inHanviet || inMeaning || inMeaningNoTone;
       }
       return true;
     });

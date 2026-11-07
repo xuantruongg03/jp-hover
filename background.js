@@ -107,7 +107,11 @@ chrome.commands.onCommand.addListener((command) => {
         });
       });
     } else if (command === 'quick-search') {
-      chrome.tabs.sendMessage(tabId, { action: 'TOGGLE_QUICK_SEARCH' }).catch(() => {});
+      chrome.storage.local.get(['jpSettings'], (res) => {
+        const isEnabled = res && res.jpSettings ? res.jpSettings.enabled !== false : true;
+        if (!isEnabled) return; // Tiện ích đang TẮT -> Không mở thanh tìm kiếm
+        chrome.tabs.sendMessage(tabId, { action: 'TOGGLE_QUICK_SEARCH' }).catch(() => {});
+      });
     }
   });
 });
@@ -167,6 +171,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       sendResponse({ success: false });
     })();
+    return true;
+  }
+
+  // 4. Google Translate Proxy (Vượt CSP & CORS trên ChatGPT, YouTube, Facebook, Twitter...)
+  if (msg.action === 'GOOGLE_TRANSLATE_API') {
+    const text = (msg.text || '').trim();
+    const sl = msg.sl || 'ja';
+    const tl = msg.tl || 'vi';
+
+    if (!text) {
+      sendResponse({ success: false, error: 'Empty query' });
+      return false;
+    }
+
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(tl)}&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(text)}`;
+    
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+
+    fetch(url, { signal: controller.signal })
+      .then(res => {
+        clearTimeout(timer);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(err => {
+        clearTimeout(timer);
+        sendResponse({ success: false, error: err.message });
+      });
+
     return true;
   }
 });

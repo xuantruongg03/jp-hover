@@ -5367,8 +5367,11 @@ const JP_DICTIONARY_EXTENSIONS = {
 // Gộp từ vựng mở rộng vào từ điển chính
 Object.assign(JP_DICTIONARY, JP_DICTIONARY_EXTENSIONS);
 
-if (typeof JP_DICTIONARY_EXPANDED !== 'undefined') {
-  Object.assign(JP_DICTIONARY, JP_DICTIONARY_EXPANDED);
+const expandedDict = (typeof JP_DICTIONARY_EXPANDED !== 'undefined' ? JP_DICTIONARY_EXPANDED : null) || 
+                     (typeof window !== 'undefined' && window.JP_DICTIONARY_EXPANDED) || 
+                     (typeof globalThis !== 'undefined' && globalThis.JP_DICTIONARY_EXPANDED);
+if (expandedDict) {
+  Object.assign(JP_DICTIONARY, expandedDict);
 } else if (typeof require !== 'undefined') {
   try {
     const ext = require('./dictionary_expanded.js');
@@ -5649,8 +5652,206 @@ function cacheLookup(word, result) {
   LOOKUP_CACHE.set(word, result);
 }
 
+/**
+ * Chuẩn hóa chuỗi tiếng Việt: Bỏ dấu thanh và dấu phụ để tìm kiếm không dấu
+ * @param {string} str 
+ * @returns {string} Chuỗi không dấu, chữ thường
+ */
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Kiểm tra xem chuỗi có phải tiếng Việt hay không (hỗ trợ cả có dấu và không dấu)
+ * @param {string} str 
+ * @returns {boolean}
+ */
+function isVietnameseQuery(str) {
+  if (!str || typeof str !== 'string') return false;
+  const s = str.trim();
+  if (!s) return false;
+  // 1. Nếu chứa ký tự tiếng Nhật (Kana, Kanji) -> chắc chắn tiếng Nhật
+  if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(s)) return false;
+  // 2. Chứa dấu tiếng Việt hoặc chữ đ/Đ
+  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(s)) return true;
+  // 3. Chứa phụ âm đầu đặc trưng tiếng Việt không tồn tại trong Romaji tiếng Nhật:
+  // ngh, ng (đầu từ), nh, th, kh, ph, tr, qu, gi
+  if (/(?:^|\s)(?:ngh|ng|nh|th|kh|ph|tr|qu|gi)/i.test(s)) return true;
+  // 4. Chứa phụ âm cuối đặc trưng tiếng Việt (trong Romaji, âm tiết luôn kết thúc bằng nguyên âm hoặc n):
+  // từ kết thúc bằng c, ch, p, t, nh, ng
+  if (/(?:c|ch|p|t|nh|ng)(?:\s|$)/i.test(s)) return true;
+  // 5. Chứa các từ vựng tiếng Việt không dấu thông dụng
+  const viCommonWords = new Set([
+    'an', 'uong', 'ngu', 'di', 'den', 'hoc', 'sach', 'xe', 'ban', 'ghe', 'nha', 'cho', 'meo', 
+    'troi', 'mua', 'nang', 'lanh', 'nong', 'dep', 'xau', 'tot', 'hay', 'yeu', 'thuong', 'nho', 
+    'biet', 'hieu', 'lam', 'nghe', 'noi', 'doc', 'viet', 'cam', 'on', 'tam', 'biet', 'xin', 'chao',
+    'nguoi', 'ban', 'me', 'cha', 'bo', 'anh', 'em', 'chi', 'ong', 'ba', 'co', 'chu', 'bac',
+    'tien', 'dong', 'ngay', 'dem', 'gio', 'phut', 'giay', 'nam', 'thang', 'tuan', 'nay', 'kia',
+    'do', 'trong', 'ngoai', 'tren', 'duoi', 'truoc', 'sau', 'giua', 'cua', 'va', 'la', 'co', 'khong'
+  ]);
+  const tokens = s.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.some(t => viCommonWords.has(t))) return true;
+  return false;
+}
+
+/**
+ * Tra cứu ngược: Nhập từ hoặc nghĩa tiếng Việt -> Tìm từ vựng tiếng Nhật & chữ Hán tương ứng
+ * Tự động tìm kiếm đồng thời trên Từ điển cốt lõi và Từ điển Mở rộng (3,000+ từ vựng)
+ * Hỗ trợ bóc tách lượng từ (con chó -> chó, cái bàn -> bàn) và ưu tiên độ khớp dấu thanh
+ * @param {string} query - Từ khóa tiếng Việt (có dấu hoặc không dấu)
+ * @param {number} [maxResults=30] - Số lượng kết quả tối đa
+ * @returns {{ words: Array, kanji: Array }}
+ */
+function lookupVietnameseToJapanese(query, maxResults = 30) {
+  if (!query || typeof query !== 'string') return { words: [], kanji: [] };
+  const clean = query.trim();
+  if (clean.length === 0) return { words: [], kanji: [] };
+
+  const qLower = clean.toLowerCase();
+  const qNoTone = removeVietnameseTones(clean);
+  const hasTone = (clean !== qNoTone);
+  const words = [];
+  const seenWords = new Set();
+
+  // Danh sách từ điển quét: gồm Từ điển chính và Từ điển mở rộng (nếu có)
+  const dictList = [JP_DICTIONARY];
+  const expDict = (typeof JP_DICTIONARY_EXPANDED !== 'undefined' ? JP_DICTIONARY_EXPANDED : null) ||
+                  (typeof window !== 'undefined' && window.JP_DICTIONARY_EXPANDED) ||
+                  (typeof globalThis !== 'undefined' && globalThis.JP_DICTIONARY_EXPANDED);
+  if (expDict && typeof expDict === 'object') {
+    dictList.push(expDict);
+  }
+
+  // Tiền tố lượng từ / loại từ tiếng Việt thường gặp
+  const classifierRegex = /^(?:con|cái|chiếc|người|trái|quả|cây|ngôi|bức|tấm|sự|việc|đồ)\s+/i;
+
+  for (const dict of dictList) {
+    for (const [w, data] of Object.entries(dict)) {
+      if (!data || !data.m || seenWords.has(w)) continue;
+      const mLower = data.m.toLowerCase();
+      const mNoTone = removeVietnameseTones(data.m);
+
+      let score = 0;
+      const rawParts = mLower.split(/[,;\/()•\n]/).map(s => s.trim()).filter(Boolean);
+      const rawPartsNoTone = mNoTone.split(/[,;\/()•\n]/).map(s => s.trim()).filter(Boolean);
+
+      // Thêm các biến thể loại bỏ lượng từ (vd: "con chó" -> "chó", "cái bàn" -> "bàn")
+      const parts = [];
+      const partsNoTone = [];
+      for (let i = 0; i < rawParts.length; i++) {
+        const p = rawParts[i];
+        const pNt = rawPartsNoTone[i];
+        parts.push(p);
+        partsNoTone.push(pNt);
+        const stripped = p.replace(classifierRegex, '').trim();
+        const strippedNt = pNt.replace(classifierRegex, '').trim();
+        if (stripped !== p) parts.push(stripped);
+        if (strippedNt !== pNt) partsNoTone.push(strippedNt);
+      }
+
+      // 1. Khớp chính xác cụm nghĩa (Exact Match)
+      if (parts.includes(qLower)) {
+        score = 110;
+      } else if (partsNoTone.includes(qNoTone)) {
+        score = hasTone ? 70 : 100;
+      }
+      // 2. Nghĩa bắt đầu bằng từ khóa hoặc chứa từ hoàn chỉnh
+      else if (parts.some(p => p.startsWith(qLower) || p.includes(' ' + qLower))) {
+        score = 85;
+      } else if (partsNoTone.some(p => p.startsWith(qNoTone) || p.includes(' ' + qNoTone))) {
+        score = hasTone ? 55 : 80;
+      }
+      // 3. Khớp chuỗi con (nếu từ khóa dài hơn 1 ký tự)
+      else if (qLower.length > 1 && mLower.includes(qLower)) {
+        score = 60;
+      } else if (qNoTone.length > 1 && mNoTone.includes(qNoTone)) {
+        score = hasTone ? 35 : 50;
+      }
+
+      if (score > 0) {
+        if (hasTone && parts.some(p => p.includes(qLower))) score += 20; // Thưởng cực mạnh cho từ khớp đúng dấu thanh
+        if (data.t && /N5|N4/i.test(data.t)) score += 6;
+        if (w.length <= 3) score += 3;
+
+        seenWords.add(w);
+        words.push({ word: w, ...data, score });
+      }
+    }
+  }
+
+  words.sort((a, b) => b.score - a.score);
+
+  // 2. Tra cứu chữ Hán (Kanji) theo âm Hán-Việt hoặc nghĩa
+  const kanjiList = [];
+  let kanjiSource = typeof KANJI_DATA !== 'undefined' ? KANJI_DATA : (typeof window !== 'undefined' && window.KANJI_DATA ? window.KANJI_DATA : null);
+  if (!kanjiSource && typeof require !== 'undefined') {
+    try {
+      kanjiSource = require('./kanji_hanviet.js').KANJI_DATA;
+    } catch (_) {}
+  }
+  if (kanjiSource) {
+    const qUpper = clean.toUpperCase();
+    for (const [char, kData] of Object.entries(kanjiSource)) {
+      if (!kData) continue;
+      const hvUpper = (kData.hv || '').toUpperCase();
+      const hvNoTone = removeVietnameseTones(kData.hv || '');
+      const kmLower = (kData.m || '').toLowerCase();
+      const kmNoTone = removeVietnameseTones(kData.m || '');
+
+      let kScore = 0;
+      if (hvUpper === qUpper) {
+        kScore = 100; // Khớp chuẩn âm Hán-Việt: "THỰC", "HỌC", "ĐẠI"
+      } else if (hvNoTone === qNoTone) {
+        kScore = 90;
+      } else if (hvUpper.includes(qUpper) && qUpper.length >= 2) {
+        kScore = 75;
+      } else if (kmLower.split(/[,;\/()•\n]/).map(s => s.trim()).includes(qLower)) {
+        kScore = 70;
+      } else if (kmNoTone.split(/[,;\/()•\n]/).map(s => s.trim()).includes(qNoTone)) {
+        kScore = 60;
+      } else if (clean.length >= 2 && kmLower.includes(qLower)) {
+        kScore = 45;
+      }
+
+      if (kScore > 0) {
+        kanjiList.push({ char, ...kData, score: kScore });
+      }
+    }
+    kanjiList.sort((a, b) => b.score - a.score);
+  }
+
+  return {
+    words: words.slice(0, maxResults),
+    kanji: kanjiList.slice(0, 8)
+  };
+}
+
 // Xuất ra môi trường
+if (typeof window !== 'undefined') {
+  window.JP_DICTIONARY = JP_DICTIONARY;
+  window.lookupJapaneseWord = lookupJapaneseWord;
+  window.removeVietnameseTones = removeVietnameseTones;
+  window.isVietnameseQuery = isVietnameseQuery;
+  window.lookupVietnameseToJapanese = lookupVietnameseToJapanese;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { JP_DICTIONARY, lookupJapaneseWord, GRAMMAR_DEINFLECT_PATTERNS, READING_TO_WORDS_MAP, computeSurfaceReading };
+  module.exports = { 
+    JP_DICTIONARY, 
+    lookupJapaneseWord, 
+    GRAMMAR_DEINFLECT_PATTERNS, 
+    READING_TO_WORDS_MAP, 
+    computeSurfaceReading,
+    removeVietnameseTones,
+    isVietnameseQuery,
+    lookupVietnameseToJapanese
+  };
 }
 

@@ -35,6 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const optOnlineFallback = document.getElementById('opt-online-fallback');
   const optAutoAudio = document.getElementById('opt-auto-audio');
 
+  // NEW Reading Format & Katakana Elements
+  const selectReadingFormat = document.getElementById('select-reading-format');
+  const optKatakana = document.getElementById('opt-katakana');
+  const optOnKunRule = document.getElementById('opt-onkun-rule');
+
+  // NEW Tooltip Action Button Toggles
+  const optShowAnkiBtn = document.getElementById('opt-show-anki-btn');
+  const optShowCopyBtn = document.getElementById('opt-show-copy-btn');
+  const optShowLookupBtn = document.getElementById('opt-show-lookup-btn');
+  const optShowPinBtn = document.getElementById('opt-show-pin-btn');
+
   // NEW Settings Elements
   const optSubtitleHover = document.getElementById('opt-subtitle-hover');
   const optAutoPauseHover = document.getElementById('opt-auto-pause-hover');
@@ -80,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showMeaning: true,
     showKanjiBreakdown: true,
     showPitchAccent: true,
-    enableVisualHighlight: true,
+    enableVisualHighlight: false,
     enableSelectionTranslate: true,
     enableOnlineFallback: true,
     autoPlayAudio: false,
@@ -90,6 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
     translationEngine: 'google',
     geminiApiKey: '',
     // Mới
+    readingFormat: 'hiragana', // 'hiragana' | 'katakana' | 'both'
+    showKatakana: true,
+    showOnKunRule: true,
+    showAnkiBtn: false,
+    showCopyBtn: false,
+    showLookupBtn: false,
+    showPinBtn: true,
     enableSubtitleHover: true,
     autoPauseVideoOnHover: false,
     ankiEnabled: true,
@@ -163,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     optMeaning.checked = currentSettings.showMeaning !== false;
     optKanjiBreakdown.checked = currentSettings.showKanjiBreakdown !== false;
     optPitchAccent.checked = currentSettings.showPitchAccent !== false;
-    optVisualHighlight.checked = currentSettings.enableVisualHighlight !== false;
+    optVisualHighlight.checked = currentSettings.enableVisualHighlight === true;
     if (optSelectionTranslate) {
       optSelectionTranslate.checked = currentSettings.enableSelectionTranslate !== false;
     }
@@ -171,6 +189,13 @@ document.addEventListener('DOMContentLoaded', () => {
     optAutoAudio.checked = currentSettings.autoPlayAudio === true;
 
     // Cài đặt mới
+    if (selectReadingFormat) selectReadingFormat.value = currentSettings.readingFormat || 'hiragana';
+    if (optKatakana) optKatakana.checked = currentSettings.showKatakana !== false;
+    if (optOnKunRule) optOnKunRule.checked = currentSettings.showOnKunRule !== false;
+    if (optShowAnkiBtn) optShowAnkiBtn.checked = currentSettings.showAnkiBtn === true;
+    if (optShowCopyBtn) optShowCopyBtn.checked = currentSettings.showCopyBtn === true;
+    if (optShowLookupBtn) optShowLookupBtn.checked = currentSettings.showLookupBtn === true;
+    if (optShowPinBtn) optShowPinBtn.checked = currentSettings.showPinBtn !== false;
     if (optSubtitleHover) optSubtitleHover.checked = currentSettings.enableSubtitleHover !== false;
     if (optAutoPauseHover) optAutoPauseHover.checked = currentSettings.autoPauseVideoOnHover === true;
     if (optAnkiEnabled) optAnkiEnabled.checked = currentSettings.ankiEnabled !== false;
@@ -326,6 +351,13 @@ document.addEventListener('DOMContentLoaded', () => {
       translationEngine: document.querySelector('input[name="trans-engine"]:checked')?.value || 'google',
       geminiApiKey: (document.getElementById('gemini-api-key')?.value || '').trim(),
       // Mới
+      readingFormat: selectReadingFormat ? selectReadingFormat.value : 'hiragana',
+      showKatakana: optKatakana ? optKatakana.checked : true,
+      showOnKunRule: optOnKunRule ? optOnKunRule.checked : true,
+      showAnkiBtn: optShowAnkiBtn ? optShowAnkiBtn.checked : false,
+      showCopyBtn: optShowCopyBtn ? optShowCopyBtn.checked : false,
+      showLookupBtn: optShowLookupBtn ? optShowLookupBtn.checked : false,
+      showPinBtn: optShowPinBtn ? optShowPinBtn.checked : true,
       enableSubtitleHover: optSubtitleHover ? optSubtitleHover.checked : true,
       autoPauseVideoOnHover: optAutoPauseHover ? optAutoPauseHover.checked : false,
       ankiEnabled: optAnkiEnabled ? optAnkiEnabled.checked : true,
@@ -356,10 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Gắn sự kiện thay đổi cài đặt
   masterToggle.addEventListener('change', saveSettings);
   activationRadios.forEach(r => r.addEventListener('change', saveSettings));
+  if (selectReadingFormat) selectReadingFormat.addEventListener('change', saveSettings);
   [
-    optReading, optRomaji, optHanviet, optMeaning, optKanjiBreakdown,
+    optReading, optKatakana, optRomaji, optHanviet, optMeaning, optKanjiBreakdown, optOnKunRule,
     optPitchAccent, optVisualHighlight, optSelectionTranslate, optOnlineFallback, optAutoAudio,
-    optSubtitleHover, optAutoPauseHover, optAnkiEnabled
+    optSubtitleHover, optAutoPauseHover, optAnkiEnabled,
+    optShowAnkiBtn, optShowCopyBtn, optShowLookupBtn, optShowPinBtn
   ].forEach(cb => {
     if (cb) cb.addEventListener('change', saveSettings);
   });
@@ -417,9 +451,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quick Action Buttons
   if (btnOpenQuickSearch) {
     btnOpenQuickSearch.addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs && tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'TOGGLE_QUICK_SEARCH' });
-        window.close();
+      chrome.storage.local.get(['jpSettings'], (res) => {
+        const isEnabled = res && res.jpSettings ? res.jpSettings.enabled !== false : true;
+        if (!isEnabled) {
+          showToastNotification('⚠️ Tiện ích đang TẮT. Hãy bật công tắc chính trước.');
+          return;
+        }
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'TOGGLE_QUICK_SEARCH' });
+          window.close();
+        });
       });
     });
   }
@@ -467,14 +508,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderSavedWordsList(filterQuery = '') {
     savedWordsContainer.innerHTML = '';
     const q = filterQuery.toLowerCase().trim();
+    const qNoTone = typeof removeVietnameseTones === 'function' ? removeVietnameseTones(q) : q;
 
     const filtered = savedWordsList.filter(item => {
       if (!q) return true;
+      const wLower = item.word.toLowerCase();
+      const rLower = (item.reading || '').toLowerCase();
+      const mLower = (item.meaning || '').toLowerCase();
+      const hvLower = (item.hanviet || '').toLowerCase();
+      const mNoTone = typeof removeVietnameseTones === 'function' ? removeVietnameseTones(mLower) : mLower;
+
       return (
-        item.word.toLowerCase().includes(q) ||
-        (item.reading && item.reading.toLowerCase().includes(q)) ||
-        (item.meaning && item.meaning.toLowerCase().includes(q)) ||
-        (item.hanviet && item.hanviet.toLowerCase().includes(q))
+        wLower.includes(q) ||
+        rLower.includes(q) ||
+        mLower.includes(q) ||
+        (qNoTone && mNoTone.includes(qNoTone)) ||
+        hvLower.includes(q)
       );
     });
 
@@ -641,8 +690,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function showLivePreview(word) {
-    if (!word || typeof lookupJapaneseWord === 'undefined') return;
-    const data = lookupJapaneseWord(word) || { word, reading: word, meaning: 'Từ vựng tiếng Nhật' };
+    if (!word) return;
+    let data = null;
+    const isVi = typeof isVietnameseQuery === 'function' && isVietnameseQuery(word);
+    if (isVi && typeof lookupVietnameseToJapanese === 'function') {
+      const rev = lookupVietnameseToJapanese(word, 1);
+      if (rev && rev.words && rev.words.length > 0) {
+        const top = rev.words[0];
+        data = {
+          word: top.word,
+          reading: top.r || top.reading || top.word,
+          meaning: `[Khớp tiếng Việt "${word}"]: ${top.m || top.meaning}`,
+          type: top.t || top.type || ''
+        };
+      }
+    }
+    if (!data && typeof lookupJapaneseWord !== 'undefined') {
+      data = lookupJapaneseWord(word);
+    }
+    if (!data) {
+      data = { word, reading: word, meaning: 'Từ vựng tiếng Nhật' };
+    }
 
     let tagsHtml = '';
     if (currentSettings.showRomaji && data.romaji) {

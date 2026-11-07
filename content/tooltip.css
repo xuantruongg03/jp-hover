@@ -89,21 +89,30 @@
 
 .jp-reading-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
 }
 
 .jp-reading {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #38bdf8; /* Xanh Cyan sáng */
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  letter-spacing: 0.3px;
+  word-break: break-word;
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
+}
+
+.jp-reading-kata {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #cbd5e1; /* Katakana bọc trong ngoặc (タカイ) rõ ràng */
+  letter-spacing: 0.3px;
+  word-break: break-word;
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 .jp-pitch-badge {
@@ -220,6 +229,12 @@
   background: rgba(99, 102, 241, 0.2);
   color: #a5b4fc;
   border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.jp-badge-kata {
+  background: rgba(251, 146, 60, 0.18);
+  color: #fed7aa;
+  border: 1px solid rgba(251, 146, 60, 0.35);
 }
 
 .jp-badge-hanviet {
@@ -636,20 +651,23 @@
   transform: translateY(-2px) scale(1.05);
 }
 
-/* Thẻ kết quả dịch câu khi bôi đen */
+/* Thẻ kết quả dịch câu khi bôi đen & Luyện đọc JLPT */
 .jp-sentence-card {
   position: fixed;
   z-index: 2147483647;
   pointer-events: auto;
-  max-width: 440px;
-  min-width: 280px;
+  max-width: 620px;
+  min-width: 360px;
+  width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
   background: rgba(15, 23, 42, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(56, 189, 248, 0.35);
   box-shadow: 0 24px 50px -5px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(56, 189, 248, 0.2);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 14px 18px;
   color: #f8fafc;
   display: flex;
   flex-direction: column;
@@ -658,12 +676,85 @@
   visibility: hidden;
   transform: translateY(6px) scale(0.97);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .jp-sentence-card.visible {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scale(1);
+}
+
+.jp-jlpt-speed-bar {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.jp-jlpt-speed-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.jp-jlpt-speed-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.jp-jlpt-speed-btn.active {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.jp-sentence-play-btn.playing {
+  background: #22c55e !important;
+  color: #ffffff !important;
+  animation: jpAudioWave 1.2s infinite ease-in-out;
+}
+
+.jp-sentence-source-box {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
+  font-size: 16px;
+  line-height: 1.85;
+  color: #f8fafc;
+  letter-spacing: 0.03em;
+  margin: 8px 0 4px 0;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.jp-sentence-source-box span.reading-chunk-active {
+  background: rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.jp-sentence-meaning {
+  font-size: 14px;
+  color: #e2e8f0;
+  background: rgba(56, 189, 248, 0.08);
+  padding: 12px 14px;
+  border-radius: 8px;
+  line-height: 1.6;
+  border-left: 3px solid #38bdf8;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .jp-flashcard-btn:hover {
@@ -829,28 +920,41 @@
 .jp-stroke-controls {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .jp-stroke-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #f1f5f9;
-  padding: 7px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   transition: all 0.15s ease;
+  user-select: none;
 }
 
 .jp-stroke-btn:hover {
   background: #38bdf8;
   color: #0f172a;
   border-color: #38bdf8;
+}
+
+.jp-stroke-show-all-btn {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.jp-stroke-show-all-btn:hover {
+  background: #38bdf8;
+  color: #0f172a;
 }
 
 .jp-stroke-info {
@@ -969,23 +1073,39 @@ rt.jp-ext-injected-rt {
 
 .jp-qs-tags {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 8px 18px;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   overflow-x: auto;
+  white-space: nowrap;
 }
 
 .jp-qs-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  line-height: 1;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "Yu Gothic UI", "Meiryo UI", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background: rgba(56, 189, 248, 0.1);
   border: 1px solid rgba(56, 189, 248, 0.25);
   color: #38bdf8;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  user-select: none;
+  outline: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
+  transition: all 0.15s ease;
 }
 
 .jp-qs-tag:hover {
