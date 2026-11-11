@@ -14,9 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements - Navigation
   const tabBtnSettings = document.getElementById('tab-btn-settings');
   const tabBtnNotebook = document.getElementById('tab-btn-notebook');
+  const tabBtnFeedback = document.getElementById('tab-btn-feedback');
   const paneSettings = document.getElementById('pane-settings');
   const paneNotebook = document.getElementById('pane-notebook');
+  const paneFeedback = document.getElementById('pane-feedback');
   const savedCountBadge = document.getElementById('saved-count-badge');
+  const feedbackCountBadge = document.getElementById('feedback-count-badge');
 
   // DOM Elements - Settings
   const masterToggle = document.getElementById('master-toggle');
@@ -57,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSyncAllAnki = document.getElementById('btn-sync-all-anki');
 
   const btnOpenQuickSearch = document.getElementById('btn-open-quick-search');
+  const optQuickSearchAlways = document.getElementById('opt-quick-search-always');
   const dueWordsBanner = document.getElementById('due-words-banner');
   const dueWordsCount = document.getElementById('due-words-count');
   const btnReviewDueNow = document.getElementById('btn-review-due-now');
@@ -91,11 +95,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const AI_PROVIDER_PRESETS = {
     gemini: {
       models: [
-        { id: 'gemini-1.5-flash', label: '1.5 Flash (Nhanh, mặc định)' },
-        { id: 'gemini-2.0-flash', label: '2.0 Flash (Mới nhất)' },
-        { id: 'gemini-1.5-pro', label: '1.5 Pro (Mạnh mẽ)' }
+        { id: 'gemini-flash-latest', label: 'Flash Latest (Tự động mới nhất)' },
+        { id: 'gemini-2.5-flash', label: '2.5 Flash (Nhanh & Cân bằng)' },
+        { id: 'gemini-2.5-flash-lite', label: '2.5 Flash-Lite (Siêu nhẹ)' },
+        { id: 'gemini-2.5-pro', label: '2.5 Pro (Chuyên sâu)' },
+        { id: 'gemini-pro-latest', label: 'Pro Latest (Mạnh nhất)' }
       ],
-      defaultModel: 'gemini-1.5-flash',
+      defaultModel: 'gemini-flash-latest',
       keyLink: 'https://aistudio.google.com/app/apikey',
       placeholder: 'Nhập Google Gemini API Key (AI Studio)...'
     },
@@ -163,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cấu hình mặc định
   let currentSettings = {
     enabled: true,
+    allowQuickSearchWhenDisabled: true,
     activationMode: 'always',
     showReading: true,
     showRomaji: true,
@@ -181,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
     geminiApiKey: '',
     aiProvider: 'gemini',
     aiApiKey: '',
-    aiModel: 'gemini-1.5-flash',
+    aiModel: 'gemini-flash-latest',
     aiCustomEndpoint: '',
     aiEnableSentenceTranslate: true,
     aiEnableGrammarAnalysis: true,
@@ -199,35 +206,47 @@ document.addEventListener('DOMContentLoaded', () => {
     ankiEnabled: true,
     ankiHost: 'http://127.0.0.1:8765',
     ankiDeckName: 'JP Hover Notebook',
-    ankiModelName: 'Basic'
+    ankiModelName: 'Basic',
+    feedbackWebhookUrl: ''
   };
 
   let savedWordsList = [];
 
   // 1. Quản lý Tab Navigation
   function switchTab(tabId) {
+    [tabBtnSettings, tabBtnNotebook, tabBtnFeedback].forEach(b => b && b.classList.remove('active'));
+    [paneSettings, paneNotebook, paneFeedback].forEach(p => p && p.classList.remove('active'));
+
     if (tabId === 'settings') {
-      tabBtnSettings.classList.add('active');
-      tabBtnNotebook.classList.remove('active');
-      paneSettings.classList.add('active');
-      paneNotebook.classList.remove('active');
-    } else {
-      tabBtnSettings.classList.remove('active');
-      tabBtnNotebook.classList.add('active');
-      paneSettings.classList.remove('active');
-      paneNotebook.classList.add('active');
+      if (tabBtnSettings) tabBtnSettings.classList.add('active');
+      if (paneSettings) paneSettings.classList.add('active');
+    } else if (tabId === 'notebook') {
+      if (tabBtnNotebook) tabBtnNotebook.classList.add('active');
+      if (paneNotebook) paneNotebook.classList.add('active');
       loadSavedWords();
+    } else if (tabId === 'feedback') {
+      if (tabBtnFeedback) tabBtnFeedback.classList.add('active');
+      if (paneFeedback) paneFeedback.classList.add('active');
+      loadFeedbackTabData();
     }
   }
 
   tabBtnSettings.addEventListener('click', () => switchTab('settings'));
   tabBtnNotebook.addEventListener('click', () => switchTab('notebook'));
+  if (tabBtnFeedback) tabBtnFeedback.addEventListener('click', () => switchTab('feedback'));
 
   // 2. Tải cài đặt hiện tại
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['jpSettings', 'jpSavedWords'], (res) => {
+    chrome.storage.local.get(['jpSettings', 'jpSavedWords', 'jpFeedbackReports'], (res) => {
       if (res && res.jpSettings) {
         currentSettings = { ...currentSettings, ...res.jpSettings };
+        if (!currentSettings.aiProvider || currentSettings.aiProvider === 'gemini') {
+          const cleanM = String(currentSettings.aiModel || '').trim().replace(/^models\//i, '').toLowerCase();
+          if (!cleanM || /^gemini-(1\.5|1\.0|pro$)/.test(cleanM)) {
+            currentSettings.aiModel = cleanM.includes('pro') ? 'gemini-2.5-pro' : 'gemini-flash-latest';
+            chrome.storage.local.set({ jpSettings: currentSettings }, () => {});
+          }
+        }
       }
       applySettingsToUI();
 
@@ -235,6 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
         savedWordsList = res.jpSavedWords;
         updateSavedCountBadge();
         checkDueWords();
+      }
+      if (res && Array.isArray(res.jpFeedbackReports)) {
+        updateFeedbackBadge(res.jpFeedbackReports.length);
       }
     });
 
@@ -245,6 +267,15 @@ document.addEventListener('DOMContentLoaded', () => {
         checkDueWords();
         if (paneNotebook.classList.contains('active')) {
           renderSavedWordsList(savedSearchInput.value);
+        }
+      }
+      if (area === 'local' && (changes.jpFeedbackReports || changes.jpCustomDictionary)) {
+        if (changes.jpFeedbackReports) {
+          const list = changes.jpFeedbackReports.newValue || [];
+          updateFeedbackBadge(list.length);
+        }
+        if (paneFeedback && paneFeedback.classList.contains('active')) {
+          loadFeedbackTabData();
         }
       }
     });
@@ -275,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     optAutoAudio.checked = currentSettings.autoPlayAudio === true;
 
     // Cài đặt mới
+    if (optQuickSearchAlways) optQuickSearchAlways.checked = currentSettings.allowQuickSearchWhenDisabled !== false;
     if (selectReadingFormat) selectReadingFormat.value = currentSettings.readingFormat || 'hiragana';
     if (optKatakana) optKatakana.checked = currentSettings.showKatakana !== false;
     if (optOnKunRule) optOnKunRule.checked = currentSettings.showOnKunRule !== false;
@@ -287,6 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (optAnkiEnabled) optAnkiEnabled.checked = currentSettings.ankiEnabled !== false;
     if (ankiDeckName) ankiDeckName.value = currentSettings.ankiDeckName || 'JP Hover Notebook';
     if (ankiModelName) ankiModelName.value = currentSettings.ankiModelName || 'Basic';
+    const webhookInput = document.getElementById('feedback-webhook-url');
+    if (webhookInput) webhookInput.value = currentSettings.feedbackWebhookUrl || '';
 
     // Cập nhật tốc độ & cao độ đọc
     const rate = currentSettings.speechRate || 0.95;
@@ -311,8 +345,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const legacyGeminiInput = document.getElementById('gemini-api-key');
     if (legacyGeminiInput) legacyGeminiInput.value = apiKeyVal;
 
-    if (aiModelName) aiModelName.value = currentSettings.aiModel || 'gemini-1.5-flash';
-    if (aiModelPresets && currentSettings.aiModel) aiModelPresets.value = currentSettings.aiModel;
+    if (aiModelName) aiModelName.value = currentSettings.aiModel || 'gemini-flash-latest';
+    if (aiModelPresets && currentSettings.aiModel) {
+      if (!Array.from(aiModelPresets.options).some(o => o.value === currentSettings.aiModel)) {
+        const extraOpt = document.createElement('option');
+        extraOpt.value = currentSettings.aiModel;
+        extraOpt.textContent = `${currentSettings.aiModel} (Đang dùng)`;
+        aiModelPresets.appendChild(extraOpt);
+      }
+      aiModelPresets.value = currentSettings.aiModel;
+    }
     if (aiCustomEndpoint) aiCustomEndpoint.value = currentSettings.aiCustomEndpoint || '';
 
     if (optAiTranslate) optAiTranslate.checked = currentSettings.aiEnableSentenceTranslate !== false;
@@ -380,6 +422,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }, (res) => {
       if (btnTestAi) btnTestAi.disabled = false;
       if (res && res.success) {
+        if (provider === 'gemini' && Array.isArray(res.availableModels) && res.availableModels.length > 0 && aiModelPresets) {
+          const prevVal = res.model || (aiModelName ? aiModelName.value.trim() : '');
+          aiModelPresets.innerHTML = '';
+          res.availableModels.slice(0, 15).forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.displayName ? `${m.id} (${m.displayName})` : m.id;
+            aiModelPresets.appendChild(opt);
+          });
+          if (prevVal && Array.from(aiModelPresets.options).some(o => o.value === prevVal)) {
+            aiModelPresets.value = prevVal;
+          }
+        }
+        if (res.model && aiModelName && res.model !== model) {
+          aiModelName.value = res.model;
+          if (aiModelPresets && Array.from(aiModelPresets.options).some(o => o.value === res.model)) {
+            aiModelPresets.value = res.model;
+          }
+        }
         aiStatusBadge.textContent = `🟢 Hoạt động tốt (${res.providerName || provider}: ${res.model || model})`;
         aiStatusBadge.style.color = '#10b981';
         saveSettings();
@@ -495,8 +556,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. Lưu cài đặt vào chrome.storage
   function saveSettings() {
+    const prevEnabled = currentSettings.enabled !== false;
     currentSettings = {
       enabled: masterToggle.checked,
+      allowQuickSearchWhenDisabled: optQuickSearchAlways ? optQuickSearchAlways.checked : true,
       activationMode: document.querySelector('input[name="activation-mode"]:checked')?.value || 'always',
       showReading: optReading.checked,
       showRomaji: optRomaji.checked,
@@ -533,10 +596,19 @@ document.addEventListener('DOMContentLoaded', () => {
       ankiEnabled: optAnkiEnabled ? optAnkiEnabled.checked : true,
       ankiHost: 'http://127.0.0.1:8765',
       ankiDeckName: ankiDeckName ? ankiDeckName.value.trim() : 'JP Hover Notebook',
-      ankiModelName: ankiModelName ? ankiModelName.value.trim() : 'Basic'
+      ankiModelName: ankiModelName ? ankiModelName.value.trim() : 'Basic',
+      feedbackWebhookUrl: (document.getElementById('feedback-webhook-url')?.value || '').trim()
     };
 
+    const enabledChanged = prevEnabled !== (currentSettings.enabled !== false);
     updateStatusDisplay(currentSettings.enabled);
+    if (enabledChanged) {
+      showToastNotification(
+        currentSettings.enabled
+          ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)'
+          : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)'
+      );
+    }
 
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({ jpSettings: currentSettings }, () => {
@@ -546,7 +618,8 @@ document.addEventListener('DOMContentLoaded', () => {
               chrome.tabs.sendMessage(tabs[0].id, {
                 action: 'SET_STATE',
                 enabled: currentSettings.enabled,
-                settings: currentSettings
+                settings: currentSettings,
+                showToggleToast: enabledChanged
               }).catch(() => {});
             }
           });
@@ -560,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
   activationRadios.forEach(r => r.addEventListener('change', saveSettings));
   if (selectReadingFormat) selectReadingFormat.addEventListener('change', saveSettings);
   [
+    optQuickSearchAlways,
     optReading, optKatakana, optRomaji, optHanviet, optMeaning, optKanjiBreakdown, optOnKunRule,
     optPitchAccent, optVisualHighlight, optSelectionTranslate, optOnlineFallback, optAutoAudio,
     optSubtitleHover, optAutoPauseHover, optAnkiEnabled,
@@ -662,17 +736,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function showToastNotification(message) {
+    let toast = document.getElementById('jp-popup-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'jp-popup-toast';
+      toast.className = 'jp-popup-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('visible');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+      toast.classList.remove('visible');
+    }, 2600);
+  }
+
   // Quick Action Buttons
   if (btnOpenQuickSearch) {
     btnOpenQuickSearch.addEventListener('click', () => {
       chrome.storage.local.get(['jpSettings'], (res) => {
-        const isEnabled = res && res.jpSettings ? res.jpSettings.enabled !== false : true;
-        if (!isEnabled) {
-          showToastNotification('⚠️ Tiện ích đang TẮT. Hãy bật công tắc chính trước.');
+        const s = res && res.jpSettings ? res.jpSettings : currentSettings;
+        const isEnabled = s.enabled !== false;
+        const allowAlways = s.allowQuickSearchWhenDisabled !== false;
+        if (!isEnabled && !allowAlways) {
+          showToastNotification('⚠️ Tiện ích đang TẮT. Hãy bật công tắc chính hoặc bật tùy chọn mở nhanh Alt+S.');
           return;
         }
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'TOGGLE_QUICK_SEARCH' });
+          if (tabs && tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'TOGGLE_QUICK_SEARCH',
+              allowWhenDisabled: allowAlways,
+              forceAllow: true
+            }).catch(() => {});
+          }
           window.close();
         });
       });
@@ -975,4 +1073,267 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // 8. Quản lý Báo lỗi, Góp ý & Từ điển cá nhân (Tab Báo lỗi / Góp ý)
+  const popupFbCategory = document.getElementById('popup-fb-category');
+  const popupFbWordGroup = document.getElementById('popup-fb-word-group');
+  const popupFbWord = document.getElementById('popup-fb-word');
+  const popupFbReading = document.getElementById('popup-fb-reading');
+  const popupFbMeaning = document.getElementById('popup-fb-meaning');
+  const popupFbApplyOverride = document.getElementById('popup-fb-apply-override');
+  const popupFbTitle = document.getElementById('popup-fb-title');
+  const popupFbNote = document.getElementById('popup-fb-note');
+  const popupFbStatus = document.getElementById('popup-fb-status');
+  const popupFbSubmitBtn = document.getElementById('popup-fb-submit-btn');
+  const popupFbEmailBtn = document.getElementById('popup-fb-email-btn');
+  const popupFbGmailBtn = document.getElementById('popup-fb-gmail-btn');
+  const popupFbCopyEmailBtn = document.getElementById('popup-fb-copy-email-btn');
+  const popupFbGithubBtn = document.getElementById('popup-fb-github-btn');
+  const popupFbCopyBtn = document.getElementById('popup-fb-copy-btn');
+  const feedbackWebhookInput = document.getElementById('feedback-webhook-url');
+  const customDictCountEl = document.getElementById('custom-dict-count');
+  const customDictListEl = document.getElementById('custom-dict-list');
+  const fbHistoryCountEl = document.getElementById('fb-history-count');
+  const fbHistoryListEl = document.getElementById('fb-history-list');
+  const fbExportMdBtn = document.getElementById('fb-export-md-btn');
+  const fbClearHistoryBtn = document.getElementById('fb-clear-history-btn');
+
+  function updateFeedbackBadge(count) {
+    if (!feedbackCountBadge) return;
+    if (count > 0) {
+      feedbackCountBadge.textContent = count;
+      feedbackCountBadge.style.display = 'inline-block';
+    } else {
+      feedbackCountBadge.style.display = 'none';
+    }
+  }
+
+  function showPopupFeedbackStatus(msg, isError = false) {
+    if (!popupFbStatus) return;
+    popupFbStatus.textContent = msg;
+    popupFbStatus.className = isError ? 'fb-status-banner error' : 'fb-status-banner success';
+    popupFbStatus.style.display = 'block';
+  }
+
+  if (popupFbCategory && popupFbWordGroup) {
+    popupFbCategory.addEventListener('change', () => {
+      const isWordIssue = !['bug', 'suggestion'].includes(popupFbCategory.value);
+      popupFbWordGroup.style.display = isWordIssue ? 'flex' : 'none';
+    });
+  }
+
+  if (feedbackWebhookInput) {
+    feedbackWebhookInput.addEventListener('change', saveSettings);
+  }
+
+  async function renderCustomDictList() {
+    if (!customDictListEl || typeof japaneseFeedbackService === 'undefined') return;
+    const dict = await japaneseFeedbackService.getCustomDictionary();
+    const entries = Object.entries(dict);
+    if (customDictCountEl) customDictCountEl.textContent = entries.length;
+
+    if (entries.length === 0) {
+      customDictListEl.innerHTML = `<div class="fb-history-empty">Chưa có từ nào được tùy chỉnh cục bộ.</div>`;
+      return;
+    }
+
+    customDictListEl.innerHTML = entries.map(([word, info]) => `
+      <div class="fb-history-item" data-word="${escapeHtml(word)}">
+        <div class="fb-item-top">
+          <span class="fb-item-title">${escapeHtml(word)} ${info.r ? `<span style="color:#38bdf8;font-weight:600;margin-left:4px;">(${escapeHtml(info.r)})</span>` : ''}</span>
+          <button type="button" class="fb-mini-btn danger btn-del-custom-word" title="Khôi phục về từ điển gốc">🗑️ Khôi phục</button>
+        </div>
+        ${info.m ? `<div class="fb-item-meta">💡 ${escapeHtml(info.m)}</div>` : ''}
+      </div>
+    `).join('');
+
+    customDictListEl.querySelectorAll('.btn-del-custom-word').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.fb-history-item');
+        const targetWord = card ? card.getAttribute('data-word') : '';
+        if (targetWord) {
+          await japaneseFeedbackService.deleteCustomWord(targetWord);
+          renderCustomDictList();
+          showToastNotification(`♻️ Đã khôi phục từ "${targetWord}" về mặc định`);
+        }
+      });
+    });
+  }
+
+  async function renderFeedbackHistory() {
+    if (!fbHistoryListEl || typeof japaneseFeedbackService === 'undefined') return;
+    const reports = await japaneseFeedbackService.getReports();
+    if (fbHistoryCountEl) fbHistoryCountEl.textContent = reports.length;
+    updateFeedbackBadge(reports.length);
+
+    if (reports.length === 0) {
+      fbHistoryListEl.innerHTML = `<div class="fb-history-empty">Chưa có báo cáo nào được lưu.</div>`;
+      return;
+    }
+
+    fbHistoryListEl.innerHTML = reports.slice(0, 30).map(r => {
+      const dateStr = new Date(r.createdAt || Date.now()).toLocaleDateString('vi-VN', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+      const statusText = r.status === 'webhook_sent'
+        ? '✅ Đã gửi Webhook'
+        : (r.status === 'email_opened'
+          ? '📧 Đã mở Email'
+          : (r.status === 'github_opened' ? '🐙 Đã mở GitHub' : '💾 Đã lưu'));
+      const statusClass = (r.status === 'webhook_sent' || r.status === 'email_opened') ? 'fb-item-badge sent' : 'fb-item-badge';
+      return `
+        <div class="fb-history-item" data-id="${escapeHtml(r.id)}">
+          <div class="fb-item-top">
+            <span class="fb-item-title">${escapeHtml(r.title)}</span>
+            <span class="${statusClass}">${statusText}</span>
+          </div>
+          <div class="fb-item-meta">
+            ${escapeHtml(r.categoryLabel || '')} • ${escapeHtml(dateStr)}${r.overrideApplied ? ' • ✏️ Đã sửa cục bộ' : ''}
+            ${r.note ? `<div style="margin-top:2px;color:#cbd5e1;">${escapeHtml(r.note.slice(0, 120))}${r.note.length > 120 ? '...' : ''}</div>` : ''}
+          </div>
+          <div class="fb-item-actions">
+            <button type="button" class="fb-mini-btn btn-copy-rep" title="Sao chép Markdown">📋 Copy</button>
+            <button type="button" class="fb-mini-btn btn-email-rep" title="Gửi qua Email tới lexuantruong098@gmail.com">📧 Email</button>
+            <button type="button" class="fb-mini-btn btn-github-rep" title="Gửi lên GitHub Issue">🐙 GitHub</button>
+            <button type="button" class="fb-mini-btn danger btn-del-rep" title="Xóa báo cáo này">🗑️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    fbHistoryListEl.querySelectorAll('.fb-history-item').forEach(item => {
+      const id = item.getAttribute('data-id');
+      const rep = reports.find(x => x.id === id);
+      if (!rep) return;
+
+      item.querySelector('.btn-copy-rep')?.addEventListener('click', () => {
+        const md = japaneseFeedbackService.formatReportMarkdown(rep);
+        navigator.clipboard?.writeText(md).then(() => {
+          showToastNotification('📋 Đã sao chép báo cáo Markdown');
+        });
+      });
+
+      item.querySelector('.btn-email-rep')?.addEventListener('click', async () => {
+        const mailUrl = japaneseFeedbackService.buildMailtoUrl(rep);
+        await japaneseFeedbackService.updateReportStatus(rep.id, 'email_opened');
+        japaneseFeedbackService.openMailto(mailUrl);
+        renderFeedbackHistory();
+      });
+
+      item.querySelector('.btn-github-rep')?.addEventListener('click', async () => {
+        const url = japaneseFeedbackService.buildGitHubIssueUrl(rep);
+        await japaneseFeedbackService.updateReportStatus(rep.id, 'github_opened');
+        chrome.tabs.create({ url });
+        renderFeedbackHistory();
+      });
+
+      item.querySelector('.btn-del-rep')?.addEventListener('click', async () => {
+        await japaneseFeedbackService.deleteReport(rep.id);
+        renderFeedbackHistory();
+      });
+    });
+  }
+
+  async function loadFeedbackTabData() {
+    await renderCustomDictList();
+    await renderFeedbackHistory();
+  }
+
+  async function handlePopupFeedbackAction(mode = 'save') {
+    if (typeof japaneseFeedbackService === 'undefined') return;
+    const category = popupFbCategory ? popupFbCategory.value : 'suggestion';
+    const isWordIssue = !['bug', 'suggestion'].includes(category);
+    const wordVal = popupFbWord ? popupFbWord.value.trim() : '';
+    const readVal = popupFbReading ? popupFbReading.value.trim() : '';
+    const meanVal = popupFbMeaning ? popupFbMeaning.value.trim() : '';
+    const titleVal = popupFbTitle ? popupFbTitle.value.trim() : '';
+    const noteVal = popupFbNote ? popupFbNote.value.trim() : '';
+    const applyOverride = popupFbApplyOverride ? popupFbApplyOverride.checked : false;
+    const webhookUrl = feedbackWebhookInput ? feedbackWebhookInput.value.trim() : (currentSettings.feedbackWebhookUrl || '');
+
+    if (!noteVal && !(isWordIssue && wordVal && (readVal || meanVal))) {
+      showPopupFeedbackStatus('⚠️ Vui lòng nhập nội dung góp ý hoặc thông tin từ cần sửa.', true);
+      return;
+    }
+
+    const res = await japaneseFeedbackService.submitReport({
+      category,
+      title: titleVal,
+      word: isWordIssue ? wordVal : '',
+      suggestedReading: isWordIssue ? readVal : '',
+      suggestedMeaning: isWordIssue ? meanVal : '',
+      note: noteVal,
+      source: 'Extension Popup'
+    }, {
+      applyLocalOverride: isWordIssue && applyOverride,
+      webhookUrl
+    });
+
+    if (mode === 'github') {
+      await japaneseFeedbackService.updateReportStatus(res.report.id, 'github_opened');
+      chrome.tabs.create({ url: res.githubUrl });
+      showPopupFeedbackStatus('✅ Đã mở trang GitHub Issue với đầy đủ nội dung!');
+    } else if (mode === 'email') {
+      await japaneseFeedbackService.updateReportStatus(res.report.id, 'email_opened');
+      japaneseFeedbackService.openMailto(res.mailtoUrl);
+      showPopupFeedbackStatus(`✅ Đã mở ứng dụng Email gửi tới ${res.supportEmail}!`);
+    } else if (mode === 'gmail') {
+      await japaneseFeedbackService.updateReportStatus(res.report.id, 'email_opened');
+      chrome.tabs.create({ url: res.gmailUrl });
+      showPopupFeedbackStatus(`✅ Đã mở Gmail Web soạn thư tới ${res.supportEmail}!`);
+    } else if (mode === 'copy') {
+      await navigator.clipboard?.writeText(res.markdown);
+      showPopupFeedbackStatus('📋 Đã lưu và sao chép nội dung báo cáo Markdown!');
+    } else {
+      if (webhookUrl && res.webhookResult && res.webhookResult.success) {
+        showPopupFeedbackStatus('✅ Đã gửi báo cáo qua Webhook & lưu lịch sử!');
+      } else if (webhookUrl && res.webhookResult && !res.webhookResult.success) {
+        showPopupFeedbackStatus(`⚠️ Đã lưu cục bộ, nhưng gửi Webhook thất bại: ${res.webhookResult.error}`, true);
+      } else {
+        showPopupFeedbackStatus(
+          res.overrideApplied
+            ? '✅ Đã cập nhật Từ điển cá nhân & lưu báo cáo thành công!'
+            : `✅ Đã lưu báo cáo! Bấm "Gửi Email" (${res.supportEmail}), "GitHub Issue" hoặc "Copy" để gửi cho dev.`
+        );
+      }
+    }
+
+    if (popupFbTitle) popupFbTitle.value = '';
+    if (popupFbNote) popupFbNote.value = '';
+    await loadFeedbackTabData();
+  }
+
+  popupFbSubmitBtn?.addEventListener('click', () => handlePopupFeedbackAction('save'));
+  popupFbEmailBtn?.addEventListener('click', () => handlePopupFeedbackAction('email'));
+  popupFbGmailBtn?.addEventListener('click', () => handlePopupFeedbackAction('gmail'));
+  popupFbCopyEmailBtn?.addEventListener('click', async () => {
+    const emailAddr = 'lexuantruong098@gmail.com';
+    try {
+      await navigator.clipboard?.writeText(emailAddr);
+      showPopupFeedbackStatus(`📧 Đã sao chép địa chỉ email: ${emailAddr}`);
+      showToastNotification(`📧 Đã copy ${emailAddr}`);
+    } catch (_) {}
+  });
+  popupFbGithubBtn?.addEventListener('click', () => handlePopupFeedbackAction('github'));
+  popupFbCopyBtn?.addEventListener('click', () => handlePopupFeedbackAction('copy'));
+
+  fbExportMdBtn?.addEventListener('click', async () => {
+    if (typeof japaneseFeedbackService === 'undefined') return;
+    const reports = await japaneseFeedbackService.getReports();
+    const md = japaneseFeedbackService.exportReportsMarkdown(reports);
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `jp-hover-feedback-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  fbClearHistoryBtn?.addEventListener('click', async () => {
+    if (typeof japaneseFeedbackService === 'undefined') return;
+    await japaneseFeedbackService.clearReports();
+    renderFeedbackHistory();
+    showToastNotification('🗑️ Đã xóa lịch sử báo cáo');
+  });
 });

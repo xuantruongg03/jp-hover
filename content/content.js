@@ -13,6 +13,7 @@
   // Cấu hình mặc định
   let settings = {
     enabled: true,
+    allowQuickSearchWhenDisabled: true, // Cho phép mở bảng Tra cứu nhanh (Alt+S) không cần bật tiện ích
     activationMode: 'always', // 'always' | 'shift' | 'alt'
     showReading: true,
     showKatakana: true,
@@ -39,11 +40,12 @@
     geminiApiKey: '',
     aiProvider: 'gemini',
     aiApiKey: '',
-    aiModel: 'gemini-1.5-flash',
+    aiModel: 'gemini-flash-latest',
     aiCustomEndpoint: '',
     aiEnableSentenceTranslate: true,
     aiEnableGrammarAnalysis: true,
-    aiEnableWordExplain: true
+    aiEnableWordExplain: true,
+    feedbackWebhookUrl: ''
   };
 
   // Trạng thái hiện tại
@@ -72,6 +74,13 @@
   let strokeModalOverlay = null;
   let currentStrokeChar = '';
   let showStrokeNumbers = true;
+  let feedbackModalOverlay = null;
+  let activeFeedbackContext = {};
+  let justOpenedSentenceCardAt = 0;
+  let toastElem = null;
+  let toastHideTimer = null;
+  let lastToggleToastState = null;
+  let lastToggleToastAt = 0;
 
   // Helper lưu trữ đồng nhất (Hỗ trợ cả Chrome Storage MV3 & LocalStorage dự phòng)
   function getStorageData(keys, callback) {
@@ -109,8 +118,9 @@
       window.__JP_SETTINGS__ = settings;
       window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
       const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-      if (qs && qs.setEnabled) {
-        qs.setEnabled(settings.enabled !== false);
+      if (qs) {
+        if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
+        if (qs.setEnabled) qs.setEnabled(settings.enabled !== false);
       }
     }
     if (res && Array.isArray(res.jpSavedWords)) {
@@ -122,21 +132,35 @@
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'local') {
         if (changes.jpSettings) {
-          settings = { ...settings, ...changes.jpSettings.newValue };
+          const prevEnabled = settings.enabled !== false;
+          const nextVal = (changes.jpSettings.newValue && typeof changes.jpSettings.newValue === 'object')
+            ? changes.jpSettings.newValue
+            : {};
+          settings = { ...settings, ...nextVal };
+          const nextEnabled = settings.enabled !== false;
           window.__JP_SETTINGS__ = settings;
-          window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
+          window.__JP_EXTENSION_ENABLED__ = nextEnabled;
           const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-          if (qs && qs.setEnabled) {
-            qs.setEnabled(settings.enabled !== false);
+          if (qs) {
+            if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
+            if (qs.setEnabled) qs.setEnabled(nextEnabled);
           }
-          if (!settings.enabled) {
+          if (!nextEnabled) {
             hideAllPopups(true);
+          }
+          if (prevEnabled !== nextEnabled) {
+            showToggleToast(nextEnabled);
           }
         }
         if (changes.jpSavedWords) {
           const list = changes.jpSavedWords.newValue || [];
           savedWordsSet = new Set(list.map(item => item.word));
           updateStarButtonState();
+        }
+        if (changes.jpCustomDictionary) {
+          if (typeof japaneseEngine !== 'undefined' && japaneseEngine && japaneseEngine.onlineCache) {
+            japaneseEngine.onlineCache.clear();
+          }
         }
       }
     });
@@ -284,9 +308,12 @@
           <span class="jp-shortcut-item"><span class="jp-kbd" title="Ghim popup cố định (Phím P)">P</span> Ghim</span>
           <span class="jp-shortcut-item"><span class="jp-kbd" title="Tra cứu nhanh (Phím Alt+S)">Alt+S</span> Tra từ</span>
         </div>
-        <div class="jp-shortcut-hint" title="Bật / Tắt tiện ích (Phím Alt+J)">
-          <span class="jp-kbd">Alt+J</span>
-          <span>Bật/Tắt</span>
+        <div class="jp-footer-right">
+          <button type="button" class="jp-report-footer-btn" id="jp-report-btn" title="Báo lỗi từ sai hoặc tự sửa nhanh">🚩 Báo lỗi</button>
+          <div class="jp-shortcut-hint" title="Bật / Tắt tiện ích (Phím Alt+J)">
+            <span class="jp-kbd">Alt+J</span>
+            <span>Bật/Tắt</span>
+          </div>
         </div>
       </div>
     `;
@@ -369,8 +396,288 @@
       }
     });
 
-    // Bắt sự kiện click nút dịch câu bôi đen
-    selectionBadge.addEventListener('mousedown', (e) => {
+    // 5. Tạo Modal Báo lỗi / Sửa từ & Góp ý (Feedback & Word Fix Modal)
+    feedbackModalOverlay = document.createElement('div');
+    feedbackModalOverlay.className = 'jp-feedback-modal-overlay';
+    feedbackModalOverlay.id = 'jp-feedback-modal-overlay';
+    feedbackModalOverlay.innerHTML = `
+      <div class="jp-feedback-modal" role="dialog" aria-modal="true">
+        <div class="jp-fb-header">
+          <div class="jp-fb-title-group">
+            <span class="jp-fb-title">🚩 Báo lỗi từ sai &amp; Góp ý</span>
+            <span class="jp-fb-subtitle" id="jp-fb-subtitle">Giúp cải thiện độ chính xác từ điển</span>
+          </div>
+          <button type="button" class="jp-stroke-close" id="jp-fb-close-btn" title="Đóng (Esc)">✕</button>
+        </div>
+
+        <div class="jp-fb-snapshot" id="jp-fb-snapshot" style="display:none;">
+          <div class="jp-fb-snapshot-word" id="jp-fb-snap-word"></div>
+          <div class="jp-fb-snapshot-meta" id="jp-fb-snap-meta"></div>
+        </div>
+
+        <div class="jp-fb-form">
+          <div class="jp-fb-field">
+            <label class="jp-fb-label" for="jp-fb-category">Loại vấn đề</label>
+            <select class="jp-fb-select" id="jp-fb-category">
+              <option value="wrong_reading">🔤 Sai phiên âm (Furigana / Romaji / Audio)</option>
+              <option value="wrong_meaning">💡 Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
+              <option value="wrong_onkun">📖 Sai quy tắc On/Kun / Hán-Việt</option>
+              <option value="wrong_segment">✂️ Sai tách từ / Chia thể ngữ pháp</option>
+              <option value="bug">🐛 Lỗi giao diện / Chức năng</option>
+              <option value="suggestion">✨ Góp ý / Đề xuất tính năng mới</option>
+            </select>
+          </div>
+
+          <div class="jp-fb-word-fields" id="jp-fb-word-fields">
+            <div class="jp-fb-row-2">
+              <div class="jp-fb-field">
+                <label class="jp-fb-label" for="jp-fb-word">Từ tiếng Nhật</label>
+                <input type="text" class="jp-fb-input" id="jp-fb-word" placeholder="Ví dụ: フランス語">
+              </div>
+              <div class="jp-fb-field">
+                <label class="jp-fb-label" for="jp-fb-correct-reading">Cách đọc đúng (Kana)</label>
+                <input type="text" class="jp-fb-input" id="jp-fb-correct-reading" placeholder="Ví dụ: ふらんすご">
+              </div>
+            </div>
+            <div class="jp-fb-field">
+              <label class="jp-fb-label" for="jp-fb-correct-meaning">Nghĩa tiếng Việt đúng / Đề xuất</label>
+              <input type="text" class="jp-fb-input" id="jp-fb-correct-meaning" placeholder="Nhập nghĩa chuẩn xác hơn...">
+            </div>
+          </div>
+
+          <div class="jp-fb-field">
+            <label class="jp-fb-label" for="jp-fb-note">Mô tả chi tiết hoặc góp ý</label>
+            <textarea class="jp-fb-textarea" id="jp-fb-note" rows="3" placeholder="Mô tả vấn đề bạn gặp phải hoặc ý tưởng cải thiện..."></textarea>
+          </div>
+
+          <div class="jp-fb-options">
+            <label class="jp-fb-check" id="jp-fb-override-wrap">
+              <input type="checkbox" id="jp-fb-apply-override" checked>
+              <span>✏️ Áp dụng ngay bản sửa này cho Từ điển cá nhân (hiện đúng tức thì)</span>
+            </label>
+            <label class="jp-fb-check">
+              <input type="checkbox" id="jp-fb-include-domain" checked>
+              <span id="jp-fb-domain-label">🌐 Đính kèm tên miền trang web hiện tại</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="jp-fb-status" id="jp-fb-status" style="display:none;"></div>
+
+        <div class="jp-fb-actions">
+          <button type="button" class="jp-fb-btn jp-fb-btn-primary" id="jp-fb-submit-btn">💾 Lưu &amp; Gửi</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-email" id="jp-fb-email-btn" title="Gửi qua Email tới lexuantruong098@gmail.com">📧 Gửi Email</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-github" id="jp-fb-github-btn" title="Mở GitHub Issues với nội dung đã điền sẵn">🐙 GitHub Issue</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-ghost" id="jp-fb-copy-btn" title="Sao chép báo cáo dạng Markdown">📋 Copy</button>
+        </div>
+
+        <div class="jp-fb-email-hint">
+          <span>📬 Mail hỗ trợ: <strong id="jp-fb-email-addr">lexuantruong098@gmail.com</strong></span>
+          <div class="jp-fb-email-links">
+            <button type="button" class="jp-fb-link-btn" id="jp-fb-gmail-btn" title="Mở soạn thư trên Gmail Web">🌐 Gmail Web</button>
+            <button type="button" class="jp-fb-link-btn" id="jp-fb-copy-email-btn" title="Sao chép địa chỉ email">📋 Copy Email</button>
+          </div>
+        </div>
+      </div>
+    `;
+    shadowRoot.appendChild(feedbackModalOverlay);
+
+    // Chặn rò rỉ phím tắt/chuột của trang web khi thao tác trong Modal Báo lỗi
+    feedbackModalOverlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeFeedbackModal();
+        return;
+      }
+      e.stopPropagation();
+    });
+    feedbackModalOverlay.addEventListener('mousedown', (e) => e.stopPropagation());
+    feedbackModalOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.target === feedbackModalOverlay) closeFeedbackModal();
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-close-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFeedbackModal();
+    });
+
+    const fbCatSelect = feedbackModalOverlay.querySelector('#jp-fb-category');
+    const fbWordFields = feedbackModalOverlay.querySelector('#jp-fb-word-fields');
+    const fbOverrideWrap = feedbackModalOverlay.querySelector('#jp-fb-override-wrap');
+    if (fbCatSelect) {
+      fbCatSelect.addEventListener('change', () => {
+        const isIssueWithWord = !['bug', 'suggestion'].includes(fbCatSelect.value);
+        if (fbWordFields) fbWordFields.style.display = isIssueWithWord ? 'flex' : 'none';
+        if (fbOverrideWrap) fbOverrideWrap.style.display = isIssueWithWord ? 'flex' : 'none';
+      });
+    }
+
+    const collectFeedbackPayload = () => {
+      const cat = feedbackModalOverlay.querySelector('#jp-fb-category')?.value || 'wrong_reading';
+      const wordVal = feedbackModalOverlay.querySelector('#jp-fb-word')?.value.trim() || '';
+      const sugReading = feedbackModalOverlay.querySelector('#jp-fb-correct-reading')?.value.trim() || '';
+      const sugMeaning = feedbackModalOverlay.querySelector('#jp-fb-correct-meaning')?.value.trim() || '';
+      const noteVal = feedbackModalOverlay.querySelector('#jp-fb-note')?.value.trim() || '';
+      const includeDomain = !!feedbackModalOverlay.querySelector('#jp-fb-include-domain')?.checked;
+      const applyLocalOverride = !!feedbackModalOverlay.querySelector('#jp-fb-apply-override')?.checked;
+
+      return {
+        input: {
+          ...activeFeedbackContext,
+          category: cat,
+          word: wordVal,
+          suggestedReading: sugReading,
+          suggestedMeaning: sugMeaning,
+          note: noteVal,
+          includeDomain,
+          pageDomain: (typeof location !== 'undefined' && location.hostname) ? location.hostname : ''
+        },
+        options: {
+          applyLocalOverride,
+          webhookUrl: settings.feedbackWebhookUrl || ''
+        }
+      };
+    };
+
+    const showFeedbackStatus = (msg, isError = false) => {
+      const statusBox = feedbackModalOverlay.querySelector('#jp-fb-status');
+      if (!statusBox) return;
+      statusBox.textContent = msg;
+      statusBox.className = isError ? 'jp-fb-status error' : 'jp-fb-status success';
+      statusBox.style.display = 'block';
+    };
+
+    const handleFeedbackSubmit = async (mode = 'save') => {
+      const fbService = window.japaneseFeedbackService || (typeof japaneseFeedbackService !== 'undefined' ? japaneseFeedbackService : null);
+      if (!fbService) {
+        showFeedbackStatus('⚠️ Không tìm thấy dịch vụ báo cáo.', true);
+        return;
+      }
+      const { input, options } = collectFeedbackPayload();
+      const hasWordFix = Boolean(input.word && (input.suggestedReading || input.suggestedMeaning));
+      if (!hasWordFix && !input.note && !input.word) {
+        showFeedbackStatus('⚠️ Vui lòng nhập mô tả lỗi hoặc nội dung cần sửa.', true);
+        return;
+      }
+
+      const submitBtn = feedbackModalOverlay.querySelector('#jp-fb-submit-btn');
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await fbService.submitReport(input, options);
+        if (submitBtn) submitBtn.disabled = false;
+
+        if (res.overrideApplied && input.word && currentWord === input.word && typeof japaneseEngine !== 'undefined') {
+          // Làm mới Tooltip ngay lập tức với bản sửa từ điển cá nhân
+          const refreshedData = japaneseEngine.analyze(input.word, currentContextSentence || '', 0);
+          if (refreshedData && cardElem && cardElem.classList.contains('visible')) {
+            showTooltip(refreshedData, lastHoverPos.clientX, lastHoverPos.clientY, null);
+          }
+        }
+
+        if (mode === 'github') {
+          await fbService.updateReportStatus(res.report.id, 'github_opened');
+          window.open(res.githubUrl, '_blank', 'noopener,noreferrer');
+          showFeedbackStatus(
+            res.overrideApplied
+              ? '✅ Đã cập nhật Từ điển cá nhân & mở trang GitHub Issue điền sẵn!'
+              : '✅ Đã lưu báo cáo & mở trang GitHub Issue điền sẵn!'
+          );
+        } else if (mode === 'email') {
+          await fbService.updateReportStatus(res.report.id, 'email_opened');
+          fbService.openMailto(res.mailtoUrl);
+          showFeedbackStatus(
+            res.overrideApplied
+              ? `✅ Đã cập nhật Từ điển cá nhân & mở ứng dụng Email tới ${res.supportEmail}!`
+              : `✅ Đã mở ứng dụng Email soạn thư gửi tới ${res.supportEmail}!`
+          );
+        } else if (mode === 'gmail') {
+          await fbService.updateReportStatus(res.report.id, 'email_opened');
+          window.open(res.gmailUrl, '_blank', 'noopener,noreferrer');
+          showFeedbackStatus(
+            res.overrideApplied
+              ? `✅ Đã cập nhật Từ điển cá nhân & mở Gmail Web gửi tới ${res.supportEmail}!`
+              : `✅ Đã mở Gmail Web soạn thư gửi tới ${res.supportEmail}!`
+          );
+        } else if (mode === 'copy') {
+          const onCopied = () => {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '📋 Đã áp dụng bản sửa cục bộ & sao chép báo cáo Markdown!'
+                : '📋 Đã lưu & sao chép báo cáo Markdown vào Clipboard!'
+            );
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(res.markdown).then(onCopied).catch(() => fallbackCopyText(res.markdown, onCopied));
+          } else {
+            fallbackCopyText(res.markdown, onCopied);
+          }
+        } else {
+          if (options.webhookUrl && res.webhookResult && res.webhookResult.success) {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '✅ Đã gửi báo cáo Webhook & áp dụng ngay vào Từ điển cá nhân!'
+                : '✅ Đã gửi báo cáo thành công tới Webhook!'
+            );
+          } else if (options.webhookUrl && res.webhookResult && !res.webhookResult.success) {
+            showFeedbackStatus(`⚠️ Đã lưu cục bộ, nhưng gửi Webhook lỗi: ${res.webhookResult.error}`, true);
+          } else {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '✅ Đã áp dụng bản sửa tức thì & lưu báo cáo (bấm Gửi Email hoặc GitHub Issue để gửi cho dev).'
+                : `✅ Đã lưu báo cáo! Bấm "Gửi Email" (${res.supportEmail}) hoặc "GitHub Issue" để gửi cho dev.`
+            );
+          }
+        }
+      } catch (err) {
+        if (submitBtn) submitBtn.disabled = false;
+        showFeedbackStatus(`⚠️ Có lỗi xảy ra: ${err.message}`, true);
+      }
+    };
+
+    feedbackModalOverlay.querySelector('#jp-fb-submit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('save');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-email-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('email');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-gmail-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('gmail');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-copy-email-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const emailAddr = 'lexuantruong098@gmail.com';
+      const onCopied = () => showFeedbackStatus(`📧 Đã sao chép email: ${emailAddr}`);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(emailAddr).then(onCopied).catch(() => fallbackCopyText(emailAddr, onCopied));
+      } else {
+        fallbackCopyText(emailAddr, onCopied);
+      }
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-github-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('github');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-copy-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('copy');
+    });
+
+    // Bắt sự kiện click nút dịch câu bôi đen (giữ selection khi pointerdown/mousedown và mở card tại click)
+    const preserveSelectionOnBadge = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    selectionBadge.addEventListener('pointerdown', preserveSelectionOnBadge);
+    selectionBadge.addEventListener('mousedown', preserveSelectionOnBadge);
+    selectionBadge.addEventListener('mouseup', (e) => {
+      e.stopPropagation();
+    });
+    selectionBadge.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
       if (!settings.enabled || settings.enableSelectionTranslate === false) {
@@ -560,6 +867,27 @@
         if (pinBtn) pinBtn.classList.remove('active');
         cardElem.classList.remove('pinned');
         hideTooltip(true);
+      });
+    }
+
+    const reportBtn = cardElem.querySelector('#jp-report-btn');
+    if (reportBtn) {
+      reportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        openFeedbackModal({
+          category: 'wrong_reading',
+          word: currentWord || '',
+          currentReading: currentReading || (currentWordData ? currentWordData.reading : '') || '',
+          currentRomaji: (currentWordData ? currentWordData.romaji : '') || '',
+          currentMeaning: currentMeaning || (currentWordData ? currentWordData.meaning : '') || '',
+          currentHanViet: currentHanViet || (currentWordData ? currentWordData.hanviet : '') || '',
+          currentOnKun: (currentWordData && currentWordData.onKunRule)
+            ? `${currentWordData.onKunRule.badge || ''} - ${currentWordData.onKunRule.rule || ''}`.trim()
+            : '',
+          contextSentence: currentContextSentence || '',
+          source: 'Hover Tooltip'
+        });
       });
     }
 
@@ -1382,6 +1710,7 @@
     }
     if (!sentenceCard) return;
 
+    justOpenedSentenceCardAt = Date.now();
     hideSelectionBadge();
     stopSentenceReading();
 
@@ -1414,40 +1743,46 @@
     `).join('');
 
     sentenceCard.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px;gap:8px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-weight:bold;color:#38bdf8;font-size:13.5px;" id="jp-sentence-title">📖 Dịch câu & Luyện đọc JLPT</span>
-          <span class="jp-api-badge" id="jp-sentence-api-badge">Đang gọi API...</span>
+      <div class="jp-st-header">
+        <div class="jp-st-header-left">
+          <span class="jp-st-title" id="jp-sentence-title">📖 Dịch câu & Luyện đọc JLPT</span>
+          <span class="jp-api-badge" id="jp-sentence-api-badge">Đang dịch...</span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <!-- Bộ điều khiển tốc độ đọc JLPT Dokkai -->
-          <div class="jp-jlpt-speed-bar" title="Tốc độ đọc JLPT (0.6x - 1.5x)">
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.6" title="0.6x - Rất chậm (Tập phát âm / Sơ cấp)">0.6x</button>
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="0.8" title="0.8x - Chậm (Luyện nghe N5/N4)">0.8x</button>
-            <button type="button" class="jp-jlpt-speed-btn active" data-speed="1.0" title="1.0x - Tốc độ chuẩn bản ngữ">1.0x</button>
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.2" title="1.2x - Nhanh (Luyện thi Dokkai JLPT)">1.2x</button>
-            <button type="button" class="jp-jlpt-speed-btn" data-speed="1.5" title="1.5x - Cực nhanh (Luyện phản xạ N2/N1)">1.5x</button>
-          </div>
-          <button class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung câu (Clipboard)">
+        <div class="jp-st-header-actions">
+          <button type="button" class="jp-icon-btn jp-sentence-copy-btn" id="jp-sentence-copy" title="Sao chép nội dung">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <button class="jp-icon-btn jp-sentence-play-btn" id="jp-sentence-audio" title="Phát âm (Luyện nghe JLPT)">
+          <button type="button" class="jp-icon-btn jp-sentence-play-btn" id="jp-sentence-audio" title="Phát âm toàn đoạn">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </button>
-          <button class="jp-icon-btn" id="jp-sentence-close" title="Đóng (Esc)">✕</button>
+          <button type="button" class="jp-icon-btn jp-report-icon-btn" id="jp-sentence-report" title="Báo lỗi dịch / Góp ý">🚩</button>
+          <button type="button" class="jp-icon-btn jp-close-icon-btn" id="jp-sentence-close" title="Đóng (Esc)">✕</button>
         </div>
       </div>
+
+      <div class="jp-st-controls-bar">
+        <span class="jp-st-hint">🎧 Bấm vào câu để nghe đọc</span>
+        <div class="jp-jlpt-speed-bar" title="Tốc độ đọc JLPT (0.6x - 1.5x)">
+          <span class="jp-jlpt-speed-label">Tốc độ</span>
+          <button type="button" class="jp-jlpt-speed-btn" data-speed="0.6" title="0.6x - Rất chậm (Sơ cấp)">0.6x</button>
+          <button type="button" class="jp-jlpt-speed-btn" data-speed="0.8" title="0.8x - Chậm (N5/N4)">0.8x</button>
+          <button type="button" class="jp-jlpt-speed-btn active" data-speed="1.0" title="1.0x - Chuẩn bản ngữ">1.0x</button>
+          <button type="button" class="jp-jlpt-speed-btn" data-speed="1.2" title="1.2x - Nhanh (Dokkai)">1.2x</button>
+          <button type="button" class="jp-jlpt-speed-btn" data-speed="1.5" title="1.5x - Cực nhanh (N2/N1)">1.5x</button>
+        </div>
+      </div>
+
       <div id="jp-sentence-source-box" class="jp-sentence-source-box">${chunksHtml}</div>
 
-      <!-- Tab điều hướng trong Sentence Card: Bản dịch, Phân tích ngữ pháp AI, Giải thích sâu AI -->
-      <div class="jp-st-tabs-bar" style="display:flex;gap:6px;margin:6px 0 8px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">
+      <!-- Segmented Tab Navigation -->
+      <div class="jp-st-tabs-bar">
         <button type="button" class="jp-st-tab-btn active" data-tab="translate">📖 Bản dịch</button>
-        <button type="button" class="jp-st-tab-btn" data-tab="grammar">🧩 Phân tích ngữ pháp AI</button>
+        <button type="button" class="jp-st-tab-btn" data-tab="grammar">🧩 Ngữ pháp AI</button>
         <button type="button" class="jp-st-tab-btn" data-tab="explain">💡 Giải thích chi tiết AI</button>
       </div>
 
@@ -1515,7 +1850,7 @@
     // Định vị sentence card với độ rộng lớn hơn cho bài đọc JLPT
     const cardWidth = Math.min(600, window.innerWidth - 32);
     let left = Math.min(mouseX + 10, window.innerWidth - cardWidth - 20);
-    let top = Math.min(mouseY + 15, window.innerHeight - 260);
+    let top = Math.min(mouseY + 15, Math.max(16, window.innerHeight - 360));
     sentenceCard.style.left = `${Math.max(16, left)}px`;
     sentenceCard.style.top = `${Math.max(16, top)}px`;
     sentenceCard.classList.add('visible');
@@ -1544,6 +1879,21 @@
         startSentenceReading(speakTarget, currentSpeed, audioBtn, sourceElem, 0);
       }
     });
+
+    const sentenceReportBtn = sentenceCard.querySelector('#jp-sentence-report');
+    if (sentenceReportBtn) {
+      sentenceReportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const currentTransText = sentenceCard.querySelector('#jp-sentence-meaning')?.textContent || '';
+        openFeedbackModal({
+          category: 'wrong_meaning',
+          word: text.trim().slice(0, 120),
+          currentMeaning: currentTransText,
+          contextSentence: text.trim().slice(0, 240),
+          source: 'Selection Translate Card'
+        });
+      });
+    }
 
     sentenceCard.querySelector('#jp-sentence-close').addEventListener('click', () => {
       hideSentenceCard();
@@ -1627,7 +1977,7 @@
         engine: settings.translationEngine || 'google',
         apiKey: settings.aiApiKey || settings.geminiApiKey || '',
         provider: settings.aiProvider || 'gemini',
-        model: settings.aiModel || 'gemini-1.5-flash',
+        model: settings.aiModel || 'gemini-flash-latest',
         customEndpoint: settings.aiCustomEndpoint || ''
       });
       if (res && res.meaning) {
@@ -1668,8 +2018,10 @@
       return;
     }
     if (!selectionBadge) return;
-    selectionBadge.style.left = `${Math.min(x, window.innerWidth - 120)}px`;
-    selectionBadge.style.top = `${Math.min(y, window.innerHeight - 40)}px`;
+    const left = Math.max(8, Math.min(x, window.innerWidth - 160));
+    const top = Math.max(8, Math.min(y, window.innerHeight - 44));
+    selectionBadge.style.left = `${left}px`;
+    selectionBadge.style.top = `${top}px`;
     selectionBadge.classList.add('visible');
   }
 
@@ -1684,7 +2036,7 @@
     hideSelectionBadge();
     hideSentenceCard();
     const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-    if (qs && qs.isOpen) {
+    if (qs && qs.isOpen && settings.allowQuickSearchWhenDisabled === false) {
       qs.close();
     }
   }
@@ -1828,16 +2180,26 @@
   }
 
   // 8. Bắt sự kiện chuột
+  function isInsideExtensionUi(e) {
+    const path = e && e.composedPath ? e.composedPath() : [];
+    return path.some(el =>
+      el === cardElem ||
+      el === sentenceCard ||
+      el === selectionBadge ||
+      el === feedbackModalOverlay ||
+      el === strokeModalOverlay
+    );
+  }
+
   function handleMouseDown(e) {
-    const path = e.composedPath ? e.composedPath() : [];
-    const insideCard = path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge);
-    if (insideCard) {
+    if (isInsideExtensionUi(e)) {
       cancelHideSchedule();
       return;
     }
 
-    // Click ra ngoài sentence card & selection badge → đóng ngay
+    // Click ra ngoài sentence card & selection badge → đóng ngay (trừ khi vừa mở xong)
     if (sentenceCard && sentenceCard.classList.contains('visible')) {
+      if (Date.now() - justOpenedSentenceCardAt < 350) return;
       hideSentenceCard();
     }
     if (selectionBadge && selectionBadge.classList.contains('visible')) {
@@ -1852,10 +2214,16 @@
 
   function handleMouseUp(e) {
     isSelectingOnPage = false;
+    if (isInsideExtensionUi(e)) {
+      return;
+    }
     if (!settings.enabled || settings.enableSelectionTranslate === false) {
       hideSelectionBadge();
       return;
     }
+
+    const mouseX = e && typeof e.clientX === 'number' ? e.clientX : 24;
+    const mouseY = e && typeof e.clientY === 'number' ? e.clientY : 24;
 
     setTimeout(() => {
       if (!settings.enabled || settings.enableSelectionTranslate === false) {
@@ -1864,18 +2232,41 @@
       }
 
       const sel = window.getSelection();
-      const text = sel ? sel.toString().trim() : '';
+      let text = sel ? sel.toString().trim() : '';
+      let fromFormControl = false;
+
+      if (!text) {
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+          try {
+            if (
+              typeof activeEl.selectionStart === 'number' &&
+              typeof activeEl.selectionEnd === 'number' &&
+              activeEl.selectionEnd > activeEl.selectionStart
+            ) {
+              text = String(activeEl.value || '').slice(activeEl.selectionStart, activeEl.selectionEnd).trim();
+              fromFormControl = Boolean(text);
+            }
+          } catch (_) {}
+        }
+      }
 
       if (text.length >= 2 && isJapaneseText(text)) {
         currentSelectedText = text;
-        try {
-          const range = sel.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          if (rect && rect.width > 0) {
-            showSelectionBadge(rect.right + 6, rect.bottom + 4);
-            return;
-          }
-        } catch (_) {}
+        if (!fromFormControl) {
+          try {
+            if (sel && sel.rangeCount > 0) {
+              const range = sel.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+              if (rect && (rect.width > 0 || rect.height > 0)) {
+                showSelectionBadge(rect.right + 6, rect.bottom + 4);
+                return;
+              }
+            }
+          } catch (_) {}
+        }
+        showSelectionBadge(mouseX + 8, mouseY + 10);
+        return;
       }
       hideSelectionBadge();
     }, 60);
@@ -1883,6 +2274,7 @@
 
   function isStrokeModalOpen() {
     if (strokeModalOverlay && strokeModalOverlay.classList.contains('active')) return true;
+    if (feedbackModalOverlay && feedbackModalOverlay.classList.contains('active')) return true;
     const qsObj = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
     if (qsObj && qsObj.isOpen) return true;
     const qs = document.getElementById('jp-quick-search-root');
@@ -2119,9 +2511,11 @@
   }
 
   function handleDocumentClick(e) {
-    const path = e.composedPath ? e.composedPath() : [];
-    if (path.some(el => el === cardElem || el === sentenceCard || el === selectionBadge)) {
+    if (isInsideExtensionUi(e)) {
       cancelHideSchedule();
+      return;
+    }
+    if (Date.now() - justOpenedSentenceCardAt < 350) {
       return;
     }
     // Click ra ngoài sentence card & selection badge → đóng
@@ -2257,14 +2651,81 @@
 
   window.__JP_OPEN_STROKE_MODAL = openStrokeModal;
 
+  function openFeedbackModal(contextData = {}) {
+    if (!feedbackModalOverlay) return;
+    activeFeedbackContext = { ...(contextData || {}) };
+    cancelHideSchedule();
+
+    const catEl = feedbackModalOverlay.querySelector('#jp-fb-category');
+    const wordEl = feedbackModalOverlay.querySelector('#jp-fb-word');
+    const readEl = feedbackModalOverlay.querySelector('#jp-fb-correct-reading');
+    const meanEl = feedbackModalOverlay.querySelector('#jp-fb-correct-meaning');
+    const noteEl = feedbackModalOverlay.querySelector('#jp-fb-note');
+    const wordFields = feedbackModalOverlay.querySelector('#jp-fb-word-fields');
+    const overrideWrap = feedbackModalOverlay.querySelector('#jp-fb-override-wrap');
+    const overrideCb = feedbackModalOverlay.querySelector('#jp-fb-apply-override');
+    const domainLabel = feedbackModalOverlay.querySelector('#jp-fb-domain-label');
+    const snapBox = feedbackModalOverlay.querySelector('#jp-fb-snapshot');
+    const snapWord = feedbackModalOverlay.querySelector('#jp-fb-snap-word');
+    const snapMeta = feedbackModalOverlay.querySelector('#jp-fb-snap-meta');
+    const statusBox = feedbackModalOverlay.querySelector('#jp-fb-status');
+
+    const catVal = activeFeedbackContext.category || (activeFeedbackContext.word ? 'wrong_reading' : 'suggestion');
+    if (catEl) catEl.value = catVal;
+    const isWordIssue = !['bug', 'suggestion'].includes(catVal);
+    if (wordFields) wordFields.style.display = isWordIssue ? 'flex' : 'none';
+    if (overrideWrap) overrideWrap.style.display = isWordIssue ? 'flex' : 'none';
+    if (overrideCb) overrideCb.checked = true;
+
+    if (wordEl) wordEl.value = activeFeedbackContext.word || '';
+    if (readEl) readEl.value = '';
+    if (meanEl) meanEl.value = '';
+    if (noteEl) noteEl.value = '';
+    if (statusBox) statusBox.style.display = 'none';
+
+    if (domainLabel) {
+      const host = (typeof location !== 'undefined' && location.hostname) ? location.hostname : '';
+      domainLabel.textContent = host ? `🌐 Đính kèm tên miền (${host})` : '🌐 Đính kèm tên miền trang web';
+    }
+
+    if (snapBox && snapWord && snapMeta) {
+      if (activeFeedbackContext.word) {
+        snapWord.textContent = activeFeedbackContext.word;
+        const metaParts = [];
+        if (activeFeedbackContext.currentReading) metaParts.push(`Đọc: ${activeFeedbackContext.currentReading}`);
+        if (activeFeedbackContext.currentRomaji) metaParts.push(`Romaji: ${activeFeedbackContext.currentRomaji}`);
+        if (activeFeedbackContext.currentMeaning) metaParts.push(`Nghĩa: ${activeFeedbackContext.currentMeaning}`);
+        snapMeta.textContent = metaParts.join(' • ') || 'Chưa có thông tin phiên âm/nghĩa';
+        snapBox.style.display = 'flex';
+      } else {
+        snapBox.style.display = 'none';
+      }
+    }
+
+    feedbackModalOverlay.classList.add('active');
+    setTimeout(() => {
+      const targetFocus = isWordIssue ? (readEl || noteEl) : noteEl;
+      if (targetFocus) targetFocus.focus();
+    }, 40);
+  }
+
+  function closeFeedbackModal() {
+    if (feedbackModalOverlay) {
+      feedbackModalOverlay.classList.remove('active');
+    }
+  }
+
+  window.__JP_OPEN_FEEDBACK_MODAL = openFeedbackModal;
+
   // 11. Phím tắt toàn cục: Alt+J, Alt+R/Alt+F, Alt+S, E (Anki), S (Audio)
   function handleKeyDown(e) {
     // 1. Alt + J: Bật/Tắt Extension (Luôn luôn lắng nghe để người dùng bật lại khi cần)
-    if (e.altKey && (e.key === 'j' || e.key === 'J' || e.code === 'KeyJ')) {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'j' || e.key === 'J' || e.code === 'KeyJ')) {
       e.preventDefault();
       e.stopPropagation();
-      settings.enabled = !settings.enabled;
+      settings.enabled = !(settings.enabled !== false);
       window.__JP_EXTENSION_ENABLED__ = settings.enabled;
+      window.__JP_SETTINGS__ = settings;
       const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
       if (qs && qs.setEnabled) {
         qs.setEnabled(settings.enabled);
@@ -2275,8 +2736,50 @@
       if (!settings.enabled) {
         hideAllPopups(true);
       }
-      showToast(settings.enabled ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)' : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)');
+      showToggleToast(settings.enabled);
       return;
+    }
+
+    // 1b. Alt + S / Ctrl + Shift + F: Mở thanh tra cứu nhanh (hỗ trợ mở ngay cả khi tắt hover nếu được cho phép)
+    const isAltS = e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 's' || e.key === 'S' || e.code === 'KeyS');
+    const isCtrlShiftF = e.ctrlKey && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF');
+    if (isAltS || isCtrlShiftF) {
+      const allowIndependent = settings.allowQuickSearchWhenDisabled !== false;
+      if (!settings.enabled && !allowIndependent) return;
+      const palette = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (palette) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        palette.toggle(allowIndependent);
+        return;
+      }
+    }
+
+    // 1c. Luôn cho phép Esc đóng Quick Search, Modal Báo lỗi hoặc Modal nét viết Kanji ngay cả khi đang TẮT hover
+    if (e.key === 'Escape') {
+      if (feedbackModalOverlay && feedbackModalOverlay.classList.contains('active')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        closeFeedbackModal();
+        return;
+      }
+      const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+      if (qs && qs.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        qs.close();
+        return;
+      }
+      if (strokeModalOverlay && strokeModalOverlay.classList.contains('active')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        closeStrokeModal();
+        return;
+      }
     }
 
     // Nếu Extension đang TẮT -> Không bắt bất kỳ phím tắt nào khác
@@ -2402,78 +2905,134 @@
       }
     }
 
-    // Alt + S / Ctrl + Shift + F: Mở thanh tra cứu nhanh
-    if ((e.altKey && (e.key === 's' || e.key === 'S')) || 
-        (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
-      if (!settings.enabled) return;
-      const palette = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-      if (palette) {
-        e.preventDefault();
-        e.stopPropagation();
-        palette.toggle();
-        return;
-      }
-    }
   }
 
-  function showToast(msg) {
-    let toast = document.getElementById('jp-quick-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'jp-quick-toast';
+  function ensureToastElement() {
+    if (toastElem) {
+      if (shadowRoot && toastElem.parentNode !== shadowRoot) {
+        shadowRoot.appendChild(toastElem);
+      }
+      return toastElem;
+    }
+    toastElem = document.createElement('div');
+    toastElem.id = 'jp-quick-toast';
+    toastElem.className = 'jp-quick-toast';
+    if (shadowRoot) {
+      shadowRoot.appendChild(toastElem);
+    } else {
+      const targetParent = document.body || document.documentElement;
+      if (targetParent) targetParent.appendChild(toastElem);
+    }
+    return toastElem;
+  }
+
+  function showToast(msg, duration = 2000, isMuted = false) {
+    const toast = ensureToastElement();
+    if (!toast) return;
+
+    if (toastHideTimer) {
+      clearTimeout(toastHideTimer);
+      toastHideTimer = null;
+    }
+
+    toast.textContent = msg;
+    if (isMuted) {
+      toast.classList.add('is-off');
+    } else {
+      toast.classList.remove('is-off');
+    }
+
+    // Fallback style nếu không nằm trong Shadow DOM
+    if (!shadowRoot) {
       toast.style.cssText = `
         position: fixed;
         bottom: 24px;
         right: 24px;
         background: #0f172a;
-        color: #38bdf8;
-        border: 1px solid #38bdf8;
+        color: ${isMuted ? '#cbd5e1' : '#38bdf8'};
+        border: 1px solid ${isMuted ? '#64748b' : '#38bdf8'};
         padding: 10px 18px;
         border-radius: 10px;
         font-family: sans-serif;
         font-size: 13px;
-        font-weight: bold;
+        font-weight: 700;
         z-index: 2147483647;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        opacity: 0;
-        transform: translateY(10px);
+        opacity: 1;
+        transform: translateY(0);
+        visibility: visible;
         transition: all 0.25s ease;
         pointer-events: none;
       `;
-      document.body.appendChild(toast);
     }
-    toast.textContent = msg;
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-    }, 1800);
+
+    toast.classList.add('visible');
+    toastHideTimer = setTimeout(() => {
+      toast.classList.remove('visible');
+      if (!shadowRoot) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.visibility = 'hidden';
+      }
+      toastHideTimer = null;
+    }, Math.max(800, Number(duration) || 2000));
+  }
+
+  function showToggleToast(enabled) {
+    // Chỉ hiển thị ở tab đang mở để tránh nháy thông báo trên các tab nền khi sync storage
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
+    const nextState = Boolean(enabled);
+    const now = Date.now();
+    // Chống trùng lặp khi cả chrome.storage.onChanged lẫn SET_STATE cùng đến cho 1 lần bấm
+    if (lastToggleToastState === nextState && (now - lastToggleToastAt) < 400) {
+      return;
+    }
+    lastToggleToastState = nextState;
+    lastToggleToastAt = now;
+    showToast(
+      nextState
+        ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)'
+        : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)',
+      2200,
+      !nextState
+    );
   }
 
   // Lắng nghe tin nhắn từ Extension Background / Popup
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.action === 'SET_STATE' || msg.action === 'TOGGLE_HOVER') {
-        const nextEnabled = typeof msg.enabled === 'boolean' ? msg.enabled : !settings.enabled;
-        settings.enabled = nextEnabled;
-        window.__JP_EXTENSION_ENABLED__ = settings.enabled;
-        const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
-        if (qs && qs.setEnabled) {
-          qs.setEnabled(settings.enabled);
+        const prevEnabled = settings.enabled !== false;
+        if (msg.settings && typeof msg.settings === 'object') {
+          settings = { ...settings, ...msg.settings };
+          window.__JP_SETTINGS__ = settings;
         }
-        if (!settings.enabled) hideAllPopups(true);
-        showToast(settings.enabled ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)' : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)');
-        sendResponse({ enabled: settings.enabled });
+        const nextEnabled = typeof msg.enabled === 'boolean' ? msg.enabled : !(settings.enabled !== false);
+        settings.enabled = nextEnabled;
+        window.__JP_EXTENSION_ENABLED__ = nextEnabled;
+        const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+        if (qs) {
+          if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
+          if (qs.setEnabled) qs.setEnabled(nextEnabled);
+        }
+        if (!nextEnabled) hideAllPopups(true);
+        if (msg.action === 'TOGGLE_HOVER' || msg.showToggleToast || prevEnabled !== nextEnabled) {
+          showToggleToast(nextEnabled);
+        }
+        sendResponse({ enabled: nextEnabled });
       } else if (msg.action === 'GET_STATUS') {
         sendResponse({ enabled: settings.enabled });
       } else if (msg.action === 'TOGGLE_QUICK_SEARCH') {
-        if (!settings.enabled) {
+        const allowIndependent = Boolean(msg.forceAllow || msg.allowWhenDisabled || settings.allowQuickSearchWhenDisabled !== false);
+        if (!settings.enabled && !allowIndependent) {
           sendResponse({ success: false, reason: 'disabled' });
           return;
         }
-        if (typeof quickSearchPalette !== 'undefined') {
-          quickSearchPalette.toggle();
+        const palette = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
+        if (palette) {
+          palette.toggle(allowIndependent);
           sendResponse({ success: true });
         }
       } else if (msg.action === 'SYNC_ANKI') {
@@ -3108,7 +3667,8 @@
 .jp-selection-badge {
   position: fixed;
   z-index: 2147483647;
-  pointer-events: auto;
+  visibility: hidden;
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3130,6 +3690,8 @@
 }
 
 .jp-selection-badge.visible {
+  visibility: visible;
+  pointer-events: auto;
   opacity: 1;
   transform: translateY(0);
 }
@@ -3145,18 +3707,18 @@
   position: fixed;
   z-index: 2147483647;
   pointer-events: auto;
-  max-width: 620px;
+  max-width: 600px;
   min-width: 360px;
   width: 90vw;
   max-height: 85vh;
   overflow-y: auto;
-  background: rgba(15, 23, 42, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 24px 50px -5px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(56, 189, 248, 0.2);
-  border-radius: 14px;
-  padding: 14px 18px;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.98) 0%, rgba(11, 17, 32, 0.99) 100%);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.88), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 14px 16px;
   color: #f8fafc;
   display: flex;
   flex-direction: column;
@@ -3164,8 +3726,17 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px) scale(0.97);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
   box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, "Yu Gothic", "Noto Sans JP", sans-serif;
+}
+
+.jp-sentence-card::-webkit-scrollbar {
+  width: 6px;
+}
+.jp-sentence-card::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
 }
 
 .jp-sentence-card.visible {
@@ -3174,23 +3745,81 @@
   transform: translateY(0) scale(1);
 }
 
+.jp-st-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jp-st-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.jp-st-title {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 13.5px;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+}
+
+.jp-st-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.jp-st-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jp-st-hint {
+  font-size: 11px;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .jp-jlpt-speed-bar {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 2px;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 2px 4px;
   gap: 2px;
 }
 
+.jp-jlpt-speed-label {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 600;
+  padding: 0 5px 0 3px;
+}
+
 .jp-jlpt-speed-btn {
+  appearance: none;
   background: transparent;
   border: none;
   color: #94a3b8;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
+  font-family: inherit;
+  padding: 3px 7px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -3203,6 +3832,7 @@
 .jp-jlpt-speed-btn.active {
   background: #38bdf8;
   color: #0f172a;
+  box-shadow: 0 1px 6px rgba(56, 189, 248, 0.35);
 }
 
 .jp-sentence-play-btn.playing {
@@ -3213,17 +3843,17 @@
 
 .jp-sentence-source-box {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
-  margin: 10px 0 6px 0;
-  padding: 8px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  max-height: 44vh;
+  margin: 0;
+  padding: 4px;
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-radius: 12px;
+  max-height: 40vh;
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -3243,22 +3873,22 @@
 .jp-reading-sentence-item {
   position: relative;
   padding: 10px 14px;
-  border-radius: 8px;
-  border: 1.5px solid transparent;
-  background: rgba(255, 255, 255, 0.02);
-  font-size: 16px;
-  line-height: 1.85;
-  color: #cbd5e1;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 17px;
+  line-height: 1.75;
+  color: #f1f5f9;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
 .jp-reading-sentence-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.2);
+  color: #ffffff;
 }
 
 /* HIỆU ỨNG BOX HIGHLIGHT BAO PHỦ CÂU ĐANG ĐỌC (Luyện đọc JLPT) */
@@ -3268,7 +3898,6 @@
   box-shadow: 0 0 18px rgba(56, 189, 248, 0.32), inset 0 0 10px rgba(56, 189, 248, 0.12) !important;
   color: #ffffff !important;
   font-weight: 500;
-  transform: scale(1.006);
 }
 
 /* Badge loa hiển thị trên góc Box Highlight */
@@ -3334,16 +3963,173 @@
   padding: 1px 2px;
 }
 
-.jp-sentence-meaning {
-  font-size: 14px;
+/* Segmented Tabs cho Selection Translate Card */
+.jp-st-tabs-bar {
+  display: flex;
+  gap: 5px;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.jp-st-tab-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  white-space: nowrap;
+  outline: none;
+}
+
+.jp-st-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: #e2e8f0;
-  background: rgba(56, 189, 248, 0.08);
+}
+
+.jp-st-tab-btn.active {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.42);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.18);
+}
+
+.jp-st-tab-btn[data-tab="grammar"].active,
+.jp-st-tab-btn[data-tab="explain"].active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.24) 0%, rgba(56, 189, 248, 0.16) 100%);
+  color: #e9d5ff;
+  border-color: rgba(168, 85, 247, 0.45);
+  box-shadow: 0 2px 12px rgba(168, 85, 247, 0.22);
+}
+
+.jp-st-pane {
+  display: block;
+}
+
+.jp-sentence-meaning {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #f8fafc;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(14, 165, 233, 0.04) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-left: 3.5px solid #38bdf8;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   line-height: 1.6;
-  border-left: 3px solid #38bdf8;
   user-select: text;
   -webkit-user-select: text;
+}
+
+.jp-st-ai-box {
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #f1f5f9;
+  max-height: 360px;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.jp-st-ai-box::-webkit-scrollbar,
+.jp-ai-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.jp-st-ai-box::-webkit-scrollbar-thumb,
+.jp-ai-panel::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.35);
+  border-radius: 4px;
+}
+
+/* AI Button & Panel trong Hover Tooltip */
+.jp-ai-btn {
+  background: rgba(168, 85, 247, 0.14) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+}
+
+.jp-ai-btn:hover,
+.jp-ai-btn.active {
+  background: #a855f7 !important;
+  border-color: #a855f7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.55) !important;
+}
+
+.jp-ai-panel {
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f1f5f9;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-height: 260px;
+  overflow-y: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.jp-ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.jp-ai-panel-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #c084fc;
+}
+
+.jp-ai-panel-close {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.jp-ai-panel-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jp-ai-md h3, .jp-ai-md h4,
+.jp-st-ai-box strong, .jp-ai-panel-body strong {
+  color: #e9d5ff;
+}
+
+.jp-report-btn:hover,
+.jp-report-icon-btn:hover {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+  color: #fbbf24 !important;
 }
 
 .jp-flashcard-btn:hover {
@@ -3555,6 +4341,357 @@
   line-height: 1.6;
 }
 
+/* Nút Báo lỗi trong Footer Tooltip */
+.jp-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jp-report-footer-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.jp-report-footer-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+/* Modal Báo lỗi / Sửa từ & Góp ý */
+.jp-feedback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.jp-feedback-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.jp-feedback-modal {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.99) 0%, rgba(11, 17, 32, 0.99) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 470px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 18px 20px;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform: scale(0.96);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+.jp-feedback-modal-overlay.active .jp-feedback-modal {
+  transform: scale(1);
+}
+
+.jp-fb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jp-fb-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jp-fb-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.jp-fb-subtitle {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.jp-fb-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-left: 3px solid #38bdf8;
+  border-radius: 9px;
+  padding: 8px 12px;
+}
+
+.jp-fb-snapshot-word {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.jp-fb-snapshot-meta {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.jp-fb-form,
+.jp-fb-word-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.jp-fb-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.jp-fb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jp-fb-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.jp-fb-input,
+.jp-fb-select,
+.jp-fb-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f8fafc;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jp-fb-select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.jp-fb-input:focus,
+.jp-fb-select:focus,
+.jp-fb-textarea:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.jp-fb-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.jp-fb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.jp-fb-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.jp-fb-check input {
+  accent-color: #38bdf8;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.jp-fb-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 8px;
+  line-height: 1.45;
+}
+
+.jp-fb-status.success {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.jp-fb-status.error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.jp-fb-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.jp-fb-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.jp-fb-btn-primary {
+  flex: 1;
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  color: #0b1120;
+}
+
+.jp-fb-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.jp-fb-btn-github {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+
+.jp-fb-btn-github:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #ffffff;
+}
+
+.jp-fb-btn-email {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.jp-fb-btn-email:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: #34d399;
+  color: #ecfdf5;
+}
+
+.jp-fb-btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.jp-fb-email-hint {
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(52, 211, 153, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.jp-fb-email-hint strong {
+  color: #6ee7b7;
+  user-select: text;
+}
+
+.jp-fb-email-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jp-fb-link-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.jp-fb-link-btn:hover {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #a7f3d0;
+}
+
+.jp-fb-btn-ghost:hover {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
 /* ==========================================================================
    CSS CHO CHẾ ĐỘ CHÈN FURIGANA TOÀN TRANG (FULL-PAGE FURIGANA)
    ========================================================================== */
@@ -3571,6 +4708,45 @@ rt.jp-ext-injected-rt {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif !important;
   user-select: none !important;
   -webkit-user-select: none !important;
+}
+
+/* Toast thông báo bật/tắt & thao tác nhanh (cô lập hoàn toàn trong Shadow DOM) */
+.jp-quick-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.1px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 16px rgba(56, 189, 248, 0.22);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.jp-quick-toast.visible {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.jp-quick-toast.is-off {
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.55);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
 }
 
 `;

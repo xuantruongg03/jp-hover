@@ -5427,10 +5427,58 @@ buildReadingIndex();
 // Bộ nhớ đệm tra cứu nhanh LRU Cache
 const LOOKUP_CACHE = new Map();
 
+// Từ điển cá nhân do người dùng tùy chỉnh / báo sửa trực tiếp
+let JP_CUSTOM_DICTIONARY = {};
+
+function setCustomDictionaryOverrides(customMap) {
+  JP_CUSTOM_DICTIONARY = (customMap && typeof customMap === 'object') ? { ...customMap } : {};
+  LOOKUP_CACHE.clear();
+  if (typeof window !== 'undefined') {
+    window.__JP_CUSTOM_DICTIONARY__ = JP_CUSTOM_DICTIONARY;
+  }
+}
+
+function getCustomDictionaryOverrides() {
+  return JP_CUSTOM_DICTIONARY;
+}
+
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+  chrome.storage.local.get(['jpCustomDictionary'], (res) => {
+    if (res && res.jpCustomDictionary) {
+      setCustomDictionaryOverrides(res.jpCustomDictionary);
+    }
+  });
+  if (chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.jpCustomDictionary) {
+        setCustomDictionaryOverrides(changes.jpCustomDictionary.newValue || {});
+      }
+    });
+  }
+}
+
 /**
- * Tìm kiếm mục từ điển theo từ viết bằng Kanji hoặc đọc bằng Kana
+ * Tìm kiếm mục từ điển theo từ viết bằng Kanji hoặc đọc bằng Kana (ưu tiên bản sửa cá nhân)
  */
 function findDictionaryEntry(text) {
+  if (JP_CUSTOM_DICTIONARY[text]) {
+    const custom = JP_CUSTOM_DICTIONARY[text];
+    const base = JP_DICTIONARY[text] || {};
+    return {
+      baseWord: text,
+      item: {
+        ...base,
+        r: custom.r || base.r || text,
+        speechText: custom.speechText || custom.r || base.speechText || base.r || '',
+        m: custom.m || base.m || '',
+        t: custom.t || base.t || 'Từ tùy chỉnh',
+        pos: custom.pos || base.pos || 'n',
+        p: typeof base.p !== 'undefined' ? base.p : null,
+        isCustomOverride: true
+      },
+      isKanaMatch: false
+    };
+  }
   if (JP_DICTIONARY[text]) {
     return { baseWord: text, item: JP_DICTIONARY[text], isKanaMatch: false };
   }
@@ -5606,12 +5654,14 @@ function lookupJapaneseWord(word) {
       baseWord: direct.baseWord,
       reading: direct.item.r,
       baseReading: direct.item.r,
+      speechText: direct.item.speechText || '',
       meaning: direct.item.m,
       type: direct.item.t,
       pos: direct.item.pos || '',
       pitch: typeof direct.item.p !== 'undefined' ? direct.item.p : null,
       grammarTags: [],
-      grammarForm: 'Nguyên mẫu (辞書形)'
+      grammarForm: 'Nguyên mẫu (辞書形)',
+      isCustomOverride: !!direct.item.isCustomOverride
     };
     cacheLookup(cleanWord, result);
     return result;
@@ -5865,6 +5915,8 @@ function lookupVietnameseToJapanese(query, maxResults = 30) {
 if (typeof window !== 'undefined') {
   window.JP_DICTIONARY = JP_DICTIONARY;
   window.lookupJapaneseWord = lookupJapaneseWord;
+  window.setCustomDictionaryOverrides = setCustomDictionaryOverrides;
+  window.getCustomDictionaryOverrides = getCustomDictionaryOverrides;
   window.removeVietnameseTones = removeVietnameseTones;
   window.isVietnameseQuery = isVietnameseQuery;
   window.lookupVietnameseToJapanese = lookupVietnameseToJapanese;
@@ -5874,6 +5926,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = { 
     JP_DICTIONARY, 
     lookupJapaneseWord, 
+    setCustomDictionaryOverrides,
+    getCustomDictionaryOverrides,
     GRAMMAR_DEINFLECT_PATTERNS, 
     READING_TO_WORDS_MAP, 
     computeSurfaceReading,

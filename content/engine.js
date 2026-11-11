@@ -1321,8 +1321,8 @@ class JapaneseEngine {
       }
     }
 
-    // 1d. Giải quyết cách đọc & phát âm chuẩn theo ngữ cảnh câu (Contextual Heteronyms)
-    const contextual = this.resolveContextualPronunciation(clean, fullText, offset, dictEntry);
+    // 1d. Giải quyết cách đọc & phát âm chuẩn theo ngữ cảnh câu (trừ khi người dùng đã tự sửa từ này)
+    const contextual = (dictEntry && dictEntry.isCustomOverride) ? null : this.resolveContextualPronunciation(clean, fullText, offset, dictEntry);
     if (contextual) {
       if (contextual.reading) reading = contextual.reading;
       if (contextual.speechText) speechText = contextual.speechText;
@@ -1373,6 +1373,7 @@ class JapaneseEngine {
       kanjiList: kanjiList,
       onKunRule: onKunRule,
       hasOfflineMeaning: !!meaning,
+      isCustomOverride: !!(dictEntry && dictEntry.isCustomOverride),
       isGrammar: isGrammarPattern,
       grammarBadge: grammarBadge
     };

@@ -935,6 +935,153 @@
     document.getElementById('btn-export-anki').addEventListener('click', () => {
       exportAnkiCSV();
     });
+
+    // Mở Modal Báo lỗi & Góp ý
+    const btnOpenFeedback = document.getElementById('btn-open-feedback');
+    const fcFbCategory = document.getElementById('fc-fb-category');
+    const fcFbWordGroup = document.getElementById('fc-fb-word-group');
+    const fcFbWord = document.getElementById('fc-fb-word');
+    const fcFbReading = document.getElementById('fc-fb-reading');
+    const fcFbMeaning = document.getElementById('fc-fb-meaning');
+    const fcFbOverride = document.getElementById('fc-fb-apply-override');
+    const fcFbNote = document.getElementById('fc-fb-note');
+    const fcFbStatus = document.getElementById('fc-fb-status');
+
+    let fcFeedbackContext = {};
+
+    const syncFcCategoryUI = () => {
+      if (!fcFbCategory || !fcFbWordGroup) return;
+      const isWord = !['bug', 'suggestion'].includes(fcFbCategory.value);
+      fcFbWordGroup.style.display = isWord ? 'block' : 'none';
+    };
+
+    if (fcFbCategory) fcFbCategory.addEventListener('change', syncFcCategoryUI);
+
+    if (btnOpenFeedback) {
+      btnOpenFeedback.addEventListener('click', () => {
+        const activeCard = (currentDeck && currentDeck[currentCardIndex]) ? currentDeck[currentCardIndex] : null;
+        const studyTabActive = document.getElementById('tab-study')?.classList.contains('active');
+        fcFeedbackContext = {};
+
+        if (studyTabActive && activeCard) {
+          fcFeedbackContext = {
+            word: activeCard.word || '',
+            currentReading: activeCard.reading || '',
+            currentRomaji: activeCard.romaji || '',
+            currentMeaning: activeCard.meaning || '',
+            currentHanViet: activeCard.hanviet || '',
+            source: 'Flashcards Study'
+          };
+          if (fcFbCategory) fcFbCategory.value = 'wrong_reading';
+          if (fcFbWord) fcFbWord.value = activeCard.word || '';
+        } else {
+          fcFeedbackContext = { source: 'Flashcards & JLPT App' };
+          if (fcFbCategory) fcFbCategory.value = 'suggestion';
+          if (fcFbWord) fcFbWord.value = '';
+        }
+
+        if (fcFbReading) fcFbReading.value = '';
+        if (fcFbMeaning) fcFbMeaning.value = '';
+        if (fcFbNote) fcFbNote.value = '';
+        if (fcFbStatus) fcFbStatus.style.display = 'none';
+        if (fcFbOverride) fcFbOverride.checked = true;
+        syncFcCategoryUI();
+        openModal('modal-feedback');
+      });
+    }
+
+    const handleFlashcardsFeedback = async (mode = 'save') => {
+      if (typeof japaneseFeedbackService === 'undefined') return;
+      const cat = fcFbCategory ? fcFbCategory.value : 'suggestion';
+      const isWord = !['bug', 'suggestion'].includes(cat);
+      const wordVal = fcFbWord ? fcFbWord.value.trim() : '';
+      const readVal = fcFbReading ? fcFbReading.value.trim() : '';
+      const meanVal = fcFbMeaning ? fcFbMeaning.value.trim() : '';
+      const noteVal = fcFbNote ? fcFbNote.value.trim() : '';
+      const applyLocal = fcFbOverride ? fcFbOverride.checked : false;
+
+      if (!noteVal && !(isWord && wordVal && (readVal || meanVal))) {
+        if (fcFbStatus) {
+          fcFbStatus.textContent = '⚠️ Vui lòng nhập mô tả lỗi hoặc thông tin cần sửa.';
+          fcFbStatus.style.display = 'block';
+          fcFbStatus.style.background = 'rgba(239,68,68,0.14)';
+          fcFbStatus.style.color = '#f87171';
+        }
+        return;
+      }
+
+      let webhookUrl = '';
+      if (typeof loadJpSettings === 'function') {
+        try {
+          const s = await loadJpSettings();
+          webhookUrl = s.feedbackWebhookUrl || '';
+        } catch (_) {}
+      }
+
+      const res = await japaneseFeedbackService.submitReport({
+        ...fcFeedbackContext,
+        category: cat,
+        word: isWord ? wordVal : '',
+        suggestedReading: isWord ? readVal : '',
+        suggestedMeaning: isWord ? meanVal : '',
+        note: noteVal
+      }, {
+        applyLocalOverride: isWord && applyLocal,
+        webhookUrl
+      });
+
+      if (mode === 'github') {
+        await japaneseFeedbackService.updateReportStatus(res.report.id, 'github_opened');
+        window.open(res.githubUrl, '_blank', 'noopener,noreferrer');
+      } else if (mode === 'email') {
+        await japaneseFeedbackService.updateReportStatus(res.report.id, 'email_opened');
+        japaneseFeedbackService.openMailto(res.mailtoUrl);
+      } else if (mode === 'gmail') {
+        await japaneseFeedbackService.updateReportStatus(res.report.id, 'email_opened');
+        window.open(res.gmailUrl, '_blank', 'noopener,noreferrer');
+      } else if (mode === 'copy') {
+        await navigator.clipboard?.writeText(res.markdown);
+      }
+
+      if (fcFbStatus) {
+        fcFbStatus.style.display = 'block';
+        fcFbStatus.style.background = 'rgba(16,185,129,0.14)';
+        fcFbStatus.style.color = '#34d399';
+        if (mode === 'github') {
+          fcFbStatus.textContent = '✅ Đã mở GitHub Issue với đầy đủ nội dung!';
+        } else if (mode === 'email') {
+          fcFbStatus.textContent = `✅ Đã mở ứng dụng Email gửi tới ${res.supportEmail}!`;
+        } else if (mode === 'gmail') {
+          fcFbStatus.textContent = `✅ Đã mở Gmail Web soạn thư tới ${res.supportEmail}!`;
+        } else if (mode === 'copy') {
+          fcFbStatus.textContent = '📋 Đã lưu và sao chép nội dung báo cáo Markdown!';
+        } else {
+          fcFbStatus.textContent = (webhookUrl && res.webhookResult?.success)
+            ? '✅ Đã gửi báo cáo qua Webhook & lưu lịch sử!'
+            : (res.overrideApplied ? '✅ Đã cập nhật Từ điển cá nhân & lưu báo cáo!' : '✅ Đã lưu báo cáo thành công!');
+        }
+      }
+      showToast('🚩 Đã xử lý báo cáo của bạn!');
+    };
+
+    document.getElementById('fc-fb-submit-btn')?.addEventListener('click', () => handleFlashcardsFeedback('save'));
+    document.getElementById('fc-fb-email-btn')?.addEventListener('click', () => handleFlashcardsFeedback('email'));
+    document.getElementById('fc-fb-gmail-btn')?.addEventListener('click', () => handleFlashcardsFeedback('gmail'));
+    document.getElementById('fc-fb-copy-email-btn')?.addEventListener('click', async () => {
+      const emailAddr = 'lexuantruong098@gmail.com';
+      try {
+        await navigator.clipboard?.writeText(emailAddr);
+        if (fcFbStatus) {
+          fcFbStatus.style.display = 'block';
+          fcFbStatus.style.background = 'rgba(16,185,129,0.14)';
+          fcFbStatus.style.color = '#34d399';
+          fcFbStatus.textContent = `📧 Đã sao chép email: ${emailAddr}`;
+        }
+        showToast(`📧 Đã copy ${emailAddr}`);
+      } catch (_) {}
+    });
+    document.getElementById('fc-fb-github-btn')?.addEventListener('click', () => handleFlashcardsFeedback('github'));
+    document.getElementById('fc-fb-copy-btn')?.addEventListener('click', () => handleFlashcardsFeedback('copy'));
   }
 
   function openModal(id) {

@@ -6,6 +6,7 @@
 
 const JP_DEFAULT_SETTINGS = {
   enabled: true,
+  allowQuickSearchWhenDisabled: true, // Cho phép mở bảng tìm kiếm nhanh (Alt+S) kể cả khi tắt tiện ích
   activationMode: 'always', // 'always' | 'shift' | 'alt'
   showReading: true,
   showRomaji: true,
@@ -26,7 +27,7 @@ const JP_DEFAULT_SETTINGS = {
   // === Cấu hình Trí tuệ Nhân tạo Đa nền tảng (AI Engine) ===
   aiProvider: 'gemini', // 'gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'custom'
   aiApiKey: '',
-  aiModel: 'gemini-1.5-flash',
+  aiModel: 'gemini-flash-latest',
   aiCustomEndpoint: '',
   aiEnableSentenceTranslate: true,
   aiEnableGrammarAnalysis: true,
@@ -41,6 +42,9 @@ const JP_DEFAULT_SETTINGS = {
   // === Video Subtitle Hover Settings ===
   enableSubtitleHover: true,
   autoPauseVideoOnHover: false,
+
+  // === Feedback / Báo lỗi ===
+  feedbackWebhookUrl: '',
 
   // === SRS & Decks ===
   activeDeck: 'Mặc định',
@@ -105,6 +109,12 @@ async function loadJpSettings() {
   if (s.translationEngine === 'gemini') {
     s.translationEngine = 'ai';
     if (!s.aiProvider) s.aiProvider = 'gemini';
+  }
+  if (!s.aiProvider || s.aiProvider === 'gemini') {
+    const cleanModel = String(s.aiModel || '').trim().replace(/^models\//i, '').toLowerCase();
+    if (!cleanModel || /^gemini-(1\.5|1\.0|pro$)/.test(cleanModel)) {
+      s.aiModel = cleanModel.includes('pro') ? 'gemini-2.5-pro' : 'gemini-flash-latest';
+    }
   }
 
   return s;

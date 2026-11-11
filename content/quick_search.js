@@ -23,19 +23,29 @@ class QuickSearchPalette {
     this.lastActiveElement = null;
     this._lastToggleTime = 0;
     this._enabled = true;
+    this._allowWhenDisabled = true;
 
-    // Đồng bộ trạng thái bật/tắt tiện ích từ bộ nhớ Chrome
+    // Đồng bộ trạng thái bật/tắt tiện ích & chế độ mở độc lập từ bộ nhớ Chrome
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['jpSettings'], (res) => {
-        if (res && res.jpSettings && typeof res.jpSettings.enabled === 'boolean') {
-          this._enabled = res.jpSettings.enabled;
+        if (res && res.jpSettings) {
+          if (typeof res.jpSettings.enabled === 'boolean') {
+            this._enabled = res.jpSettings.enabled;
+          }
+          if (typeof res.jpSettings.allowQuickSearchWhenDisabled === 'boolean') {
+            this._allowWhenDisabled = res.jpSettings.allowQuickSearchWhenDisabled;
+          }
         }
       });
 
       if (chrome.storage.onChanged) {
         chrome.storage.onChanged.addListener((changes, area) => {
           if (area === 'local' && changes.jpSettings && changes.jpSettings.newValue) {
-            const next = changes.jpSettings.newValue.enabled !== false;
+            const nextSettings = changes.jpSettings.newValue;
+            if (typeof nextSettings.allowQuickSearchWhenDisabled === 'boolean') {
+              this._allowWhenDisabled = nextSettings.allowQuickSearchWhenDisabled;
+            }
+            const next = nextSettings.enabled !== false;
             this.setEnabled(next);
           }
         });
@@ -61,11 +71,38 @@ class QuickSearchPalette {
   }
 
   /**
+   * Kiểm tra xem có cho phép mở bảng Tra cứu nhanh ngay cả khi TẮT tiện ích hay không
+   */
+  isAllowWhenDisabled() {
+    if (typeof window !== 'undefined' && window.__JP_SETTINGS__ && typeof window.__JP_SETTINGS__.allowQuickSearchWhenDisabled === 'boolean') {
+      return window.__JP_SETTINGS__.allowQuickSearchWhenDisabled;
+    }
+    return this._allowWhenDisabled !== false;
+  }
+
+  /**
+   * Kiểm tra tổng hợp: Cho phép mở Quick Search nếu tiện ích đang BẬT hoặc cho phép mở độc lập
+   */
+  canOpen() {
+    return this.isEnabled() || this.isAllowWhenDisabled();
+  }
+
+  /**
    * Cập nhật trạng thái bật/tắt trực tiếp
    */
   setEnabled(enabled) {
     this._enabled = !!enabled;
-    if (!this._enabled && this.isOpen) {
+    if (!this.canOpen() && this.isOpen) {
+      this.close();
+    }
+  }
+
+  /**
+   * Cập nhật tùy chọn mở độc lập khi tiện ích đang TẮT
+   */
+  setAllowWhenDisabled(allow) {
+    this._allowWhenDisabled = allow !== false;
+    if (!this.canOpen() && this.isOpen) {
       this.close();
     }
   }
@@ -157,9 +194,12 @@ class QuickSearchPalette {
 
           <!-- Chân thanh công cụ hướng dẫn phím tắt -->
           <div class="jp-qs-footer">
-            <span><kbd>Alt+S</kbd> Mở thanh tra</span>
-            <span><kbd>Esc</kbd> Đóng</span>
-            <span><kbd>Enter</kbd> Nghe phát âm từ đầu tiên</span>
+            <div class="jp-qs-footer-keys">
+              <span><kbd>Alt+S</kbd> Mở thanh tra</span>
+              <span><kbd>Esc</kbd> Đóng</span>
+              <span><kbd>Enter</kbd> Phát âm từ đầu</span>
+            </div>
+            <button type="button" class="jp-qs-footer-report-btn" id="jp-qs-footer-report" title="Báo lỗi từ sai hoặc góp ý tính năng">🚩 Báo lỗi / Góp ý</button>
           </div>
         </div>
       </div>
@@ -197,6 +237,23 @@ class QuickSearchPalette {
           e.preventDefault();
           e.stopPropagation();
           this.close();
+        }
+      });
+    }
+
+    const footerReportBtn = shadow.querySelector('#jp-qs-footer-report');
+    if (footerReportBtn) {
+      footerReportBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentQ = this.input ? this.input.value.trim() : '';
+        this.close();
+        if (window.__JP_OPEN_FEEDBACK_MODAL) {
+          window.__JP_OPEN_FEEDBACK_MODAL({
+            category: currentQ ? 'wrong_reading' : 'suggestion',
+            word: currentQ,
+            source: 'Quick Search (Alt+S)'
+          });
         }
       });
     }
@@ -302,14 +359,17 @@ class QuickSearchPalette {
    */
   initKeyListeners() {
     window.addEventListener('keydown', (e) => {
-      if ((e.altKey && (e.key === 's' || e.key === 'S')) || 
-          (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
-        // NẾU EXTENSION ĐÃ TẮT -> KHÔNG MỞ POPUP SEARCH VÀ ĐỂ HỆ THỐNG / TRANG WEB XỬ LÝ TỰ NHIÊN
-        if (!this.isEnabled()) {
+      const isAltS = e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 's' || e.key === 'S' || e.code === 'KeyS');
+      const isCtrlShiftF = e.ctrlKey && e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF');
+
+      if (isAltS || isCtrlShiftF) {
+        // Chỉ chặn nếu cả Extension đang TẮT và không cho phép mở Quick Search độc lập
+        if (!this.canOpen()) {
           return;
         }
         e.preventDefault();
         e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
         this.toggle();
       } else if (e.key === 'Escape') {
         if (this.isOpen) {
@@ -324,23 +384,25 @@ class QuickSearchPalette {
   /**
    * Mở hoặc đóng Palette (có debounce chống nhảy double-toggle)
    */
-  toggle() {
-    if (this.isOpen) {
-      this.close();
-      return;
-    }
-
-    // Nếu Extension đang TẮT thì không mở
-    if (!this.isEnabled()) {
-      return;
-    }
-
+  toggle(forceAllow = false) {
     const now = Date.now();
     if (this._lastToggleTime && now - this._lastToggleTime < 280) {
       return;
     }
+
+    if (this.isOpen) {
+      this._lastToggleTime = now;
+      this.close();
+      return;
+    }
+
+    // Nếu Extension đang TẮT và chưa bật tùy chọn mở độc lập thì không mở
+    if (!forceAllow && !this.canOpen()) {
+      return;
+    }
+
     this._lastToggleTime = now;
-    this.open();
+    this.open(forceAllow);
   }
 
   /**
@@ -363,8 +425,8 @@ class QuickSearchPalette {
     setTimeout(doFocus, 120);
   }
 
-  open() {
-    if (!this.isEnabled()) return;
+  open(forceAllow = false) {
+    if (!forceAllow && !this.canOpen()) return;
     if (!this.ensureDOM()) return;
 
     // 1. Lưu lại phần tử input/textarea/contentEditable đang focus trước khi mở
@@ -648,6 +710,7 @@ class QuickSearchPalette {
               <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
               <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
               <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
+              <button class="jp-qs-action-btn btn-report" title="Báo lỗi từ sai / Sửa nhanh">🚩</button>
             </div>
           </div>
         `;
@@ -759,6 +822,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
             <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
+            <button class="jp-qs-action-btn btn-report" title="Báo lỗi từ sai / Sửa nhanh">🚩</button>
           </div>
         </div>
       `;
@@ -803,7 +867,7 @@ class QuickSearchPalette {
           engine: s.translationEngine || 'google',
           apiKey: s.aiApiKey || s.geminiApiKey || '',
           provider: s.aiProvider || 'gemini',
-          model: s.aiModel || 'gemini-1.5-flash',
+          model: s.aiModel || 'gemini-flash-latest',
           customEndpoint: s.aiCustomEndpoint || ''
         });
         if (res && res.meaning) {
@@ -970,10 +1034,25 @@ class QuickSearchPalette {
       qHira = romajiToHiragana(query);
     }
 
+    // 0. Ưu tiên kiểm tra Từ điển cá nhân do người dùng tự sửa
+    const customDict = (typeof getCustomDictionaryOverrides === 'function')
+      ? getCustomDictionaryOverrides()
+      : (typeof window !== 'undefined' && window.__JP_CUSTOM_DICTIONARY__) || {};
+    for (const [w, data] of Object.entries(customDict)) {
+      if (matches.length >= 10) break;
+      const matchWord = (w === query || w.includes(query) || (qHira && w.includes(qHira)));
+      const matchReading = (data.r && (data.r.includes(query) || (qHira && data.r.includes(qHira))));
+      const matchMeaning = (data.m && data.m.toLowerCase().includes(qLower));
+      if (matchWord || matchReading || matchMeaning) {
+        matches.push({ word: w, ...data, t: data.t || '✏️ Từ tùy chỉnh' });
+      }
+    }
+
     // 1. Tìm trong từ điển chính
     if (typeof JP_DICTIONARY !== 'undefined') {
       for (const [w, data] of Object.entries(JP_DICTIONARY)) {
         if (matches.length >= 25) break;
+        if (matches.some(m => m.word === w)) continue;
         const matchWord = (w === query || w.includes(query) || (qHira && w.includes(qHira)));
         const matchReading = (data.r && (data.r.includes(query) || (qHira && data.r.includes(qHira))));
         const matchMeaning = (data.m && data.m.toLowerCase().includes(qLower));
@@ -1045,6 +1124,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
             <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
+            <button class="jp-qs-action-btn btn-report" title="Báo lỗi từ sai / Sửa nhanh">🚩</button>
           </div>
         </div>
       `;
@@ -1149,6 +1229,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
             <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
+            <button class="jp-qs-action-btn btn-report" title="Báo lỗi từ sai / Sửa nhanh">🚩</button>
           </div>
         </div>
       `;
@@ -1330,6 +1411,29 @@ class QuickSearchPalette {
           if (this.input) this.input.value = word;
           this.setMode('ai');
           this.performAiSearch(word);
+        }
+      });
+    }
+
+    // Gắn sự kiện Báo lỗi từ / Góp ý (🚩)
+    const reportBtn = card.querySelector('.btn-report');
+    if (reportBtn) {
+      reportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const word = card.getAttribute('data-word') || '';
+        const reading = card.getAttribute('data-reading') || '';
+        const meaning = card.getAttribute('data-meaning') || '';
+        const romaji = (typeof toRomaji === 'function' && reading) ? toRomaji(reading) : '';
+        this.close();
+        if (window.__JP_OPEN_FEEDBACK_MODAL) {
+          window.__JP_OPEN_FEEDBACK_MODAL({
+            category: 'wrong_reading',
+            word,
+            currentReading: reading,
+            currentRomaji: romaji,
+            currentMeaning: meaning,
+            source: 'Quick Search (Alt+S)'
+          });
         }
       });
     }
@@ -1991,14 +2095,51 @@ class QuickSearchPalette {
         color: #0f172a;
       }
 
+      .jp-qs-action-btn.btn-report {
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(245, 158, 11, 0.1);
+      }
+
+      .jp-qs-action-btn.btn-report:hover {
+        background: #f59e0b;
+        color: #0b1120;
+        border-color: #f59e0b;
+      }
+
+      .jp-api-badge {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 5px;
+        background: rgba(56, 189, 248, 0.15);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+      }
+
+      .jp-api-badge.ai {
+        background: rgba(168, 85, 247, 0.18);
+        color: #c084fc;
+        border-color: rgba(168, 85, 247, 0.42);
+      }
+
       .jp-qs-footer {
         padding: 10px 20px;
         background: rgba(0, 0, 0, 0.35);
         border-top: 1px solid rgba(255, 255, 255, 0.06);
         display: flex;
-        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         font-size: 12px;
         color: #64748b;
+        flex-wrap: wrap;
+      }
+
+      .jp-qs-footer-keys {
+        display: flex;
+        align-items: center;
+        gap: 14px;
         flex-wrap: wrap;
       }
 
@@ -2009,6 +2150,24 @@ class QuickSearchPalette {
         color: #94a3b8;
         font-family: inherit;
         font-size: 11px;
+      }
+
+      .jp-qs-footer-report-btn {
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        color: #fbbf24;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .jp-qs-footer-report-btn:hover {
+        background: rgba(245, 158, 11, 0.25);
+        border-color: #fbbf24;
+        color: #ffffff;
       }
     `;
   }

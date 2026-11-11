@@ -3,6 +3,7 @@
 
 const DEFAULT_SETTINGS = {
   enabled: true,
+  allowQuickSearchWhenDisabled: true, // Cho phép mở bảng tìm kiếm nhanh (Alt+S) kể cả khi tắt tiện ích
   activationMode: 'always', // 'always' | 'shift' | 'alt'
   showReading: true,
   showRomaji: true,
@@ -23,7 +24,7 @@ const DEFAULT_SETTINGS = {
   // AI Engine Settings (Hỗ trợ Gemini, OpenAI, Claude, DeepSeek, Groq, Custom)
   aiProvider: 'gemini',
   aiApiKey: '',
-  aiModel: 'gemini-1.5-flash',
+  aiModel: 'gemini-flash-latest',
   aiCustomEndpoint: '',
   aiEnableSentenceTranslate: true,
   aiEnableGrammarAnalysis: true,
@@ -38,6 +39,9 @@ const DEFAULT_SETTINGS = {
   // Subtitles
   enableSubtitleHover: true,
   autoPauseVideoOnHover: false,
+
+  // Feedback & Issue Reporting
+  feedbackWebhookUrl: '',
 
   // SRS & Decks
   activeDeck: 'Mặc định'
@@ -112,14 +116,19 @@ chrome.commands.onCommand.addListener((command) => {
 
         chrome.storage.local.set({ jpSettings: updated }, () => {
           updateBadge(newEnabled);
-          chrome.tabs.sendMessage(tabId, { action: 'SET_STATE', enabled: newEnabled }).catch(() => {});
+          chrome.tabs.sendMessage(tabId, { action: 'SET_STATE', enabled: newEnabled, showToggleToast: true }).catch(() => {});
         });
       });
     } else if (command === 'quick-search') {
       chrome.storage.local.get(['jpSettings'], (res) => {
-        const isEnabled = res && res.jpSettings ? res.jpSettings.enabled !== false : true;
-        if (!isEnabled) return; // Tiện ích đang TẮT -> Không mở thanh tìm kiếm
-        chrome.tabs.sendMessage(tabId, { action: 'TOGGLE_QUICK_SEARCH' }).catch(() => {});
+        const s = res && res.jpSettings ? res.jpSettings : DEFAULT_SETTINGS;
+        const isEnabled = s.enabled !== false;
+        const allowWhenDisabled = s.allowQuickSearchWhenDisabled !== false;
+        if (!isEnabled && !allowWhenDisabled) return; // Tiện ích đang TẮT và không bật chế độ mở độc lập
+        chrome.tabs.sendMessage(tabId, {
+          action: 'TOGGLE_QUICK_SEARCH',
+          allowWhenDisabled
+        }).catch(() => {});
       });
     }
   });
@@ -216,6 +225,125 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Helpers chuẩn hóa & tự phục hồi mô hình Google Gemini qua ModelService.ListModels
+  const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+  const DEPRECATED_GEMINI_MODEL_MAP = {
+    'gemini-1.5-flash': DEFAULT_GEMINI_MODEL,
+    'gemini-1.5-flash-001': DEFAULT_GEMINI_MODEL,
+    'gemini-1.5-flash-002': DEFAULT_GEMINI_MODEL,
+    'gemini-1.5-flash-latest': DEFAULT_GEMINI_MODEL,
+    'gemini-1.5-flash-8b': 'gemini-2.5-flash-lite',
+    'gemini-1.5-pro': 'gemini-2.5-pro',
+    'gemini-1.5-pro-001': 'gemini-2.5-pro',
+    'gemini-1.5-pro-002': 'gemini-2.5-pro',
+    'gemini-1.5-pro-latest': 'gemini-pro-latest',
+    'gemini-1.0-pro': 'gemini-pro-latest',
+    'gemini-pro': 'gemini-pro-latest'
+  };
+
+  function normalizeGeminiModelId(rawModel) {
+    const clean = String(rawModel || '').trim().replace(/^models\//i, '');
+    if (!clean) return DEFAULT_GEMINI_MODEL;
+    return DEPRECATED_GEMINI_MODEL_MAP[clean.toLowerCase()] || clean;
+  }
+
+  function isGeminiModelNotFoundError(status, errMsg) {
+    return status === 404 || /not found|not supported for generateContent|ListModels/i.test(String(errMsg || ''));
+  }
+
+  function scoreGeminiModel(id, requestedModel = '') {
+    const lower = id.toLowerCase();
+    const wantsPro = /\bpro\b|-pro/i.test(requestedModel);
+    const wantsLite = /lite/i.test(requestedModel);
+    const verMatch = lower.match(/^gemini-(\d+(?:\.\d+)?)/);
+    const verScore = verMatch ? Math.round(parseFloat(verMatch[1]) * 100) : 0;
+    const isExp = /-(exp|experimental|preview|thinking)/.test(lower);
+
+    if (wantsPro) {
+      if (lower === 'gemini-pro-latest') return 2000;
+      if (lower.includes('-pro') && !isExp) return 1500 + verScore;
+    } else if (wantsLite) {
+      if (lower === 'gemini-flash-lite-latest') return 2000;
+      if (lower.includes('flash-lite') && !isExp) return 1500 + verScore;
+    } else {
+      if (lower === 'gemini-flash-latest') return 2000;
+      if (lower.includes('flash') && !lower.includes('lite') && !isExp) return 1500 + verScore;
+    }
+
+    if (lower.includes('flash-lite') && !isExp) return 1200 + verScore;
+    if (lower.includes('flash') && !isExp) return 1100 + verScore;
+    if (lower.includes('pro') && !isExp) return 900 + verScore;
+    if (lower.includes('flash')) return 700 + verScore;
+    return 500 + verScore;
+  }
+
+  async function fetchAvailableGeminiModels(apiKey, requestedModel = '') {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=100`;
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) return [];
+      const data = await res.json().catch(() => ({}));
+      const rawModels = Array.isArray(data?.models) ? data.models : [];
+
+      const textModels = rawModels
+        .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => ({
+          id: String(m.name || '').replace(/^models\//i, ''),
+          displayName: m.displayName || ''
+        }))
+        .filter(m => m.id && !/embedding|imagen|veo|aqa|tts|audio|live|robotics|computer-use|image|banana|gemma/i.test(m.id));
+
+      textModels.sort((a, b) => scoreGeminiModel(b.id, requestedModel) - scoreGeminiModel(a.id, requestedModel));
+      return textModels;
+    } catch (_) {
+      clearTimeout(timer);
+      return [];
+    }
+  }
+
+  async function callGeminiGenerateContent(apiKey, targetModel, fullText, maxOutputTokens) {
+    const cleanModel = String(targetModel || DEFAULT_GEMINI_MODEL).replace(/^models\//i, '');
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: fullText }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens
+          }
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          ok: false,
+          status: res.status,
+          errMsg: errData?.error?.message || `HTTP ${res.status}`,
+          model: cleanModel
+        };
+      }
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts
+        ?.map(p => p?.text || '')
+        .join('')
+        .trim() || '';
+      return { ok: true, status: res.status, text, model: cleanModel };
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
+    }
+  }
+
   // 5. Universal AI Chat Request Proxy (Hỗ trợ Gemini, OpenAI, Claude, DeepSeek, Groq, Custom API)
   // Xử lý vượt CORS và Content Security Policy trên mọi trang web
   if (msg.action === 'AI_CHAT_REQUEST') {
@@ -234,7 +362,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // Gán model mặc định theo provider nếu chưa có
         if (!model) {
-          if (provider === 'gemini') model = 'gemini-1.5-flash';
+          if (provider === 'gemini') model = DEFAULT_GEMINI_MODEL;
           else if (provider === 'openai') model = 'gpt-4o-mini';
           else if (provider === 'claude') model = 'claude-3-5-haiku-20241022';
           else if (provider === 'deepseek') model = 'deepseek-chat';
@@ -281,37 +409,49 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         let resultText = '';
         let providerName = provider;
+        let availableModels = null;
 
-        // 1. Google Gemini API
+        // 1. Google Gemini API (kèm tự động dò & phục hồi model qua ListModels nếu model cũ bị gỡ)
         if (provider === 'gemini') {
           providerName = 'Google Gemini';
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const requestedRawModel = model;
+          model = normalizeGeminiModelId(model);
+          const wasDeprecatedNormalized = model !== requestedRawModel.replace(/^models\//i, '');
           const fullText = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
+          const maxTokens = task === 'test_connection' ? 512 : (task === 'translate' ? 1024 : 2048);
 
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 20000);
+          let geminiRes = await callGeminiGenerateContent(apiKey, model, fullText, maxTokens);
+          let resolvedViaFallback = false;
 
-          const res = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: fullText }] }],
-              generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: task === 'translate' ? 400 : 1200
+          if (!geminiRes.ok && isGeminiModelNotFoundError(geminiRes.status, geminiRes.errMsg)) {
+            availableModels = await fetchAvailableGeminiModels(apiKey, requestedRawModel);
+            for (const candidate of availableModels.slice(0, 4)) {
+              if (candidate.id === model) continue;
+              const retryRes = await callGeminiGenerateContent(apiKey, candidate.id, fullText, maxTokens);
+              if (retryRes.ok && retryRes.text) {
+                geminiRes = retryRes;
+                model = retryRes.model;
+                resolvedViaFallback = true;
+                break;
               }
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(timer);
-
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            const errMsg = errData?.error?.message || `HTTP ${res.status}`;
-            throw new Error(`Gemini: ${errMsg}`);
+            }
+          } else if (task === 'test_connection' && geminiRes.ok) {
+            availableModels = await fetchAvailableGeminiModels(apiKey, model);
           }
-          const data = await res.json();
-          resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+          if (!geminiRes.ok) {
+            throw new Error(`Gemini: ${geminiRes.errMsg}`);
+          }
+          resultText = geminiRes.text;
+
+          // Tự động cập nhật settings nếu model lưu cũ đã lỗi thời hoặc vừa tự phục hồi sang model khả dụng
+          if (
+            (wasDeprecatedNormalized || resolvedViaFallback) &&
+            currentSettings &&
+            currentSettings.aiModel !== model
+          ) {
+            chrome.storage.local.set({ jpSettings: { ...currentSettings, aiModel: model } }, () => {});
+          }
 
         // 2. Anthropic Claude API
         } else if (provider === 'claude') {
@@ -412,7 +552,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           provider: provider,
           providerName: providerName,
           model: model,
-          task: task
+          task: task,
+          ...(Array.isArray(availableModels) && availableModels.length > 0 ? { availableModels } : {})
         });
 
       } catch (err) {
@@ -420,6 +561,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           success: false,
           error: err.message || 'Lỗi không xác định khi kết nối với AI API.'
         });
+      }
+    })();
+    return true;
+  }
+
+  // 6. Gửi báo cáo lỗi / góp ý tới Webhook ngoài (Discord, Slack, Formspree, Google Script)
+  if (msg.action === 'SUBMIT_FEEDBACK_WEBHOOK') {
+    (async () => {
+      try {
+        const targetUrl = (msg.url || '').trim();
+        let parsed;
+        try {
+          parsed = new URL(targetUrl);
+        } catch (_) {
+          sendResponse({ success: false, error: 'Webhook URL không hợp lệ.' });
+          return;
+        }
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+          sendResponse({ success: false, error: 'Chỉ hỗ trợ giao thức HTTP/HTTPS.' });
+          return;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(parsed.toString(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(msg.payload || {}),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        if (!res.ok) {
+          sendResponse({ success: false, error: `Webhook trả về HTTP ${res.status}` });
+          return;
+        }
+        sendResponse({ success: true });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message || 'Lỗi kết nối tới Webhook.' });
       }
     })();
     return true;

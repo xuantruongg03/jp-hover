@@ -9,8 +9,8 @@ const JP_AI_PROVIDERS = {
     id: 'gemini',
     name: 'Google Gemini',
     badge: 'Gemini',
-    models: ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
-    defaultModel: 'gemini-1.5-flash',
+    models: ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-pro-latest'],
+    defaultModel: 'gemini-flash-latest',
     keyLink: 'https://aistudio.google.com/app/apikey',
     keyPlaceholder: 'Nhập Google Gemini API Key (AI Studio)...',
     requiresKey: true

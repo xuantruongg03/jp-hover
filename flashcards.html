@@ -36,6 +36,9 @@
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
           <span>Sao lưu (JSON)</span>
         </button>
+        <button id="btn-open-feedback" class="btn btn-secondary" title="Báo lỗi từ sai, đề thi JLPT hoặc góp ý tính năng">
+          <span>🚩 Báo lỗi / Góp ý</span>
+        </button>
       </div>
     </header>
 
@@ -866,6 +869,68 @@
     </div>
   </div>
 
+  <!-- Modal Báo lỗi & Góp ý -->
+  <div class="modal-overlay" id="modal-feedback">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>🚩 Báo lỗi từ sai &amp; Góp ý</h3>
+        <button class="modal-close-btn" data-close-modal="modal-feedback">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fc-fb-category">Loại vấn đề</label>
+          <select id="fc-fb-category" style="width:100%;padding:9px 10px;background:#0f172a;color:#f1f5f9;border:1px solid rgba(255,255,255,0.14);border-radius:8px;">
+            <option value="wrong_reading">🔤 Sai phiên âm (Furigana / Romaji / Audio)</option>
+            <option value="wrong_meaning">💡 Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
+            <option value="wrong_onkun">📖 Sai quy tắc On/Kun / Hán-Việt</option>
+            <option value="bug">🐛 Lỗi câu hỏi JLPT / Giao diện Flashcards</option>
+            <option value="suggestion">✨ Góp ý / Đề xuất tính năng mới</option>
+          </select>
+        </div>
+        <div id="fc-fb-word-group">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="fc-fb-word">Từ tiếng Nhật</label>
+              <input type="text" id="fc-fb-word" placeholder="Ví dụ: フランス語">
+            </div>
+            <div class="form-group">
+              <label for="fc-fb-reading">Cách đọc đúng</label>
+              <input type="text" id="fc-fb-reading" placeholder="Ví dụ: ふらんすご">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="fc-fb-meaning">Nghĩa đúng / Đề xuất</label>
+            <input type="text" id="fc-fb-meaning" placeholder="Nhập nghĩa chuẩn xác...">
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="fc-fb-apply-override" checked style="accent-color:#38bdf8;">
+            <span>✏️ Áp dụng ngay bản sửa vào Từ điển cá nhân</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="fc-fb-note">Mô tả chi tiết / Góp ý</label>
+          <textarea id="fc-fb-note" rows="3" placeholder="Mô tả vấn đề bạn gặp phải..."></textarea>
+        </div>
+        <div id="fc-fb-status" style="display:none;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;margin-top:6px;"></div>
+        <div style="margin-top:10px;padding:7px 10px;border-radius:8px;background:rgba(15,23,42,0.65);border:1px dashed rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:11.5px;color:#94a3b8;">
+          <span>📬 Mail hỗ trợ: <strong style="color:#6ee7b7;user-select:text;">lexuantruong098@gmail.com</strong></span>
+          <div style="display:flex;gap:6px;">
+            <button type="button" id="fc-fb-gmail-btn" class="btn btn-secondary" style="padding:3px 8px;font-size:11px;">🌐 Gmail Web</button>
+            <button type="button" id="fc-fb-copy-email-btn" class="btn btn-secondary" style="padding:3px 8px;font-size:11px;">📋 Copy Email</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <button id="fc-fb-copy-btn" class="btn btn-secondary">📋 Copy</button>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button id="fc-fb-email-btn" class="btn btn-secondary" title="Gửi qua Email tới lexuantruong098@gmail.com">📧 Gửi Email</button>
+          <button id="fc-fb-github-btn" class="btn btn-secondary">🐙 GitHub Issue</button>
+          <button id="fc-fb-submit-btn" class="btn btn-primary">💾 Lưu &amp; Gửi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast thông báo nhanh -->
   <div id="app-toast" class="app-toast"></div>
 
@@ -873,6 +938,7 @@
   <script src="utils/helpers.js"></script>
   <script src="utils/storage.js"></script>
   <script src="utils/ai_service.js"></script>
+  <script src="utils/feedback_service.js"></script>
   <script src="utils/audio.js"></script>
   <script src="utils/anki.js"></script>
   <script src="utils/kanji_strokes.js"></script>

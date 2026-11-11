@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JP Furigana Hover - Phiên âm & Học Tiếng Nhật Pro",
-  "version": "1.6.4",
+  "version": "1.7.4",
   "description": "Rê chuột hiển thị Furigana, Hán-Việt, Nét vẽ Kanji, Dịch câu, Phụ đề YouTube/Netflix, AnkiConnect & SRS Flashcard.",
   "icons": {
     "16": "icons/icon16.png",
@@ -57,6 +57,7 @@
         "utils/helpers.js",
         "utils/storage.js",
         "utils/ai_service.js",
+        "utils/feedback_service.js",
         "utils/audio.js",
         "utils/anki.js",
         "utils/kanji_strokes.js",
@@ -82,7 +83,8 @@
         "flashcards.css",
         "flashcards.js",
         "data/*",
-        "utils/ai_service.js"
+        "utils/ai_service.js",
+        "utils/feedback_service.js"
       ],
       "matches": [
         "<all_urls>"
