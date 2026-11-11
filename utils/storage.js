@@ -20,8 +20,17 @@ const JP_DEFAULT_SETTINGS = {
   speechRate: 0.95,
   speechPitch: 1.0,
   voiceUri: '', // Tên/URI giọng đọc đã chọn
-  translationEngine: 'google', // 'google' | 'gemini'
+  translationEngine: 'google', // 'google' | 'ai' | 'gemini'
   geminiApiKey: '',
+
+  // === Cấu hình Trí tuệ Nhân tạo Đa nền tảng (AI Engine) ===
+  aiProvider: 'gemini', // 'gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'custom'
+  aiApiKey: '',
+  aiModel: 'gemini-1.5-flash',
+  aiCustomEndpoint: '',
+  aiEnableSentenceTranslate: true,
+  aiEnableGrammarAnalysis: true,
+  aiEnableWordExplain: true,
 
   // === AnkiConnect Settings ===
   ankiEnabled: true,
@@ -86,7 +95,19 @@ function setStorage(data) {
 // Lấy toàn bộ Settings
 async function loadJpSettings() {
   const data = await getStorage(['jpSettings']);
-  return { ...JP_DEFAULT_SETTINGS, ...(data.jpSettings || {}) };
+  const s = { ...JP_DEFAULT_SETTINGS, ...(data.jpSettings || {}) };
+
+  // Tương thích ngược: Nếu người dùng đã nhập Gemini API Key cũ
+  if (s.geminiApiKey && !s.aiApiKey) {
+    s.aiApiKey = s.geminiApiKey;
+    s.aiProvider = 'gemini';
+  }
+  if (s.translationEngine === 'gemini') {
+    s.translationEngine = 'ai';
+    if (!s.aiProvider) s.aiProvider = 'gemini';
+  }
+
+  return s;
 }
 
 // Lưu Settings

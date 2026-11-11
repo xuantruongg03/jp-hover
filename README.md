@@ -234,7 +234,9 @@ d:\Github\ext\JP\
   | `analyzeGrammarContext(word, dictEntry, contextAfter)` | `word, dictEntry, contextAfter` | `Object` | Nhận diện trợ từ ngữ pháp đi liền sau từ (`は`, `が`, `を`, `に`, `で`, `へ`, `と`, `から`, `まで`, `より`, `も`) và dạng chia động từ. |
   | `translateOnline(word, signal)` | `word: string, signal: AbortSignal` | `Promise<Object>` | Fallback gọi Google Translate API dịch nghĩa từ tiếng Nhật sang tiếng Việt khi từ không có trong từ điển nội bộ. |
   | `translateVietnameseToJapanese(text, signal)` | `text: string, signal: AbortSignal` | `Promise<Object>` | Dịch ngược cụm từ hoặc từ vựng từ tiếng Việt sang tiếng Nhật qua Google Translate. |
-  | `translateSentence(text, options)` | `text: string, options: Object` | `Promise<Object>` | Hỗ trợ dịch câu hoàn chỉnh bằng Google Translate hoặc Google Gemini API (nếu người dùng cài đặt API Key). |
+  | `translateSentence(text, options)` | `text: string, options: Object` | `Promise<Object>` | Hỗ trợ dịch câu hoàn chỉnh bằng Google Translate hoặc AI Engine đa nền tảng (Gemini, OpenAI, Claude, DeepSeek, Groq, Custom API / Ollama). |
+  | `explainGrammar(text)` | `text: string` | `Promise<Object>` | Phân tích chuyên sâu ngữ pháp, trợ từ và cấu trúc câu JLPT bằng AI. |
+  | `explainWord(word)` | `word: string` | `Promise<Object>` | Giải thích sắc thái ngữ cảnh sử dụng, từ đồng nghĩa và tạo câu ví dụ thực tế bằng AI. |
   | `speak(text, optionsOrRate, onStart, onEnd)` | `text, optionsOrRate, onStart, onEnd` | `void` | Phát âm chuỗi ký tự thông qua `JapaneseAudioEngine` hoặc Web Speech API. |
 
 ---

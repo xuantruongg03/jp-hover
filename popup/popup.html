@@ -335,30 +335,132 @@
         </div>
       </section>
 
-      <!-- External Translation Engine Setting -->
+      <!-- AI Engine & Multi-provider API Settings -->
       <section class="section">
-        <h2 class="section-title">Bộ máy dịch câu (API bên ngoài)</h2>
-        <div class="radio-group">
+        <div class="section-header-row">
+          <h2 class="section-title">🧠 Trí tuệ Nhân tạo (AI Engine & API Keys)</h2>
+          <button type="button" id="btn-test-ai" class="preview-voice-btn" title="Kiểm tra kết nối API Key & Model">
+            <span id="ai-test-btn-text">Kiểm tra kết nối</span>
+          </button>
+        </div>
+
+        <div class="radio-group" style="margin-bottom: 8px;">
           <label class="radio-card">
             <input type="radio" name="trans-engine" value="google" checked>
             <div class="radio-content">
               <span class="radio-title">🌐 Google Translate API</span>
-              <span class="radio-desc">Gọi API Google Translate (Mặc định, miễn phí, không cần key)</span>
+              <span class="radio-desc">Mặc định, dịch nhanh, miễn phí & không cần API key</span>
             </div>
           </label>
           <label class="radio-card">
-            <input type="radio" name="trans-engine" value="gemini">
+            <input type="radio" name="trans-engine" value="ai">
             <div class="radio-content">
-              <span class="radio-title">✨ Google Gemini AI API</span>
-              <span class="radio-desc">Dịch ngữ cảnh thông minh, chuẩn xác từng câu Hiragana & từ vựng</span>
+              <span class="radio-title">✨ Trí tuệ Nhân tạo Đa nền tảng (AI Engine)</span>
+              <span class="radio-desc">Dịch chuẩn ngữ cảnh, phân tích ngữ pháp JLPT & giải thích từ vựng</span>
             </div>
           </label>
         </div>
-        <div id="gemini-key-container" style="display:none;margin-top:6px;">
-          <input type="password" id="gemini-api-key" placeholder="Nhập Gemini API Key (AI Studio)..." class="custom-api-input">
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px;display:flex;justify-content:space-between;">
-            <span>Khóa được lưu cục bộ trong máy bạn</span>
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#38bdf8;text-decoration:none;">Lấy key miễn phí ↗</a>
+
+        <!-- AI Config Container -->
+        <div id="ai-config-container" style="display: none; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 12px; margin-top: 8px;">
+          <!-- Provider Select -->
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="select-ai-provider">
+              🏢 Nhà cung cấp AI (Provider):
+            </label>
+            <div class="select-wrapper">
+              <select id="select-ai-provider" class="custom-select" style="width: 100%;">
+                <option value="gemini" selected>✨ Google Gemini (Khuyên dùng: Miễn phí & Cực nhanh)</option>
+                <option value="openai">🟢 OpenAI (GPT-4o, GPT-4o-mini)</option>
+                <option value="claude">🟣 Anthropic Claude (Claude 3.5 Haiku / Sonnet)</option>
+                <option value="deepseek">🐳 DeepSeek (DeepSeek V3 / R1)</option>
+                <option value="groq">⚡ Groq (Llama 3.3 70B - Tốc độ cực cao)</option>
+                <option value="custom">🛠️ Tùy chỉnh (OpenAI-compatible / Ollama / OpenRouter)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- API Key Input -->
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1;" for="ai-api-key">
+                🔑 API Key:
+              </label>
+              <button type="button" id="btn-toggle-ai-key" style="background: none; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; padding: 0;">
+                👁️ Hiện key
+              </button>
+            </div>
+            <input type="password" id="ai-api-key" placeholder="Nhập API Key của nhà cung cấp..." class="custom-api-input">
+            <!-- Hidden input for backward compatibility -->
+            <input type="hidden" id="gemini-api-key">
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Khóa lưu an toàn cục bộ trên máy bạn</span>
+              <a id="ai-get-key-link" href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">
+                Lấy API key ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- Model Input / Presets -->
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="ai-model-name">
+              🤖 Mô hình (Model):
+            </label>
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="ai-model-name" class="custom-api-input" value="gemini-1.5-flash" placeholder="gemini-1.5-flash..." style="flex: 1;">
+              <div class="select-wrapper" style="width: 145px; flex-shrink: 0;">
+                <select id="ai-model-presets" class="custom-select" style="width: 100%; font-size: 11px;" title="Chọn mẫu mô hình có sẵn">
+                  <option value="gemini-1.5-flash">1.5 Flash (Nhanh)</option>
+                  <option value="gemini-2.0-flash">2.0 Flash</option>
+                  <option value="gemini-1.5-pro">1.5 Pro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Custom Endpoint (Chỉ hiện khi chọn 'custom') -->
+          <div id="ai-custom-endpoint-group" style="display: none; margin-bottom: 10px;">
+            <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="ai-custom-endpoint">
+              🌐 Base URL Endpoint (OpenAI-compatible):
+            </label>
+            <input type="text" id="ai-custom-endpoint" class="custom-api-input" placeholder="Ví dụ: http://localhost:11434/v1 hoặc https://openrouter.ai/api/v1">
+            <div style="font-size: 10.5px; color: #94a3b8; margin-top: 3px;">
+              Hỗ trợ Ollama, OpenRouter, LM Studio, Together AI, LocalAI...
+            </div>
+          </div>
+
+          <!-- Trạng thái kết nối AI Badge -->
+          <div id="ai-status-row" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 11.5px; color: #94a3b8;">Trạng thái kết nối:</span>
+            <span id="ai-status-badge" class="anki-status-badge">⚪ Chưa kiểm tra</span>
+          </div>
+
+          <!-- Các tác vụ AI hỗ trợ (AI Feature Toggles) -->
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #38bdf8; margin-bottom: 6px;">
+            ⚡ Các tác vụ sử dụng AI:
+          </div>
+          <div class="options-list">
+            <label class="option-item">
+              <div class="option-label">
+                <span class="option-icon">📖</span>
+                <span>Dịch câu & đoạn văn thông minh</span>
+              </div>
+              <input type="checkbox" id="opt-ai-translate" checked>
+            </label>
+            <label class="option-item">
+              <div class="option-label">
+                <span class="option-icon">🧩</span>
+                <span>Phân tích ngữ pháp & Cấu trúc câu JLPT</span>
+              </div>
+              <input type="checkbox" id="opt-ai-grammar" checked>
+            </label>
+            <label class="option-item">
+              <div class="option-label">
+                <span class="option-icon">💡</span>
+                <span>Giải thích sâu từ vựng & Ví dụ thực tế</span>
+              </div>
+              <input type="checkbox" id="opt-ai-explain" checked>
+            </label>
           </div>
         </div>
       </section>
@@ -503,6 +605,7 @@
   <!-- Nạp script tiện ích, từ điển & logic -->
   <script src="../utils/helpers.js"></script>
   <script src="../utils/storage.js"></script>
+  <script src="../utils/ai_service.js"></script>
   <script src="../utils/audio.js"></script>
   <script src="../utils/anki.js"></script>
   <script src="../utils/kanji_strokes.js"></script>

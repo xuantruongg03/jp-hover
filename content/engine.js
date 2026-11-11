@@ -184,16 +184,137 @@ class JapaneseEngine {
       };
     }
 
-    const hasKana = /[\u3040-\u309F\u30A0-\u30FF]/.test(word);
+    const hasKatakana = /[\u30A0-\u30FFー]/.test(word);
+    const hasHiragana = /[\u3040-\u309F]/.test(word);
     const kanjiCount = kanjiList.length;
+    const toHira = (s) => (typeof katakanaToHiragana === 'function' ? katakanaToHiragana(s) : s);
 
-    // 2. Kanji đi kèm đuôi Hiragana (Okurigana) -> Chắc chắn đọc theo Âm KUN (Động từ / Tính từ thuần Nhật)
-    if (hasKana && kanjiCount >= 1) {
+    // 2. Từ lai ghép giữa từ ngoại lai Katakana và chữ Hán (混種語 - Konshugo)
+    // Ví dụ: フランス語, ベトナム語, アメリカ人, ビール瓶, チーズ味, ラーメン屋
+    if (hasKatakana && kanjiCount >= 1) {
+      // Xác định âm đọc của phần chữ Hán
+      let kanjiPartReading = '';
+      if (reading) {
+        // Tách phần Katakana ở đầu ra khỏi reading để lấy âm đọc của hậu tố chữ Hán
+        const kataPrefixMatch = word.match(/^([\u30A0-\u30FFー]+)/);
+        if (kataPrefixMatch && kataPrefixMatch[1]) {
+          const kataAsHira = toHira(kataPrefixMatch[1]);
+          if (reading.startsWith(kataAsHira)) {
+            kanjiPartReading = reading.slice(kataAsHira.length);
+          }
+        }
+      }
+
+      // Kiểm tra chữ Hán đại diện (thường là hậu tố đơn như 語, 人, 屋, 瓶, 缶...)
+      const k = kanjiList[kanjiList.length - 1];
+      const kData = (typeof KANJI_DATA !== 'undefined' && KANJI_DATA[k.char]) ? KANJI_DATA[k.char] : null;
+
+      if (kData) {
+        const onList = (kData.on || '').split(',').map(s => toHira(s.trim())).filter(Boolean);
+        const kunList = (kData.kun || '').split(',').map(s => s.split('・')[0].trim().replace(/^-|-$/g, '')).filter(Boolean);
+
+        if (kanjiPartReading) {
+          if (onList.includes(kanjiPartReading) || onList.some(o => kanjiPartReading.startsWith(o))) {
+            return {
+              type: 'on',
+              badge: '📖 Âm On (Hán Nhật)',
+              rule: `Từ ngoại lai Katakana kết hợp hậu tố chữ Hán [${k.char}: ${kanjiPartReading}] → Chữ Hán đọc theo âm On (Hán - Nhật).`
+            };
+          }
+          if (kunList.includes(kanjiPartReading) || kunList.some(ku => kanjiPartReading.startsWith(ku))) {
+            return {
+              type: 'kun',
+              badge: '🌸 Âm Kun (Thuần Nhật)',
+              rule: `Từ ngoại lai Katakana kết hợp hậu tố chữ Hán [${k.char}: ${kanjiPartReading}] → Chữ Hán đọc theo âm Kun (Thuần Nhật).`
+            };
+          }
+        }
+      }
+
+      // Nhận diện theo nhóm hậu tố phổ biến
+      if (word.endsWith('語')) {
+        return {
+          type: 'on',
+          badge: '📖 Âm On (Hán Nhật)',
+          rule: 'Hậu tố chỉ ngôn ngữ [語: ご] gắn sau tên quốc gia luôn đọc theo âm On (Hán - Nhật).'
+        };
+      }
+      if (word.endsWith('人')) {
+        return {
+          type: 'on',
+          badge: '📖 Âm On (Hán Nhật)',
+          rule: 'Hậu tố chỉ người/quốc tịch [人: じん] gắn sau tên quốc gia luôn đọc theo âm On (Hán - Nhật).'
+        };
+      }
+      if (/(化|的|製|産|式|界|場|街|線|便|缶|瓶)$/.test(word)) {
+        return {
+          type: 'on',
+          badge: '📖 Âm On (Hán Nhật)',
+          rule: 'Hậu tố Hán - Nhật đi kèm từ mượn Katakana thường đọc theo âm On.'
+        };
+      }
+      if (/(屋|味|箱|窓)$/.test(word)) {
+        return {
+          type: 'kun',
+          badge: '🌸 Âm Kun (Thuần Nhật)',
+          rule: 'Hậu tố thuần Nhật đi kèm từ Katakana đọc theo âm Kun.'
+        };
+      }
+
+      return {
+        type: 'on',
+        badge: '📖 Âm On (Hán Nhật)',
+        rule: 'Chữ Hán đóng vai trò hậu tố ghép sau từ Katakana thường đọc theo âm On (Hán - Nhật).'
+      };
+    }
+
+    // 3. Kanji đi kèm đuôi biến đổi Hiragana (Okurigana) thực thụ (ví dụ: 食べる, 読み方, 美しい)
+    // Okurigana là chữ Hiragana đi liền sau chữ Hán: /[一-龯][\u3040-\u309F]/
+    const hasOkurigana = /[一-龯][\u3040-\u309F]/.test(word);
+    if (hasOkurigana && kanjiCount >= 1) {
+      if (/する$|した$|して$/.test(word)) {
+        return {
+          type: 'on',
+          badge: '📖 Âm On (Hán Nhật)',
+          rule: 'Động từ gốc Hán kết hợp trợ động từ biến đổi [する] → Chữ Hán đọc theo âm On.'
+        };
+      }
       return {
         type: 'kun',
         badge: '🌸 Âm Kun (Thuần Nhật)',
         rule: 'Kanji kèm đuôi biến đổi Hiragana (Okurigana) → Chữ Hán đọc theo âm Kun.'
       };
+    }
+
+    // 4. Kanji có tiền tố Hiragana đứng trước (ví dụ: お茶, ご案内, お酒, みそ汁)
+    const hasHiraganaPrefix = /^[\u3040-\u309F]+[一-龯]/.test(word);
+    if (hasHiraganaPrefix && kanjiCount >= 1 && reading) {
+      const prefixMatch = word.match(/^([\u3040-\u309F]+)/);
+      const prefix = prefixMatch ? prefixMatch[1] : '';
+      let kanjiPartReading = reading;
+      if (prefix && reading.startsWith(prefix)) {
+        kanjiPartReading = reading.slice(prefix.length);
+      }
+      const k = kanjiList[0];
+      const kData = (typeof KANJI_DATA !== 'undefined' && KANJI_DATA[k.char]) ? KANJI_DATA[k.char] : null;
+      if (kData && kanjiPartReading) {
+        const onList = (kData.on || '').split(',').map(s => toHira(s.trim())).filter(Boolean);
+        const kunList = (kData.kun || '').split(',').map(s => s.split('・')[0].trim().replace(/^-|-$/g, '')).filter(Boolean);
+        if (onList.includes(kanjiPartReading) || onList.some(o => kanjiPartReading.startsWith(o))) {
+          return {
+            type: 'on',
+            badge: '📖 Âm On (Hán Nhật)',
+            rule: `Chữ Hán kèm tiền tố kính ngữ [${word}] đọc theo âm On [${k.char}: ${kanjiPartReading}].`
+          };
+        }
+        if (kunList.includes(kanjiPartReading) || kunList.some(ku => kanjiPartReading.startsWith(ku))) {
+          return {
+            type: 'kun',
+            badge: '🌸 Âm Kun (Thuần Nhật)',
+            rule: `Chữ Hán kèm tiền tố kính ngữ [${word}] đọc theo âm Kun [${k.char}: ${kanjiPartReading}].`
+          };
+        }
+      }
     }
 
     // 3. Chữ Kanji đơn lẻ đứng một mình (1 chữ)
@@ -1088,20 +1209,22 @@ class JapaneseEngine {
           meaning = '';
           type = (typeof isKatakana === 'function' && isKatakana(clean)) ? 'Katakana' : 'Kana';
         } else {
-          // Xử lý từ ghép có cả Kanji và Kana (ví dụ: 子ども, お菓子, 買い物, 乗り物, 読み方, 美しい)
+          // Xử lý từ ghép có cả Kanji và Kana (ví dụ: 子ども, お菓子, 買い物, 乗り物, 読み方, 美しい, フランス語, アメリカ人)
           // Duy trì đúng vị trí của các chữ Kana, không bao giờ được nuốt mất Kana!
           let reconstructed = '';
-          const hasKanaInside = /[\u3040-\u309F\u30A0-\u30FF]/.test(clean);
+          const hasHiraganaInside = /[\u3040-\u309F]/.test(clean);
           for (let i = 0; i < clean.length; i++) {
             const ch = clean[i];
             if (typeof isKanji === 'function' && isKanji(ch)) {
               const kData = (typeof KANJI_DATA !== 'undefined' && KANJI_DATA[ch]) ? KANJI_DATA[ch] : null;
               if (kData) {
+                const prevChars = clean.slice(0, i);
+                const isPrecededByKatakana = /[\u30A0-\u30FFー]$/.test(prevChars);
                 const nextChar = (i + 1 < clean.length) ? clean[i + 1] : '';
-                const isNextKana = nextChar && /[\u3040-\u309F\u30A0-\u30FF]/.test(nextChar);
+                const isNextHiragana = nextChar && /[\u3040-\u309F]/.test(nextChar);
 
                 let chosenReading = '';
-                if (isNextKana && kData.kun) {
+                if (isNextHiragana && kData.kun) {
                   // Phân tích okurigana stem trước dấu ・ để không bị lặp âm (như 美しい -> うつくしい, không thành うつくしいしい)
                   const kunEntries = kData.kun.split(',').map(s => s.trim());
                   for (const entry of kunEntries) {
@@ -1125,7 +1248,26 @@ class JapaneseEngine {
                     const firstKun = kunEntries[0];
                     chosenReading = firstKun.includes('・') ? firstKun.split('・')[0].replace(/[\s\-]/g, '') : firstKun.replace(/[\s\-]/g, '');
                   }
-                } else if (hasKanaInside && kData.kun) {
+                } else if (isPrecededByKatakana) {
+                  // Hậu tố gắn sau từ mượn Katakana: phần lớn là hậu tố Hán-Nhật dùng âm On (〜語, 〜人, 〜化, 〜的, 〜製, 〜産...)
+                  if (ch === '語') {
+                    chosenReading = 'ご';
+                  } else if (ch === '人') {
+                    chosenReading = 'じん';
+                  } else if (ch === '屋') {
+                    chosenReading = 'や';
+                  } else if (ch === '味') {
+                    chosenReading = 'あじ';
+                  } else if (ch === '箱') {
+                    chosenReading = 'ばこ';
+                  } else if (ch === '窓') {
+                    chosenReading = 'まど';
+                  } else if (kData.on && kData.on !== '—') {
+                    chosenReading = typeof katakanaToHiragana === 'function' ? katakanaToHiragana(kData.on.split(',')[0].trim()) : '';
+                  } else if (kData.kun) {
+                    chosenReading = kData.kun.split(',')[0].replace(/[・\s\-]/g, '').trim();
+                  }
+                } else if (hasHiraganaInside && kData.kun) {
                   const firstKun = kData.kun.split(',')[0].trim();
                   chosenReading = firstKun.replace(/[・\s\-]/g, '');
                 } else if (kData.on && kData.on !== '—') {
@@ -1144,14 +1286,29 @@ class JapaneseEngine {
           }
 
           // Áp dụng các quy tắc biến âm và mẫu hậu tố phổ biến
+          if (clean.endsWith('語') && clean.length >= 2) {
+            reconstructed = reconstructed.replace(/(かたる|ご)$/, 'ご');
+          }
           if (clean.endsWith('方') && /[いきしちにひみりえけせてねへめれべげぜで]/.test(clean[clean.length - 2])) {
             reconstructed = reconstructed.replace(/ほう$/, 'かた');
           }
           if (clean.endsWith('物') && /[いきしちにひみりえけせてねへめれべげぜで]/.test(clean[clean.length - 2])) {
             reconstructed = reconstructed.replace(/(ぶつ|もつ)$/, 'もの');
           }
-          if (clean.endsWith('人') && (clean.length >= 2) && (/^[\u30A0-\u30FFー]+/.test(clean.slice(0, -1)) || /^(日本|中国|韓国|英国|米国|露国|仏国|独国)/.test(clean.slice(0, -1)))) {
-            reconstructed = reconstructed.replace(/(ひと|びと)$/, 'じん');
+          if (clean.endsWith('人') && (clean.length >= 2) && (/[\u30A0-\u30FFー]人$/.test(clean) || /^(日本|中国|韓国|英国|米国|露国|仏国|独国)/.test(clean.slice(0, -1)))) {
+            reconstructed = reconstructed.replace(/(ひと|びと|にん)$/, 'じん');
+          }
+          if (clean.endsWith('製') && clean.length >= 2) {
+            reconstructed = reconstructed.replace(/(つくる|せい)$/, 'せい');
+          }
+          if (clean.endsWith('産') && clean.length >= 2) {
+            reconstructed = reconstructed.replace(/(うむ|さん)$/, 'さん');
+          }
+          if (clean.endsWith('化') && clean.length >= 2) {
+            reconstructed = reconstructed.replace(/(ばける|か)$/, 'か');
+          }
+          if (clean.endsWith('的') && clean.length >= 2) {
+            reconstructed = reconstructed.replace(/(まと|てき)$/, 'てき');
           }
           if (clean.startsWith('日本')) {
             reconstructed = reconstructed.replace(/^にちほん/, 'にほん');
@@ -1379,6 +1536,20 @@ class JapaneseEngine {
         }
       }
 
+      // Khắc phục lỗi Google Translate dịch nhầm hậu tố ngôn ngữ 〜語 thành "người ..."
+      if (cleanWord.endsWith('語') && /^[Nn]gười\s+/.test(translation)) {
+        translation = translation.replace(/^[Nn]gười\s+/, 'Tiếng ');
+      }
+      if (cleanWord.endsWith('人') && /^[Tt]iếng\s+/.test(translation)) {
+        translation = translation.replace(/^[Tt]iếng\s+/, 'Người ');
+      }
+      if (cleanWord.endsWith('語') && /kataru$/i.test(onlineRomaji)) {
+        onlineRomaji = onlineRomaji.replace(/kataru$/i, 'go');
+      }
+      if (cleanWord.endsWith('人') && /(hito|bito)$/i.test(onlineRomaji)) {
+        onlineRomaji = onlineRomaji.replace(/(hito|bito)$/i, 'jin');
+      }
+
       if (data && data[1] && Array.isArray(data[1])) {
         for (const posGroup of data[1]) {
           if (posGroup && Array.isArray(posGroup[1])) {
@@ -1397,6 +1568,12 @@ class JapaneseEngine {
       const isSingleWord = cleanWord.length <= 8 && !/[\s、。！？!?]/.test(cleanWord);
       if (isSingleWord && onlineRomaji && typeof romajiToHiragana === 'function') {
         onlineReading = romajiToHiragana(onlineRomaji);
+      }
+      if (cleanWord.endsWith('語') && onlineReading) {
+        onlineReading = onlineReading.replace(/(かたる|ご)$/, 'ご');
+      }
+      if (cleanWord.endsWith('人') && onlineReading) {
+        onlineReading = onlineReading.replace(/(ひと|びと|にん)$/, 'じん');
       }
 
       if (translation || onlineReading) {
@@ -1519,10 +1696,10 @@ class JapaneseEngine {
   }
 
   /**
-   * Dịch câu hoàn chỉnh sử dụng API bên ngoài (Google Translate API hoặc Gemini AI API)
+   * Dịch câu hoàn chỉnh sử dụng API bên ngoài (Google Translate API hoặc AI Engine đa nền tảng)
    * Tự động nhận diện hướng dịch Việt ➔ Nhật hoặc Nhật ➔ Việt
    * @param {string} text - Câu tiếng Nhật hoặc tiếng Việt cần dịch
-   * @param {object} [options] - Tuỳ chọn { engine: 'google' | 'gemini', apiKey: string, direction: 'auto' | 'ja-vi' | 'vi-ja' }
+   * @param {object} [options] - Tuỳ chọn { engine: 'google' | 'ai' | 'gemini', apiKey: string, direction: 'auto' | 'ja-vi' | 'vi-ja' }
    */
   async translateSentence(text, options = {}) {
     if (!text || typeof text !== 'string') return null;
@@ -1539,39 +1716,38 @@ class JapaneseEngine {
       return this.onlineCache.get(cacheKey);
     }
 
-    // 1. Tùy chọn: Gọi API ngoài của Google Gemini AI nếu người dùng cấu hình
-    if (engineType === 'gemini' && options.apiKey) {
+    // 1. Tùy chọn: Gọi AI Engine đa nền tảng (Gemini, OpenAI, Claude, DeepSeek, Groq, Custom)
+    if (engineType === 'ai' || engineType === 'gemini') {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(options.apiKey)}`;
-        const prompt = isVi
-          ? `Bạn là chuyên gia dịch thuật tiếng Việt - tiếng Nhật. Hãy dịch chính xác câu/đoạn tiếng Việt sau sang tiếng Nhật tự nhiên, chuẩn xác và đúng ngữ cảnh nhất. Chỉ trả về duy nhất nội dung câu dịch tiếng Nhật, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`
-          : `Bạn là chuyên gia dịch thuật tiếng Nhật - tiếng Việt. Hãy dịch chính xác câu tiếng Nhật sau sang tiếng Việt tự nhiên và chuẩn nghĩa nhất (chú ý số đếm, lượng từ, Hiragana/Katakana và kính ngữ). Chỉ trả về duy nhất nội dung câu dịch tiếng Việt, không kèm giải thích hay ghi chú gì thêm:\n\n${cleanText}`;
+        const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+        if (aiService) {
+          const aiRes = await aiService.translate(cleanText, {
+            direction: isVi ? 'vi-ja' : 'ja-vi',
+            apiKey: options.apiKey,
+            provider: options.provider,
+            model: options.model,
+            customEndpoint: options.customEndpoint
+          });
 
-        const res = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 250 }
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const out = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (out) {
-            const cleanOut = this.sanitizeRemoteText(out);
-            const result = { meaning: cleanOut, provider: 'Gemini AI API', direction: isVi ? 'vi-ja' : 'ja-vi' };
+          if (aiRes && aiRes.success && aiRes.result) {
+            const cleanOut = this.sanitizeRemoteText(aiRes.result);
+            const providerLabel = `✨ ${aiRes.providerName || 'AI'} (${aiRes.model || ''})`;
+            const result = {
+              meaning: cleanOut,
+              provider: providerLabel,
+              direction: isVi ? 'vi-ja' : 'ja-vi',
+              isAi: true
+            };
             this.onlineCache.set(cacheKey, result);
             return result;
           }
         }
       } catch (err) {
-        console.warn('Gemini translate failed, falling back to Google Translate API:', err);
+        console.warn('AI translate failed, falling back to Google Translate API:', err);
       }
     }
 
-    // 2. Mặc định: Gọi API ngoài của Google Translate (translate.googleapis.com)
+    // 2. Mặc định / Dự phòng: Gọi API Google Translate (translate.googleapis.com)
     try {
       const queryText = this.normalizeTextForTranslation(cleanText);
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(queryText)}`;
@@ -1595,6 +1771,28 @@ class JapaneseEngine {
     }
 
     return null;
+  }
+
+  /**
+   * Phân tích ngữ pháp câu tiếng Nhật chuyên sâu qua AI
+   * @param {string} text - Câu tiếng Nhật cần phân tích
+   */
+  async explainGrammar(text) {
+    if (!text || typeof text !== 'string') return null;
+    const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+    if (!aiService) return { success: false, error: 'AI Service chưa được tải.' };
+    return await aiService.explainGrammar(text.trim());
+  }
+
+  /**
+   * Giải thích chuyên sâu từ vựng & Ví dụ thực tế qua AI
+   * @param {string} word - Từ vựng cần giải thích
+   */
+  async explainWord(word) {
+    if (!word || typeof word !== 'string') return null;
+    const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+    if (!aiService) return { success: false, error: 'AI Service chưa được tải.' };
+    return await aiService.explainWord(word.trim());
   }
 
   /**

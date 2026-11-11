@@ -28,9 +28,9 @@
     "clipboardWrite"
   ],
   "host_permissions": [
-    "http://127.0.0.1:8765/*",
-    "http://localhost:8765/*",
-    "https://translate.googleapis.com/*"
+    "http://127.0.0.1:*/*",
+    "http://localhost:*/*",
+    "https://*/*"
   ],
   "commands": {
     "toggle-hover": {
@@ -56,6 +56,7 @@
       "js": [
         "utils/helpers.js",
         "utils/storage.js",
+        "utils/ai_service.js",
         "utils/audio.js",
         "utils/anki.js",
         "utils/kanji_strokes.js",
@@ -80,7 +81,8 @@
         "flashcards.html",
         "flashcards.css",
         "flashcards.js",
-        "data/*"
+        "data/*",
+        "utils/ai_service.js"
       ],
       "matches": [
         "<all_urls>"

@@ -71,6 +71,85 @@ document.addEventListener('DOMContentLoaded', () => {
   const pitchBadge = document.getElementById('pitch-badge');
   const presetButtons = document.querySelectorAll('.preset-btn');
 
+  // AI Engine DOM Elements
+  const selectAiProvider = document.getElementById('select-ai-provider');
+  const aiApiKey = document.getElementById('ai-api-key');
+  const aiModelName = document.getElementById('ai-model-name');
+  const aiModelPresets = document.getElementById('ai-model-presets');
+  const aiCustomEndpoint = document.getElementById('ai-custom-endpoint');
+  const aiCustomEndpointGroup = document.getElementById('ai-custom-endpoint-group');
+  const aiConfigContainer = document.getElementById('ai-config-container');
+  const btnTestAi = document.getElementById('btn-test-ai');
+  const aiStatusBadge = document.getElementById('ai-status-badge');
+  const btnToggleAiKey = document.getElementById('btn-toggle-ai-key');
+  const aiGetKeyLink = document.getElementById('ai-get-key-link');
+  const optAiTranslate = document.getElementById('opt-ai-translate');
+  const optAiGrammar = document.getElementById('opt-ai-grammar');
+  const optAiExplain = document.getElementById('opt-ai-explain');
+
+  // Danh mục Presets của từng nhà cung cấp AI
+  const AI_PROVIDER_PRESETS = {
+    gemini: {
+      models: [
+        { id: 'gemini-1.5-flash', label: '1.5 Flash (Nhanh, mặc định)' },
+        { id: 'gemini-2.0-flash', label: '2.0 Flash (Mới nhất)' },
+        { id: 'gemini-1.5-pro', label: '1.5 Pro (Mạnh mẽ)' }
+      ],
+      defaultModel: 'gemini-1.5-flash',
+      keyLink: 'https://aistudio.google.com/app/apikey',
+      placeholder: 'Nhập Google Gemini API Key (AI Studio)...'
+    },
+    openai: {
+      models: [
+        { id: 'gpt-4o-mini', label: 'GPT-4o-mini (Nhanh & Rẻ)' },
+        { id: 'gpt-4o', label: 'GPT-4o (Thông minh cao cấp)' },
+        { id: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+      ],
+      defaultModel: 'gpt-4o-mini',
+      keyLink: 'https://platform.openai.com/api-keys',
+      placeholder: 'Nhập OpenAI API Key (sk-...)...'
+    },
+    claude: {
+      models: [
+        { id: 'claude-3-5-haiku-20241022', label: '3.5 Haiku (Siêu nhanh)' },
+        { id: 'claude-3-5-sonnet-20241022', label: '3.5 Sonnet (Chính xác cao)' },
+        { id: 'claude-3-haiku-20240307', label: '3 Haiku' }
+      ],
+      defaultModel: 'claude-3-5-haiku-20241022',
+      keyLink: 'https://console.anthropic.com/settings/keys',
+      placeholder: 'Nhập Anthropic Claude API Key (sk-ant-...)...'
+    },
+    deepseek: {
+      models: [
+        { id: 'deepseek-chat', label: 'DeepSeek-V3 (Chat)' },
+        { id: 'deepseek-reasoner', label: 'DeepSeek-R1 (Suy luận)' }
+      ],
+      defaultModel: 'deepseek-chat',
+      keyLink: 'https://platform.deepseek.com/api_keys',
+      placeholder: 'Nhập DeepSeek API Key (sk-...)...'
+    },
+    groq: {
+      models: [
+        { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Khuyên dùng)' },
+        { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (Tức thì)' },
+        { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' }
+      ],
+      defaultModel: 'llama-3.3-70b-versatile',
+      keyLink: 'https://console.groq.com/keys',
+      placeholder: 'Nhập Groq API Key (gsk_...)...'
+    },
+    custom: {
+      models: [
+        { id: 'qwen2.5:7b', label: 'Qwen 2.5 (Ollama)' },
+        { id: 'llama3', label: 'Llama 3 (Ollama)' },
+        { id: 'mistral', label: 'Mistral' }
+      ],
+      defaultModel: 'qwen2.5:7b',
+      keyLink: 'https://openrouter.ai/keys',
+      placeholder: 'Nhập API Key (để trống nếu dùng Ollama nội bộ)...'
+    }
+  };
+
   const testPreview = document.getElementById('test-preview');
   const testWords = document.querySelectorAll('.test-word');
 
@@ -100,6 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
     voiceUri: '',
     translationEngine: 'google',
     geminiApiKey: '',
+    aiProvider: 'gemini',
+    aiApiKey: '',
+    aiModel: 'gemini-1.5-flash',
+    aiCustomEndpoint: '',
+    aiEnableSentenceTranslate: true,
+    aiEnableGrammarAnalysis: true,
+    aiEnableWordExplain: true,
     // Mới
     readingFormat: 'hiragana', // 'hiragana' | 'katakana' | 'both'
     showKatakana: true,
@@ -215,18 +301,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
     populateVoiceOptions();
 
-    // Dịch câu API bên ngoài
+    // Cấu hình AI Engine đa nền tảng
+    const currentProvider = currentSettings.aiProvider || 'gemini';
+    if (selectAiProvider) selectAiProvider.value = currentProvider;
+    updateAiPresetsUI(currentProvider);
+
+    const apiKeyVal = currentSettings.aiApiKey || currentSettings.geminiApiKey || '';
+    if (aiApiKey) aiApiKey.value = apiKeyVal;
+    const legacyGeminiInput = document.getElementById('gemini-api-key');
+    if (legacyGeminiInput) legacyGeminiInput.value = apiKeyVal;
+
+    if (aiModelName) aiModelName.value = currentSettings.aiModel || 'gemini-1.5-flash';
+    if (aiModelPresets && currentSettings.aiModel) aiModelPresets.value = currentSettings.aiModel;
+    if (aiCustomEndpoint) aiCustomEndpoint.value = currentSettings.aiCustomEndpoint || '';
+
+    if (optAiTranslate) optAiTranslate.checked = currentSettings.aiEnableSentenceTranslate !== false;
+    if (optAiGrammar) optAiGrammar.checked = currentSettings.aiEnableGrammarAnalysis !== false;
+    if (optAiExplain) optAiExplain.checked = currentSettings.aiEnableWordExplain !== false;
+
+    // Dịch câu & Tác vụ AI (API bên ngoài)
+    const isAiEngine = (currentSettings.translationEngine === 'ai' || currentSettings.translationEngine === 'gemini');
     const transRadios = document.querySelectorAll('input[name="trans-engine"]');
     transRadios.forEach(r => {
-      r.checked = (r.value === (currentSettings.translationEngine || 'google'));
+      r.checked = isAiEngine ? (r.value === 'ai') : (r.value === 'google');
     });
-    const keyContainer = document.getElementById('gemini-key-container');
-    const keyInput = document.getElementById('gemini-api-key');
-    if (keyInput) keyInput.value = currentSettings.geminiApiKey || '';
-    if (keyContainer) keyContainer.style.display = (currentSettings.translationEngine === 'gemini') ? 'block' : 'none';
+    if (aiConfigContainer) aiConfigContainer.style.display = isAiEngine ? 'block' : 'none';
 
     // Kiểm tra Anki status
     checkAnkiStatus();
+  }
+
+  // Cập nhật giao diện Presets theo Provider AI
+  function updateAiPresetsUI(provider) {
+    const info = AI_PROVIDER_PRESETS[provider] || AI_PROVIDER_PRESETS.gemini;
+    if (aiModelPresets) {
+      aiModelPresets.innerHTML = '';
+      info.models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.label;
+        aiModelPresets.appendChild(opt);
+      });
+      if (currentSettings.aiModel) {
+        aiModelPresets.value = currentSettings.aiModel;
+      }
+    }
+    if (aiApiKey) {
+      aiApiKey.placeholder = info.placeholder;
+    }
+    if (aiGetKeyLink) {
+      aiGetKeyLink.href = info.keyLink;
+    }
+    if (aiCustomEndpointGroup) {
+      aiCustomEndpointGroup.style.display = (provider === 'custom') ? 'block' : 'none';
+    }
+  }
+
+  // Kiểm tra kết nối AI API Key & Model (Ping Test)
+  function checkAiStatus() {
+    if (!aiStatusBadge) return;
+    const provider = selectAiProvider ? selectAiProvider.value : 'gemini';
+    const key = aiApiKey ? aiApiKey.value.trim() : '';
+    const model = aiModelName ? aiModelName.value.trim() : '';
+    const endpoint = aiCustomEndpoint ? aiCustomEndpoint.value.trim() : '';
+
+    aiStatusBadge.textContent = '🔄 Đang kiểm tra...';
+    aiStatusBadge.className = 'anki-status-badge';
+    aiStatusBadge.style.color = '#38bdf8';
+    if (btnTestAi) btnTestAi.disabled = true;
+
+    chrome.runtime.sendMessage({
+      action: 'AI_CHAT_REQUEST',
+      task: 'test_connection',
+      provider: provider,
+      apiKey: key,
+      model: model,
+      customEndpoint: endpoint
+    }, (res) => {
+      if (btnTestAi) btnTestAi.disabled = false;
+      if (res && res.success) {
+        aiStatusBadge.textContent = `🟢 Hoạt động tốt (${res.providerName || provider}: ${res.model || model})`;
+        aiStatusBadge.style.color = '#10b981';
+        saveSettings();
+      } else {
+        const err = res?.error || 'Không kết nối được';
+        aiStatusBadge.textContent = `🔴 Thất bại: ${err.slice(0, 42)}${err.length > 42 ? '...' : ''}`;
+        aiStatusBadge.title = err;
+        aiStatusBadge.style.color = '#ef4444';
+      }
+    });
   }
 
   function populateVoiceOptions() {
@@ -349,7 +512,14 @@ document.addEventListener('DOMContentLoaded', () => {
       speechPitch: pitchSlider ? (parseFloat(pitchSlider.value) || 1.0) : 1.0,
       voiceUri: voiceSelect ? voiceSelect.value : '',
       translationEngine: document.querySelector('input[name="trans-engine"]:checked')?.value || 'google',
-      geminiApiKey: (document.getElementById('gemini-api-key')?.value || '').trim(),
+      geminiApiKey: (aiApiKey?.value || document.getElementById('gemini-api-key')?.value || '').trim(),
+      aiProvider: selectAiProvider ? selectAiProvider.value : 'gemini',
+      aiApiKey: (aiApiKey ? aiApiKey.value : '').trim(),
+      aiModel: (aiModelName ? aiModelName.value : '').trim(),
+      aiCustomEndpoint: (aiCustomEndpoint ? aiCustomEndpoint.value : '').trim(),
+      aiEnableSentenceTranslate: optAiTranslate ? optAiTranslate.checked : true,
+      aiEnableGrammarAnalysis: optAiGrammar ? optAiGrammar.checked : true,
+      aiEnableWordExplain: optAiExplain ? optAiExplain.checked : true,
       // Mới
       readingFormat: selectReadingFormat ? selectReadingFormat.value : 'hiragana',
       showKatakana: optKatakana ? optKatakana.checked : true,
@@ -404,14 +574,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const transRadios = document.querySelectorAll('input[name="trans-engine"]');
   transRadios.forEach(r => {
     r.addEventListener('change', () => {
-      const keyContainer = document.getElementById('gemini-key-container');
-      if (keyContainer) keyContainer.style.display = (r.value === 'gemini') ? 'block' : 'none';
+      const isAi = (r.value === 'ai' || r.value === 'gemini');
+      if (aiConfigContainer) aiConfigContainer.style.display = isAi ? 'block' : 'none';
       saveSettings();
     });
   });
 
-  const geminiInput = document.getElementById('gemini-api-key');
-  if (geminiInput) geminiInput.addEventListener('change', saveSettings);
+  // AI Provider thay đổi
+  if (selectAiProvider) {
+    selectAiProvider.addEventListener('change', () => {
+      const p = selectAiProvider.value;
+      updateAiPresetsUI(p);
+      const info = AI_PROVIDER_PRESETS[p];
+      if (info && aiModelName) {
+        aiModelName.value = info.defaultModel;
+      }
+      if (aiStatusBadge) {
+        aiStatusBadge.textContent = '⚪ Chưa kiểm tra';
+        aiStatusBadge.style.color = '#94a3b8';
+      }
+      saveSettings();
+    });
+  }
+
+  // AI Model Presets chọn nhanh
+  if (aiModelPresets) {
+    aiModelPresets.addEventListener('change', () => {
+      if (aiModelName) aiModelName.value = aiModelPresets.value;
+      saveSettings();
+    });
+  }
+
+  // Ẩn / Hiện API key
+  if (btnToggleAiKey && aiApiKey) {
+    btnToggleAiKey.addEventListener('click', () => {
+      const isPwd = aiApiKey.type === 'password';
+      aiApiKey.type = isPwd ? 'text' : 'password';
+      btnToggleAiKey.textContent = isPwd ? '🙈 Ẩn key' : '👁️ Hiện key';
+    });
+  }
+
+  // Kiểm tra kết nối AI
+  if (btnTestAi) {
+    btnTestAi.addEventListener('click', checkAiStatus);
+  }
+
+  // Lưu khi thay đổi các trường AI
+  if (aiApiKey) aiApiKey.addEventListener('change', saveSettings);
+  if (aiModelName) aiModelName.addEventListener('change', saveSettings);
+  if (aiCustomEndpoint) aiCustomEndpoint.addEventListener('change', saveSettings);
+  [optAiTranslate, optAiGrammar, optAiExplain].forEach(cb => {
+    if (cb) cb.addEventListener('change', saveSettings);
+  });
 
   speedSlider.addEventListener('input', (e) => {
     updateSpeedBadge(e.target.value);

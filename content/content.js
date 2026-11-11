@@ -36,7 +36,14 @@
     speechPitch: 1.0,
     voiceUri: '',
     translationEngine: 'google',
-    geminiApiKey: ''
+    geminiApiKey: '',
+    aiProvider: 'gemini',
+    aiApiKey: '',
+    aiModel: 'gemini-1.5-flash',
+    aiCustomEndpoint: '',
+    aiEnableSentenceTranslate: true,
+    aiEnableGrammarAnalysis: true,
+    aiEnableWordExplain: true
   };
 
   // Trạng thái hiện tại
@@ -99,6 +106,7 @@
   getStorageData(['jpSettings', 'jpSavedWords'], (res) => {
     if (res && res.jpSettings) {
       settings = { ...settings, ...res.jpSettings };
+      window.__JP_SETTINGS__ = settings;
       window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
       const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
       if (qs && qs.setEnabled) {
@@ -115,6 +123,7 @@
       if (area === 'local') {
         if (changes.jpSettings) {
           settings = { ...settings, ...changes.jpSettings.newValue };
+          window.__JP_SETTINGS__ = settings;
           window.__JP_EXTENSION_ENABLED__ = settings.enabled !== false;
           const qs = window.quickSearchPalette || (typeof quickSearchPalette !== 'undefined' ? quickSearchPalette : null);
           if (qs && qs.setEnabled) {
@@ -227,6 +236,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
           </button>
+          <button class="jp-icon-btn jp-ai-btn" id="jp-ai-btn" title="Hỏi AI phân tích & giải thích sâu từ vựng">✨</button>
           <button class="jp-icon-btn" id="jp-pin-btn" title="Ghim popup cố định (Phím P)">📌</button>
           <button class="jp-icon-btn" id="jp-close-btn" title="Đóng (Esc)">✕</button>
         </div>
@@ -240,6 +250,15 @@
           <span id="jp-meaning-text"></span>
         </div>
         <div class="jp-synonyms-row" id="jp-synonyms-row" style="display:none;"></div>
+      </div>
+
+      <!-- Khung giải thích AI chuyên sâu (Khi bấm nút ✨) -->
+      <div class="jp-ai-panel" id="jp-ai-panel" style="display:none;">
+        <div class="jp-ai-panel-header">
+          <span class="jp-ai-panel-title">✨ Trí tuệ Nhân tạo AI</span>
+          <button type="button" class="jp-ai-panel-close" id="jp-ai-panel-close" title="Đóng panel AI">✕</button>
+        </div>
+        <div class="jp-ai-panel-body" id="jp-ai-panel-body"></div>
       </div>
 
       <!-- Bảng phân tích Ngữ pháp & Quy tắc âm On/Kun -->
@@ -473,6 +492,64 @@
       });
     }
 
+    // Nút Hỏi AI (✨) trên Tooltip
+    const aiBtn = cardElem.querySelector('#jp-ai-btn');
+    const aiPanel = cardElem.querySelector('#jp-ai-panel');
+    const aiPanelBody = cardElem.querySelector('#jp-ai-panel-body');
+    const aiPanelClose = cardElem.querySelector('#jp-ai-panel-close');
+
+    if (aiPanelClose) {
+      aiPanelClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (aiPanel) aiPanel.style.display = 'none';
+        if (aiBtn) aiBtn.classList.remove('active');
+      });
+    }
+
+    if (aiBtn) {
+      aiBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!currentWord || !aiPanel) return;
+
+        if (aiPanel.style.display === 'block') {
+          aiPanel.style.display = 'none';
+          aiBtn.classList.remove('active');
+          return;
+        }
+
+        aiPanel.style.display = 'block';
+        aiBtn.classList.add('active');
+        if (aiPanelBody) {
+          aiPanelBody.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:#38bdf8;font-size:12px;"><span class="jp-wave-dot"></span><span>Đang hỏi AI giải thích chuyên sâu "${escapeHtml(currentWord)}"...</span></div>`;
+        }
+
+        try {
+          const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+          if (!aiService) {
+            if (aiPanelBody) aiPanelBody.innerHTML = `<span style="color:#ef4444;">AI Service chưa sẵn sàng.</span>`;
+            return;
+          }
+
+          const res = await aiService.explainWord(currentWord);
+          if (res && res.success && res.result) {
+            if (aiPanelBody) aiPanelBody.innerHTML = aiService.formatMarkdown(res.result);
+          } else {
+            const err = res?.error || 'Không thể kết nối đến AI API';
+            if (aiPanelBody) {
+              aiPanelBody.innerHTML = `
+                <div style="color:#f87171;font-size:12px;margin-bottom:6px;">⚠️ ${escapeHtml(err)}</div>
+                <div style="font-size:11px;color:#94a3b8;line-height:1.4;">
+                  💡 <em>Mở popup Cài đặt (Alt+J) để cấu hình API Key (Google Gemini, OpenAI, Claude, DeepSeek, Groq...) hoặc chọn nhà cung cấp AI mong muốn.</em>
+                </div>
+              `;
+            }
+          }
+        } catch (ex) {
+          if (aiPanelBody) aiPanelBody.innerHTML = `<span style="color:#ef4444;">Lỗi: ${escapeHtml(ex.message)}</span>`;
+        }
+      });
+    }
+
     // Nút Đóng (Esc)
     const closeBtn = cardElem.querySelector('#jp-close-btn');
     if (closeBtn) {
@@ -692,6 +769,11 @@
     // 1. Cập nhật từ chính & cách đọc (Hiragana, Katakana)
     wordElem.textContent = targetWord;
     updateActionButtonsVisibility();
+
+    const aiPanel = cardElem.querySelector('#jp-ai-panel');
+    const aiBtn = cardElem.querySelector('#jp-ai-btn');
+    if (aiPanel) aiPanel.style.display = 'none';
+    if (aiBtn) aiBtn.classList.remove('active');
 
     const rawReading = data.reading || '';
     const hiraReading = typeof katakanaToHiragana === 'function' ? katakanaToHiragana(rawReading) : rawReading;
@@ -959,9 +1041,79 @@
                 kataElem.style.display = 'none';
               }
             }
+
+            const newRomaji = onlineRes.romaji || (typeof toRomaji === 'function' ? toRomaji(hiraOnline) : '');
             if (currentWordData) {
               currentWordData.reading = hiraOnline;
               currentWordData.speechText = hiraOnline;
+              if (newRomaji) {
+                currentWordData.romaji = newRomaji;
+              }
+            }
+
+            // Đồng bộ lại thẻ Romaji trên giao diện nếu đang hiển thị
+            if (settings.showRomaji && newRomaji) {
+              let romajiBadge = tagsRow.querySelector('.jp-badge-romaji');
+              if (!romajiBadge) {
+                romajiBadge = document.createElement('span');
+                romajiBadge.className = 'jp-badge jp-badge-romaji';
+                tagsRow.insertBefore(romajiBadge, tagsRow.firstChild);
+              }
+              romajiBadge.textContent = `Romaji: ${newRomaji}`;
+              romajiBadge.style.display = 'inline-block';
+            }
+
+            // Đồng bộ và tính toán lại Quy tắc âm đọc On/Kun dựa theo phiên âm chính xác vừa nhận được
+            if (typeof japaneseEngine !== 'undefined' && japaneseEngine.classifyOnKunRule) {
+              const newRule = japaneseEngine.classifyOnKunRule(
+                targetWord,
+                hiraOnline,
+                currentWordData?.kanjiList || [],
+                currentContextSentence || ''
+              );
+              if (newRule) {
+                if (currentWordData) currentWordData.onKunRule = newRule;
+
+                // Cập nhật Badge On-Kun
+                let onKunBadge = tagsRow.querySelector('.jp-badge-onkun');
+                if (newRule.badge) {
+                  if (!onKunBadge) {
+                    onKunBadge = document.createElement('span');
+                    onKunBadge.className = 'jp-badge jp-badge-onkun';
+                    tagsRow.appendChild(onKunBadge);
+                  }
+                  onKunBadge.textContent = newRule.badge;
+                  onKunBadge.style.display = 'inline-block';
+                }
+
+                // Cập nhật Rule Box (Quy tắc âm đọc)
+                const grammarPanel = cardElem.querySelector('#jp-grammar-panel');
+                const ruleBox = cardElem.querySelector('#jp-rule-box');
+                if (ruleBox && newRule.rule) {
+                  let ruleItem = ruleBox.querySelector('.jp-onkun-rule-item');
+                  if (!ruleItem) {
+                    ruleItem = document.createElement('div');
+                    ruleItem.className = 'jp-onkun-rule-item';
+                    ruleBox.appendChild(ruleItem);
+                  }
+                  ruleItem.textContent = '';
+                  const iconSpan = document.createElement('span');
+                  iconSpan.textContent = '💡 ';
+                  const strong = document.createElement('strong');
+                  strong.textContent = 'Quy tắc âm đọc: ';
+                  const span = document.createElement('span');
+                  span.textContent = newRule.rule;
+                  ruleItem.appendChild(iconSpan);
+                  ruleItem.appendChild(strong);
+                  ruleItem.appendChild(span);
+                  ruleBox.style.display = 'flex';
+                  if (grammarPanel) grammarPanel.style.display = 'flex';
+                }
+              }
+            }
+
+            if (tagsRow) {
+              tagsRow.style.display = tagsRow.children.length > 0 ? 'flex' : 'none';
             }
           }
           if (onlineRes.synonyms && onlineRes.synonyms.length > 0) {
@@ -1291,8 +1443,26 @@
         </div>
       </div>
       <div id="jp-sentence-source-box" class="jp-sentence-source-box">${chunksHtml}</div>
-      <div id="jp-sentence-meaning" class="jp-sentence-meaning">
-        Đang dịch câu qua API...
+
+      <!-- Tab điều hướng trong Sentence Card: Bản dịch, Phân tích ngữ pháp AI, Giải thích sâu AI -->
+      <div class="jp-st-tabs-bar" style="display:flex;gap:6px;margin:6px 0 8px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">
+        <button type="button" class="jp-st-tab-btn active" data-tab="translate">📖 Bản dịch</button>
+        <button type="button" class="jp-st-tab-btn" data-tab="grammar">🧩 Phân tích ngữ pháp AI</button>
+        <button type="button" class="jp-st-tab-btn" data-tab="explain">💡 Giải thích chi tiết AI</button>
+      </div>
+
+      <div id="jp-st-pane-translate" class="jp-st-pane active">
+        <div id="jp-sentence-meaning" class="jp-sentence-meaning">
+          Đang dịch câu qua API...
+        </div>
+      </div>
+
+      <div id="jp-st-pane-grammar" class="jp-st-pane" style="display:none;">
+        <div id="jp-sentence-grammar-body" class="jp-st-ai-box"></div>
+      </div>
+
+      <div id="jp-st-pane-explain" class="jp-st-pane" style="display:none;">
+        <div id="jp-sentence-explain-body" class="jp-st-ai-box"></div>
       </div>
     `;
 
@@ -1379,11 +1549,86 @@
       hideSentenceCard();
     });
 
-    // Gọi API dịch câu bên ngoài (Google Translate API hoặc Gemini AI API)
+    // Quản lý Tab: Bản dịch, Phân tích ngữ pháp AI, Giải thích chi tiết AI
+    let hasLoadedGrammar = false;
+    let hasLoadedExplain = false;
+
+    const tabBtns = sentenceCard.querySelectorAll('.jp-st-tab-btn');
+    const tabPanes = {
+      translate: sentenceCard.querySelector('#jp-st-pane-translate'),
+      grammar: sentenceCard.querySelector('#jp-st-pane-grammar'),
+      explain: sentenceCard.querySelector('#jp-st-pane-explain')
+    };
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const tab = btn.getAttribute('data-tab');
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        Object.keys(tabPanes).forEach(k => {
+          if (tabPanes[k]) tabPanes[k].style.display = (k === tab) ? 'block' : 'none';
+        });
+
+        const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+
+        if (tab === 'grammar' && !hasLoadedGrammar) {
+          const body = sentenceCard.querySelector('#jp-sentence-grammar-body');
+          if (body) {
+            body.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:12px 4px;color:#38bdf8;font-size:12.5px;"><span class="jp-wave-dot"></span><span>Đang phân tích cấu trúc & ngữ pháp JLPT bằng AI...</span></div>`;
+            if (!aiService) {
+              body.innerHTML = `<span style="color:#ef4444;">AI Service chưa sẵn sàng.</span>`;
+              return;
+            }
+            const res = await aiService.explainGrammar(text);
+            if (res && res.success && res.result) {
+              hasLoadedGrammar = true;
+              body.innerHTML = aiService.formatMarkdown(res.result);
+            } else {
+              const err = res?.error || 'Không kết nối được AI';
+              body.innerHTML = `
+                <div style="color:#f87171;font-size:12px;margin-bottom:6px;">⚠️ ${escapeHtml(err)}</div>
+                <div style="font-size:11px;color:#94a3b8;line-height:1.4;">
+                  💡 <em>Mẹo: Mở cài đặt Extension (Alt+J) để cấu hình API Key (Google Gemini, OpenAI, Claude, DeepSeek, Groq...).</em>
+                </div>
+              `;
+            }
+          }
+        } else if (tab === 'explain' && !hasLoadedExplain) {
+          const body = sentenceCard.querySelector('#jp-sentence-explain-body');
+          if (body) {
+            body.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:12px 4px;color:#38bdf8;font-size:12.5px;"><span class="jp-wave-dot"></span><span>Đang hỏi AI giải thích chuyên sâu & ví dụ...</span></div>`;
+            if (!aiService) {
+              body.innerHTML = `<span style="color:#ef4444;">AI Service chưa sẵn sàng.</span>`;
+              return;
+            }
+            const res = await aiService.explainWord(text);
+            if (res && res.success && res.result) {
+              hasLoadedExplain = true;
+              body.innerHTML = aiService.formatMarkdown(res.result);
+            } else {
+              const err = res?.error || 'Không kết nối được AI';
+              body.innerHTML = `
+                <div style="color:#f87171;font-size:12px;margin-bottom:6px;">⚠️ ${escapeHtml(err)}</div>
+                <div style="font-size:11px;color:#94a3b8;line-height:1.4;">
+                  💡 <em>Mẹo: Mở cài đặt Extension (Alt+J) để cấu hình API Key.</em>
+                </div>
+              `;
+            }
+          }
+        }
+      });
+    });
+
+    // Gọi API dịch câu bên ngoài (Google Translate API hoặc AI Engine đa nền tảng)
     try {
       const res = await japaneseEngine.translateSentence(text, {
         engine: settings.translationEngine || 'google',
-        apiKey: settings.geminiApiKey || ''
+        apiKey: settings.aiApiKey || settings.geminiApiKey || '',
+        provider: settings.aiProvider || 'gemini',
+        model: settings.aiModel || 'gemini-1.5-flash',
+        customEndpoint: settings.aiCustomEndpoint || ''
       });
       if (res && res.meaning) {
         const mElem = sentenceCard.querySelector('#jp-sentence-meaning');
@@ -1400,7 +1645,7 @@
         }
         if (bElem && res.provider) {
           bElem.textContent = res.provider;
-          if (res.provider.includes('Gemini')) {
+          if (res.isAi || res.provider.includes('AI') || res.provider.includes('Gemini') || res.provider.includes('GPT') || res.provider.includes('Claude') || res.provider.includes('DeepSeek') || res.provider.includes('Groq')) {
             bElem.classList.add('ai');
           } else {
             bElem.classList.remove('ai');

@@ -143,6 +143,7 @@ class QuickSearchPalette {
               <button type="button" class="jp-qs-mode-btn" data-mode="vi-ja" title="Gõ tiếng Việt tìm tiếng Nhật">Việt ➔ Nhật</button>
               <button type="button" class="jp-qs-mode-btn" data-mode="ja-vi" title="Gõ tiếng Nhật tìm tiếng Việt">Nhật ➔ Việt</button>
               <button type="button" class="jp-qs-mode-btn" data-mode="online" title="Dịch trực tuyến câu hoặc từ vựng qua Google Translate">🌐 Dịch trực tuyến</button>
+              <button type="button" class="jp-qs-mode-btn" data-mode="ai" title="Trợ lý AI: Phân tích ngữ pháp JLPT & giải thích từ vựng">✨ AI Trợ lý</button>
             </div>
           </div>
 
@@ -284,6 +285,8 @@ class QuickSearchPalette {
       hint = 'Gõ từ tiếng Nhật (Kanji, Kana, Romaji) để tra nghĩa...';
     } else if (this.currentMode === 'online') {
       hint = 'Nhập câu hoặc văn bản bất kỳ để dịch trực tuyến qua Google Translate...';
+    } else if (this.currentMode === 'ai') {
+      hint = 'Gõ câu hoặc từ vựng tiếng Nhật để AI phân tích cấu trúc, ngữ pháp JLPT và giải thích chi tiết...';
     }
 
     this.resultsContainer.innerHTML = `
@@ -438,6 +441,12 @@ class QuickSearchPalette {
       return;
     }
 
+    // Chế độ Trợ lý AI chuyên sâu (Ngữ pháp & Giải thích)
+    if (this.currentMode === 'ai') {
+      this.performAiSearch(cleanQuery);
+      return;
+    }
+
     const isViDetected = typeof isVietnameseQuery === 'function' 
       ? isVietnameseQuery(cleanQuery) 
       : /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(cleanQuery);
@@ -474,6 +483,92 @@ class QuickSearchPalette {
       this.fetchOnlineReverse(query);
     } else {
       this.fetchOnlineStandardWord(query);
+    }
+  }
+
+  /**
+   * Chế độ phân tích ngữ pháp JLPT & giải thích từ vựng thông minh qua AI đa nền tảng
+   */
+  async performAiSearch(query) {
+    if (!query) return;
+    this.resultsContainer.innerHTML = `
+      <div class="jp-qs-loading-card" style="border: 1px solid rgba(168, 85, 247, 0.35);">
+        <span style="font-size:20px;">🧠</span>
+        <span>Đang kết nối AI để phân tích "${this.escapeHtml(query)}"...</span>
+      </div>
+    `;
+
+    const aiService = window.japaneseAiService || (typeof japaneseAiService !== 'undefined' ? japaneseAiService : null);
+    if (!aiService) {
+      this.resultsContainer.innerHTML = `
+        <div class="jp-qs-empty">
+          <div style="font-size:24px;color:#ef4444;margin-bottom:6px;">⚠️ AI Service chưa sẵn sàng</div>
+        </div>
+      `;
+      return;
+    }
+
+    const isSent = this.isSentence(query);
+    const task = isSent ? 'grammar' : 'explain_word';
+    const res = await aiService.request({ task, text: query });
+
+    if (res && res.success && res.result) {
+      const formatted = aiService.formatMarkdown(res.result);
+      const providerLabel = `✨ ${res.providerName || 'AI'} (${res.model || ''})`;
+
+      this.resultsContainer.innerHTML = `
+        <div class="jp-qs-section-title">🧠 Trí tuệ Nhân tạo (${isSent ? 'Phân tích ngữ pháp câu' : 'Giải thích từ vựng & ví dụ'})</div>
+        <div class="jp-qs-card jp-qs-ai-result-card" style="border:1px solid rgba(168, 85, 247, 0.4);flex-direction:column;align-items:stretch;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="jp-api-badge ai">${this.escapeHtml(providerLabel)}</span>
+              <span style="font-size:12px;color:#94a3b8;">${isSent ? 'Phân tích JLPT' : 'Từ vựng'}</span>
+            </div>
+            <div class="jp-qs-actions">
+              <button class="jp-qs-action-btn btn-speak" title="Phát âm truy vấn" data-text="${this.escapeHtml(query)}">🔊</button>
+              <button class="jp-qs-action-btn btn-copy" title="Sao chép kết quả">📋</button>
+            </div>
+          </div>
+          <div class="jp-qs-ai-body" style="font-size:12.5px;line-height:1.6;color:#f1f5f9;max-height:420px;overflow-y:auto;padding-right:4px;">
+            ${formatted}
+          </div>
+        </div>
+      `;
+
+      // Gắn sự kiện copy và audio
+      const card = this.resultsContainer.querySelector('.jp-qs-ai-result-card');
+      if (card) {
+        const copyBtn = card.querySelector('.btn-copy');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(res.result).then(() => {
+              copyBtn.textContent = '✓';
+              setTimeout(() => { copyBtn.textContent = '📋'; }, 1500);
+            });
+          });
+        }
+        const speakBtn = card.querySelector('.btn-speak');
+        if (speakBtn) {
+          speakBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof japaneseAudio !== 'undefined') {
+              japaneseAudio.speak(query);
+            }
+          });
+        }
+      }
+    } else {
+      const err = res?.error || 'Không kết nối được AI';
+      this.resultsContainer.innerHTML = `
+        <div class="jp-qs-empty">
+          <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+          <div style="color:#f87171;font-weight:600;margin-bottom:6px;">Lỗi kết nối AI: ${this.escapeHtml(err)}</div>
+          <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
+            Hãy mở cài đặt Extension (Alt+J) để kiểm tra API Key (Google Gemini, OpenAI, Claude, DeepSeek, Groq...) hoặc chọn nhà cung cấp AI phù hợp.
+          </div>
+        </div>
+      `;
     }
   }
 
@@ -552,6 +647,7 @@ class QuickSearchPalette {
               <button class="jp-qs-action-btn btn-copy" title="Sao chép từ">📋</button>
               <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
               <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
+              <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
             </div>
           </div>
         `;
@@ -662,6 +758,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-copy" title="Sao chép từ tiếng Nhật">📋</button>
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
+            <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
           </div>
         </div>
       `;
@@ -700,7 +797,15 @@ class QuickSearchPalette {
       let romaji = '';
 
       if (engine && engine.translateSentence) {
-        const res = await engine.translateSentence(query, { direction });
+        const s = window.__JP_SETTINGS__ || {};
+        const res = await engine.translateSentence(query, {
+          direction,
+          engine: s.translationEngine || 'google',
+          apiKey: s.aiApiKey || s.geminiApiKey || '',
+          provider: s.aiProvider || 'gemini',
+          model: s.aiModel || 'gemini-1.5-flash',
+          customEndpoint: s.aiCustomEndpoint || ''
+        });
         if (res && res.meaning) {
           translation = res.meaning;
         }
@@ -748,6 +853,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-copy" title="Sao chép câu tiếng Nhật">📋</button>
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
+            <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
           </div>
         </div>
       `;
@@ -938,6 +1044,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-copy" title="Sao chép từ">📋</button>
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
+            <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
           </div>
         </div>
       `;
@@ -1041,6 +1148,7 @@ class QuickSearchPalette {
             <button class="jp-qs-action-btn btn-copy" title="Sao chép từ">📋</button>
             <button class="jp-qs-action-btn btn-save" title="Lưu vào Sổ tay từ vựng">⭐</button>
             <button class="jp-qs-action-btn btn-anki" title="Thêm vào Anki (Desktop)">📥 Anki</button>
+            <button class="jp-qs-action-btn btn-ai" title="Hỏi AI phân tích & giải thích">✨</button>
           </div>
         </div>
       `;
@@ -1208,6 +1316,20 @@ class QuickSearchPalette {
           setTimeout(() => {
             ankiBtn.textContent = '📥 Anki';
           }, 2500);
+        }
+      });
+    }
+
+    // Gắn sự kiện Hỏi AI (✨)
+    const aiBtn = card.querySelector('.btn-ai');
+    if (aiBtn) {
+      aiBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const word = card.getAttribute('data-word');
+        if (word) {
+          if (this.input) this.input.value = word;
+          this.setMode('ai');
+          this.performAiSearch(word);
         }
       });
     }
@@ -1402,6 +1524,13 @@ class QuickSearchPalette {
         border-color: #38bdf8;
         font-weight: 700;
         box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+      }
+
+      .jp-qs-mode-btn[data-mode="ai"].active {
+        background: linear-gradient(135deg, #a855f7 0%, #38bdf8 100%);
+        color: #ffffff;
+        border-color: #c084fc;
+        box-shadow: 0 2px 10px rgba(168, 85, 247, 0.4);
       }
 
       .jp-qs-tags {
@@ -1752,6 +1881,19 @@ class QuickSearchPalette {
         background: #38bdf8;
         color: #0f172a;
         border-color: #38bdf8;
+      }
+
+      .jp-qs-action-btn.btn-ai {
+        color: #c084fc;
+        border-color: rgba(168, 85, 247, 0.4);
+        background: rgba(168, 85, 247, 0.12);
+      }
+
+      .jp-qs-action-btn.btn-ai:hover {
+        background: #a855f7;
+        color: #ffffff;
+        border-color: #a855f7;
+        box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
       }
 
       .jp-qs-kanji-card {
