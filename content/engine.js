@@ -186,6 +186,7 @@ class JapaneseEngine {
 
     const hasKatakana = /[\u30A0-\u30FFー]/.test(word);
     const hasHiragana = /[\u3040-\u309F]/.test(word);
+    const hasKana = hasKatakana || hasHiragana;
     const kanjiCount = kanjiList.length;
     const toHira = (s) => (typeof katakanaToHiragana === 'function' ? katakanaToHiragana(s) : s);
 
@@ -1338,7 +1339,12 @@ class JapaneseEngine {
 
     // 3. Phân loại Quy tắc Âm On / Kun
     const contextAfter = fullText ? fullText.slice(offset + clean.length) : '';
-    const onKunRule = this.classifyOnKunRule(clean, reading, kanjiList, contextAfter);
+    let onKunRule = null;
+    try {
+      onKunRule = this.classifyOnKunRule(clean, reading, kanjiList, contextAfter);
+    } catch (e) {
+      console.warn('[JP Engine] classifyOnKunRule warning:', e);
+    }
 
     // 4. Phân tích Ngữ pháp theo ngữ cảnh
     const grammarContext = this.analyzeGrammarContext(clean, dictEntry, contextAfter);
@@ -1585,11 +1591,7 @@ class JapaneseEngine {
           synonyms: synonyms,
           fromOnline: true
         };
-        if (this.onlineCache.size > 200) {
-          const firstKey = this.onlineCache.keys().next().value;
-          this.onlineCache.delete(firstKey);
-        }
-        this.onlineCache.set(cleanWord, result);
+        this._setOnlineCache(cleanWord, result);
         return result;
       }
     } catch (err) {
@@ -1597,6 +1599,22 @@ class JapaneseEngine {
     }
 
     return null;
+  }
+
+  /**
+   * Lưu bộ đệm kết quả trực tuyến theo LRU với giới hạn tối đa để tránh phình RAM
+   */
+  _setOnlineCache(key, value, maxSize = 250) {
+    if (!key) return;
+    if (this.onlineCache.has(key)) {
+      this.onlineCache.delete(key);
+    } else if (this.onlineCache.size >= maxSize) {
+      const firstKey = this.onlineCache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.onlineCache.delete(firstKey);
+      }
+    }
+    this.onlineCache.set(key, value);
   }
 
   /**
@@ -1672,7 +1690,7 @@ class JapaneseEngine {
         }
       }
 
-      if (translation) {
+        if (translation) {
         const result = {
           japanese: translation,
           word: translation,
@@ -1683,11 +1701,7 @@ class JapaneseEngine {
           fromOnline: true,
           provider: 'Google Translate'
         };
-        if (this.onlineCache.size > 200) {
-          const firstKey = this.onlineCache.keys().next().value;
-          this.onlineCache.delete(firstKey);
-        }
-        this.onlineCache.set(cacheKey, result);
+        this._setOnlineCache(cacheKey, result);
         return result;
       }
     } catch (err) {
@@ -1712,7 +1726,10 @@ class JapaneseEngine {
     const sl = isVi ? 'vi' : 'ja';
     const tl = isVi ? 'ja' : 'vi';
 
-    const cacheKey = `sent_${sl}_${tl}_${engineType}_${cleanText}`;
+    const providerKey = (engineType === 'ai' || engineType === 'gemini')
+      ? `${options.provider || 'gemini'}_${options.model || ''}`
+      : 'google';
+    const cacheKey = `sent_${sl}_${tl}_${engineType}_${providerKey}_${cleanText}`;
     if (this.onlineCache.has(cacheKey)) {
       return this.onlineCache.get(cacheKey);
     }
@@ -1739,7 +1756,7 @@ class JapaneseEngine {
               direction: isVi ? 'vi-ja' : 'ja-vi',
               isAi: true
             };
-            this.onlineCache.set(cacheKey, result);
+            this._setOnlineCache(cacheKey, result);
             return result;
           }
         }
@@ -1748,14 +1765,10 @@ class JapaneseEngine {
       }
     }
 
-    // 2. Mặc định / Dự phòng: Gọi API Google Translate (translate.googleapis.com)
+    // 2. Mặc định / Dự phòng: Gọi API Google Translate thông qua Background Proxy (vượt CSP/CORS)
     try {
       const queryText = this.normalizeTextForTranslation(cleanText);
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(queryText)}`;
-      const response = await fetch(url);
-      if (!response.ok) return null;
-
-      const data = await response.json();
+      const data = await this.callGoogleTranslateAPI(queryText, sl, tl);
       let translation = '';
       if (data && data[0] && Array.isArray(data[0])) {
         const rawTrans = data[0].map(item => item[0]).filter(Boolean).join('').trim();
@@ -1764,7 +1777,7 @@ class JapaneseEngine {
 
       if (translation) {
         const result = { meaning: translation, provider: 'Google Translate API', direction: isVi ? 'vi-ja' : 'ja-vi' };
-        this.onlineCache.set(cacheKey, result);
+        this._setOnlineCache(cacheKey, result);
         return result;
       }
     } catch (err) {

@@ -817,7 +817,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderSavedWordsList(filterQuery = '') {
+  let notebookRenderLimit = 120;
+  let notebookSearchDebounce = null;
+
+  function renderSavedWordsList(filterQuery = '', resetLimit = true) {
+    if (resetLimit) {
+      notebookRenderLimit = 120;
+    }
     savedWordsContainer.innerHTML = '';
     const q = filterQuery.toLowerCase().trim();
     const qNoTone = typeof removeVietnameseTones === 'function' ? removeVietnameseTones(q) : q;
@@ -848,10 +854,15 @@ document.addEventListener('DOMContentLoaded', () => {
     savedEmptyState.style.display = 'none';
     savedWordsContainer.style.display = 'flex';
 
-    filtered.forEach(item => {
+    const nowTs = Date.now();
+    const visibleItems = filtered.slice(0, notebookRenderLimit);
+    const fragment = document.createDocumentFragment();
+
+    visibleItems.forEach(item => {
       const card = document.createElement('div');
       card.className = 'saved-word-card';
-      const isDue = item.srs && item.srs.nextReview && item.srs.nextReview <= Date.now();
+      card.setAttribute('data-word', item.word);
+      const isDue = item.srs && item.srs.nextReview && item.srs.nextReview <= nowTs;
 
       card.innerHTML = `
         <div class="saved-word-main">
@@ -871,51 +882,81 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      card.querySelector('.btn-item-speak').addEventListener('click', () => {
-        if (typeof japaneseAudio !== 'undefined') {
-          japaneseAudio.speak(item.reading || item.word, { rate: currentSettings.speechRate });
-        }
-      });
-
-      card.querySelector('.btn-item-anki').addEventListener('click', async (e) => {
-        const btn = e.target;
-        btn.textContent = '⏳';
-        try {
-          if (typeof ankiConnect !== 'undefined') {
-            await ankiConnect.addWordNote({
-              word: item.word,
-              reading: item.reading,
-              hanviet: item.hanviet,
-              meaning: item.meaning,
-              sentence: item.sentence,
-              deckName: currentSettings.ankiDeckName,
-              modelName: currentSettings.ankiModelName
-            });
-            btn.textContent = '✅';
-            btn.style.color = '#10b981';
-          }
-        } catch (err) {
-          alert('Lỗi AnkiConnect: ' + err.message);
-          btn.textContent = '❌';
-        }
-      });
-
-      card.querySelector('.btn-item-delete').addEventListener('click', () => {
-        savedWordsList = savedWordsList.filter(w => w.word !== item.word);
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ jpSavedWords: savedWordsList }, () => {
-            renderSavedWordsList(savedSearchInput.value);
-            updateSavedCountBadge();
-          });
-        }
-      });
-
-      savedWordsContainer.appendChild(card);
+      fragment.appendChild(card);
     });
+
+    if (filtered.length > visibleItems.length) {
+      const remaining = filtered.length - visibleItems.length;
+      const moreBtn = document.createElement('button');
+      moreBtn.type = 'button';
+      moreBtn.className = 'quick-action-btn btn-action-search btn-load-more-words';
+      moreBtn.style.marginTop = '4px';
+      moreBtn.textContent = `⬇️ Xem thêm (${remaining} từ còn lại)`;
+      moreBtn.addEventListener('click', () => {
+        notebookRenderLimit += 120;
+        renderSavedWordsList(savedSearchInput.value, false);
+      });
+      fragment.appendChild(moreBtn);
+    }
+
+    savedWordsContainer.appendChild(fragment);
   }
 
+  savedWordsContainer.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-item-action');
+    if (!btn) return;
+    const card = btn.closest('.saved-word-card');
+    const targetWord = card ? card.getAttribute('data-word') : '';
+    const item = targetWord ? savedWordsList.find(w => w.word === targetWord) : null;
+    if (!item) return;
+
+    if (btn.classList.contains('btn-item-speak')) {
+      if (typeof japaneseAudio !== 'undefined') {
+        japaneseAudio.speak(item.reading || item.word, { rate: currentSettings.speechRate });
+      }
+      return;
+    }
+
+    if (btn.classList.contains('btn-item-anki')) {
+      btn.textContent = '⏳';
+      try {
+        if (typeof ankiConnect !== 'undefined') {
+          await ankiConnect.addWordNote({
+            word: item.word,
+            reading: item.reading,
+            hanviet: item.hanviet,
+            meaning: item.meaning,
+            sentence: item.sentence,
+            deckName: currentSettings.ankiDeckName,
+            modelName: currentSettings.ankiModelName
+          });
+          btn.textContent = '✅';
+          btn.style.color = '#10b981';
+        }
+      } catch (err) {
+        alert('Lỗi AnkiConnect: ' + err.message);
+        btn.textContent = '❌';
+      }
+      return;
+    }
+
+    if (btn.classList.contains('btn-item-delete')) {
+      savedWordsList = savedWordsList.filter(w => w.word !== item.word);
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ jpSavedWords: savedWordsList }, () => {
+          renderSavedWordsList(savedSearchInput.value, false);
+          updateSavedCountBadge();
+        });
+      }
+    }
+  });
+
   savedSearchInput.addEventListener('input', (e) => {
-    renderSavedWordsList(e.target.value);
+    clearTimeout(notebookSearchDebounce);
+    const val = e.target.value;
+    notebookSearchDebounce = setTimeout(() => {
+      renderSavedWordsList(val, true);
+    }, 80);
   });
 
   // Đồng bộ tất cả từ vựng sang Anki

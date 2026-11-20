@@ -4,52 +4,54 @@
  * Tích hợp Spaced Repetition System (SRS SuperMemo SM-2) & Quản lý Thư mục Decks
  */
 
-const JP_DEFAULT_SETTINGS = {
-  enabled: true,
-  allowQuickSearchWhenDisabled: true, // Cho phép mở bảng tìm kiếm nhanh (Alt+S) kể cả khi tắt tiện ích
-  activationMode: 'always', // 'always' | 'shift' | 'alt'
-  showReading: true,
-  showRomaji: true,
-  showHanViet: true,
-  showMeaning: true,
-  showKanjiBreakdown: true,
-  showPitchAccent: true,
-  enableVisualHighlight: true,
-  enableSelectionTranslate: true,
-  enableOnlineFallback: true,
-  autoPlayAudio: false,
-  speechRate: 0.95,
-  speechPitch: 1.0,
-  voiceUri: '', // Tên/URI giọng đọc đã chọn
-  translationEngine: 'google', // 'google' | 'ai' | 'gemini'
-  geminiApiKey: '',
+const JP_DEFAULT_SETTINGS = (typeof JPConstants !== 'undefined' && JPConstants.DEFAULT_SETTINGS)
+  ? JPConstants.DEFAULT_SETTINGS
+  : {
+    enabled: true,
+    allowQuickSearchWhenDisabled: true, // Cho phép mở bảng tìm kiếm nhanh (Alt+S) kể cả khi tắt tiện ích
+    activationMode: 'always', // 'always' | 'shift' | 'alt'
+    showReading: true,
+    showRomaji: true,
+    showHanViet: true,
+    showMeaning: true,
+    showKanjiBreakdown: true,
+    showPitchAccent: true,
+    enableVisualHighlight: true,
+    enableSelectionTranslate: true,
+    enableOnlineFallback: true,
+    autoPlayAudio: false,
+    speechRate: 0.95,
+    speechPitch: 1.0,
+    voiceUri: '', // Tên/URI giọng đọc đã chọn
+    translationEngine: 'google', // 'google' | 'ai' | 'gemini'
+    geminiApiKey: '',
 
-  // === Cấu hình Trí tuệ Nhân tạo Đa nền tảng (AI Engine) ===
-  aiProvider: 'gemini', // 'gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'custom'
-  aiApiKey: '',
-  aiModel: 'gemini-flash-latest',
-  aiCustomEndpoint: '',
-  aiEnableSentenceTranslate: true,
-  aiEnableGrammarAnalysis: true,
-  aiEnableWordExplain: true,
+    // === Cấu hình Trí tuệ Nhân tạo Đa nền tảng (AI Engine) ===
+    aiProvider: 'gemini', // 'gemini' | 'openai' | 'claude' | 'deepseek' | 'groq' | 'custom'
+    aiApiKey: '',
+    aiModel: 'gemini-flash-latest',
+    aiCustomEndpoint: '',
+    aiEnableSentenceTranslate: true,
+    aiEnableGrammarAnalysis: true,
+    aiEnableWordExplain: true,
 
-  // === AnkiConnect Settings ===
-  ankiEnabled: true,
-  ankiHost: 'http://127.0.0.1:8765',
-  ankiDeckName: 'JP Hover Notebook',
-  ankiModelName: 'Basic',
+    // === AnkiConnect Settings ===
+    ankiEnabled: true,
+    ankiHost: 'http://127.0.0.1:8765',
+    ankiDeckName: 'JP Hover Notebook',
+    ankiModelName: 'Basic',
 
-  // === Video Subtitle Hover Settings ===
-  enableSubtitleHover: true,
-  autoPauseVideoOnHover: false,
+    // === Video Subtitle Hover Settings ===
+    enableSubtitleHover: true,
+    autoPauseVideoOnHover: false,
 
-  // === Feedback / Báo lỗi ===
-  feedbackWebhookUrl: '',
+    // === Feedback / Báo lỗi ===
+    feedbackWebhookUrl: '',
 
-  // === SRS & Decks ===
-  activeDeck: 'Mặc định',
-  decks: ['Mặc định', 'Từ vựng JLPT', 'IT & Công nghệ', 'Đời sống & Manga']
-};
+    // === SRS & Decks ===
+    activeDeck: 'Mặc định',
+    decks: ['Mặc định', 'Từ vựng JLPT', 'IT & Công nghệ', 'Đời sống & Manga']
+  };
 
 // Đọc dữ liệu từ chrome.storage.local dạng Promise
 function getStorage(keys) {

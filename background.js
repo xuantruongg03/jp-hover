@@ -1,51 +1,47 @@
 // Background Service Worker (Manifest V3 - v1.4.0)
 // Quản lý phím tắt Alt+J, Alt+F, Alt+S, AnkiConnect Proxy, Badge icon trạng thái và đồng bộ cài đặt
 
-const DEFAULT_SETTINGS = {
-  enabled: true,
-  allowQuickSearchWhenDisabled: true, // Cho phép mở bảng tìm kiếm nhanh (Alt+S) kể cả khi tắt tiện ích
-  activationMode: 'always', // 'always' | 'shift' | 'alt'
-  showReading: true,
-  showRomaji: true,
-  showHanViet: true,
-  showMeaning: true,
-  showKanjiBreakdown: true,
-  showPitchAccent: true,
-  enableVisualHighlight: true,
-  enableSelectionTranslate: true,
-  enableOnlineFallback: true,
-  autoPlayAudio: false,
-  speechRate: 0.95,
-  speechPitch: 1.0,
-  voiceUri: '',
-  translationEngine: 'google', // 'google' | 'ai' | 'gemini'
-  geminiApiKey: '',
+try {
+  importScripts('constant.js');
+} catch (e) {}
 
-  // AI Engine Settings (Hỗ trợ Gemini, OpenAI, Claude, DeepSeek, Groq, Custom)
-  aiProvider: 'gemini',
-  aiApiKey: '',
-  aiModel: 'gemini-flash-latest',
-  aiCustomEndpoint: '',
-  aiEnableSentenceTranslate: true,
-  aiEnableGrammarAnalysis: true,
-  aiEnableWordExplain: true,
-
-  // AnkiConnect
-  ankiEnabled: true,
-  ankiHost: 'http://127.0.0.1:8765',
-  ankiDeckName: 'JP Hover Notebook',
-  ankiModelName: 'Basic',
-
-  // Subtitles
-  enableSubtitleHover: true,
-  autoPauseVideoOnHover: false,
-
-  // Feedback & Issue Reporting
-  feedbackWebhookUrl: '',
-
-  // SRS & Decks
-  activeDeck: 'Mặc định'
-};
+const DEFAULT_SETTINGS = (typeof JPConstants !== 'undefined' && JPConstants.DEFAULT_SETTINGS)
+  ? JPConstants.DEFAULT_SETTINGS
+  : {
+    enabled: true,
+    allowQuickSearchWhenDisabled: true,
+    activationMode: 'always',
+    showReading: true,
+    showRomaji: true,
+    showHanViet: true,
+    showMeaning: true,
+    showKanjiBreakdown: true,
+    showPitchAccent: true,
+    enableVisualHighlight: true,
+    enableSelectionTranslate: true,
+    enableOnlineFallback: true,
+    autoPlayAudio: false,
+    speechRate: 0.95,
+    speechPitch: 1.0,
+    voiceUri: '',
+    translationEngine: 'google',
+    geminiApiKey: '',
+    aiProvider: 'gemini',
+    aiApiKey: '',
+    aiModel: 'gemini-flash-latest',
+    aiCustomEndpoint: '',
+    aiEnableSentenceTranslate: true,
+    aiEnableGrammarAnalysis: true,
+    aiEnableWordExplain: true,
+    ankiEnabled: true,
+    ankiHost: 'http://127.0.0.1:8765',
+    ankiDeckName: 'JP Hover Notebook',
+    ankiModelName: 'Basic',
+    enableSubtitleHover: true,
+    autoPauseVideoOnHover: false,
+    feedbackWebhookUrl: '',
+    activeDeck: 'Mặc định'
+  };
 
 // Cập nhật Badge trên biểu tượng Extension
 function updateBadge(enabled) {

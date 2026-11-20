@@ -45,7 +45,9 @@
     aiEnableSentenceTranslate: true,
     aiEnableGrammarAnalysis: true,
     aiEnableWordExplain: true,
-    feedbackWebhookUrl: ''
+    feedbackWebhookUrl: '',
+    enableSubtitleHover: true,
+    autoPauseVideoOnHover: false
   };
 
   // Trạng thái hiện tại
@@ -81,6 +83,7 @@
   let toastHideTimer = null;
   let lastToggleToastState = null;
   let lastToggleToastAt = 0;
+  let lastHoverSpan = { node: null, start: -1, end: -1, word: '' };
 
   // Helper lưu trữ đồng nhất (Hỗ trợ cả Chrome Storage MV3 & LocalStorage dự phòng)
   function getStorageData(keys, callback) {
@@ -111,6 +114,13 @@
     }
   }
 
+  function syncSubtitleController() {
+    const sc = window.subtitleController || (typeof subtitleController !== 'undefined' ? subtitleController : null);
+    if (sc && typeof sc.updateSettings === 'function') {
+      sc.updateSettings(settings);
+    }
+  }
+
   // 1. Tải cài đặt và danh sách từ đã lưu
   getStorageData(['jpSettings', 'jpSavedWords'], (res) => {
     if (res && res.jpSettings) {
@@ -122,6 +132,7 @@
         if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
         if (qs.setEnabled) qs.setEnabled(settings.enabled !== false);
       }
+      syncSubtitleController();
     }
     if (res && Array.isArray(res.jpSavedWords)) {
       savedWordsSet = new Set(res.jpSavedWords.map(item => item.word));
@@ -145,6 +156,7 @@
             if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
             if (qs.setEnabled) qs.setEnabled(nextEnabled);
           }
+          syncSubtitleController();
           if (!nextEnabled) {
             hideAllPopups(true);
           }
@@ -183,6 +195,8 @@
 
   // 2. Khởi tạo Shadow DOM UI để cô lập hoàn toàn với trang web
   function initShadowDOM() {
+    strokeModalOverlay = null;
+    feedbackModalOverlay = null;
     let host = document.getElementById('jp-hover-extension-root');
     if (host) {
       try {
@@ -330,342 +344,8 @@
     sentenceCard.className = 'jp-sentence-card';
     shadowRoot.appendChild(sentenceCard);
 
-    // 4. Tạo Modal xem Thứ tự nét viết chữ Hán (Kanji Stroke Order)
-    strokeModalOverlay = document.createElement('div');
-    strokeModalOverlay.className = 'jp-stroke-modal-overlay';
-    strokeModalOverlay.id = 'jp-stroke-modal-overlay';
-    strokeModalOverlay.innerHTML = `
-      <div class="jp-stroke-modal">
-        <div class="jp-stroke-header">
-          <div class="jp-stroke-title">
-            <span>✍️ Thứ tự nét viết chữ Hán</span>
-            <span id="jp-stroke-kanji-title" style="color: #38bdf8; font-size: 24px; font-weight: bold; margin-left: 8px;"></span>
-          </div>
-          <button class="jp-stroke-close" id="jp-stroke-close-btn" title="Đóng (Esc)">✕</button>
-        </div>
-        <div class="jp-stroke-canvas-box" id="jp-stroke-canvas-box">
-          <div style="color: #94a3b8; font-size: 13px;">Đang tải nét vẽ...</div>
-        </div>
-        <div class="jp-stroke-controls">
-          <button class="jp-stroke-btn jp-stroke-show-all-btn" id="jp-stroke-show-all-btn" title="Hiển thị ngay toàn bộ nét chữ không cần chờ vẽ">⚡ Hiện toàn bộ</button>
-          <button class="jp-stroke-btn" id="jp-stroke-play-btn" title="Phát hoạt ảnh vẽ từng nét theo thứ tự">▶️ Vẽ từng nét</button>
-          <button class="jp-stroke-btn" id="jp-stroke-toggle-numbers" title="Bật hoặc tắt số thứ tự nét">🔢 Bật/Tắt số nét</button>
-        </div>
-        <div class="jp-stroke-info" id="jp-stroke-info"></div>
-      </div>
-    `;
-    shadowRoot.appendChild(strokeModalOverlay);
-
-    // Bắt sự kiện trên Stroke Modal
-    strokeModalOverlay.querySelector('#jp-stroke-close-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeStrokeModal();
-    });
-    strokeModalOverlay.addEventListener('click', (e) => {
-      if (e.target === strokeModalOverlay) closeStrokeModal();
-    });
-    strokeModalOverlay.querySelector('#jp-stroke-show-all-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
-      if (canvasBox && typeof kanjiStrokeAnimator !== 'undefined') {
-        kanjiStrokeAnimator.showAllStrokes(canvasBox);
-      }
-    });
-    strokeModalOverlay.querySelector('#jp-stroke-play-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
-      if (canvasBox && typeof kanjiStrokeAnimator !== 'undefined') {
-        kanjiStrokeAnimator.startAnimation(canvasBox);
-      }
-    });
-    strokeModalOverlay.querySelector('#jp-stroke-toggle-numbers').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      showStrokeNumbers = !showStrokeNumbers;
-      if (currentStrokeChar && typeof kanjiStrokeAnimator !== 'undefined') {
-        const rawSvg = await kanjiStrokeAnimator.fetchKanjiSvg(currentStrokeChar);
-        const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
-        if (rawSvg && canvasBox) {
-          const wasPlaying = kanjiStrokeAnimator.isPlaying;
-          kanjiStrokeAnimator.renderAnimatedSvg(canvasBox, rawSvg, { showNumbers: showStrokeNumbers });
-          if (wasPlaying) {
-            kanjiStrokeAnimator.startAnimation(canvasBox);
-          } else {
-            kanjiStrokeAnimator.showAllStrokes(canvasBox);
-          }
-        }
-      }
-    });
-
-    // 5. Tạo Modal Báo lỗi / Sửa từ & Góp ý (Feedback & Word Fix Modal)
-    feedbackModalOverlay = document.createElement('div');
-    feedbackModalOverlay.className = 'jp-feedback-modal-overlay';
-    feedbackModalOverlay.id = 'jp-feedback-modal-overlay';
-    feedbackModalOverlay.innerHTML = `
-      <div class="jp-feedback-modal" role="dialog" aria-modal="true">
-        <div class="jp-fb-header">
-          <div class="jp-fb-title-group">
-            <span class="jp-fb-title">🚩 Báo lỗi từ sai &amp; Góp ý</span>
-            <span class="jp-fb-subtitle" id="jp-fb-subtitle">Giúp cải thiện độ chính xác từ điển</span>
-          </div>
-          <button type="button" class="jp-stroke-close" id="jp-fb-close-btn" title="Đóng (Esc)">✕</button>
-        </div>
-
-        <div class="jp-fb-snapshot" id="jp-fb-snapshot" style="display:none;">
-          <div class="jp-fb-snapshot-word" id="jp-fb-snap-word"></div>
-          <div class="jp-fb-snapshot-meta" id="jp-fb-snap-meta"></div>
-        </div>
-
-        <div class="jp-fb-form">
-          <div class="jp-fb-field">
-            <label class="jp-fb-label" for="jp-fb-category">Loại vấn đề</label>
-            <select class="jp-fb-select" id="jp-fb-category">
-              <option value="wrong_reading">🔤 Sai phiên âm (Furigana / Romaji / Audio)</option>
-              <option value="wrong_meaning">💡 Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
-              <option value="wrong_onkun">📖 Sai quy tắc On/Kun / Hán-Việt</option>
-              <option value="wrong_segment">✂️ Sai tách từ / Chia thể ngữ pháp</option>
-              <option value="bug">🐛 Lỗi giao diện / Chức năng</option>
-              <option value="suggestion">✨ Góp ý / Đề xuất tính năng mới</option>
-            </select>
-          </div>
-
-          <div class="jp-fb-word-fields" id="jp-fb-word-fields">
-            <div class="jp-fb-row-2">
-              <div class="jp-fb-field">
-                <label class="jp-fb-label" for="jp-fb-word">Từ tiếng Nhật</label>
-                <input type="text" class="jp-fb-input" id="jp-fb-word" placeholder="Ví dụ: フランス語">
-              </div>
-              <div class="jp-fb-field">
-                <label class="jp-fb-label" for="jp-fb-correct-reading">Cách đọc đúng (Kana)</label>
-                <input type="text" class="jp-fb-input" id="jp-fb-correct-reading" placeholder="Ví dụ: ふらんすご">
-              </div>
-            </div>
-            <div class="jp-fb-field">
-              <label class="jp-fb-label" for="jp-fb-correct-meaning">Nghĩa tiếng Việt đúng / Đề xuất</label>
-              <input type="text" class="jp-fb-input" id="jp-fb-correct-meaning" placeholder="Nhập nghĩa chuẩn xác hơn...">
-            </div>
-          </div>
-
-          <div class="jp-fb-field">
-            <label class="jp-fb-label" for="jp-fb-note">Mô tả chi tiết hoặc góp ý</label>
-            <textarea class="jp-fb-textarea" id="jp-fb-note" rows="3" placeholder="Mô tả vấn đề bạn gặp phải hoặc ý tưởng cải thiện..."></textarea>
-          </div>
-
-          <div class="jp-fb-options">
-            <label class="jp-fb-check" id="jp-fb-override-wrap">
-              <input type="checkbox" id="jp-fb-apply-override" checked>
-              <span>✏️ Áp dụng ngay bản sửa này cho Từ điển cá nhân (hiện đúng tức thì)</span>
-            </label>
-            <label class="jp-fb-check">
-              <input type="checkbox" id="jp-fb-include-domain" checked>
-              <span id="jp-fb-domain-label">🌐 Đính kèm tên miền trang web hiện tại</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="jp-fb-status" id="jp-fb-status" style="display:none;"></div>
-
-        <div class="jp-fb-actions">
-          <button type="button" class="jp-fb-btn jp-fb-btn-primary" id="jp-fb-submit-btn">💾 Lưu &amp; Gửi</button>
-          <button type="button" class="jp-fb-btn jp-fb-btn-email" id="jp-fb-email-btn" title="Gửi qua Email tới lexuantruong098@gmail.com">📧 Gửi Email</button>
-          <button type="button" class="jp-fb-btn jp-fb-btn-github" id="jp-fb-github-btn" title="Mở GitHub Issues với nội dung đã điền sẵn">🐙 GitHub Issue</button>
-          <button type="button" class="jp-fb-btn jp-fb-btn-ghost" id="jp-fb-copy-btn" title="Sao chép báo cáo dạng Markdown">📋 Copy</button>
-        </div>
-
-        <div class="jp-fb-email-hint">
-          <span>📬 Mail hỗ trợ: <strong id="jp-fb-email-addr">lexuantruong098@gmail.com</strong></span>
-          <div class="jp-fb-email-links">
-            <button type="button" class="jp-fb-link-btn" id="jp-fb-gmail-btn" title="Mở soạn thư trên Gmail Web">🌐 Gmail Web</button>
-            <button type="button" class="jp-fb-link-btn" id="jp-fb-copy-email-btn" title="Sao chép địa chỉ email">📋 Copy Email</button>
-          </div>
-        </div>
-      </div>
-    `;
-    shadowRoot.appendChild(feedbackModalOverlay);
-
-    // Chặn rò rỉ phím tắt/chuột của trang web khi thao tác trong Modal Báo lỗi
-    feedbackModalOverlay.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        closeFeedbackModal();
-        return;
-      }
-      e.stopPropagation();
-    });
-    feedbackModalOverlay.addEventListener('mousedown', (e) => e.stopPropagation());
-    feedbackModalOverlay.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (e.target === feedbackModalOverlay) closeFeedbackModal();
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-close-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeFeedbackModal();
-    });
-
-    const fbCatSelect = feedbackModalOverlay.querySelector('#jp-fb-category');
-    const fbWordFields = feedbackModalOverlay.querySelector('#jp-fb-word-fields');
-    const fbOverrideWrap = feedbackModalOverlay.querySelector('#jp-fb-override-wrap');
-    if (fbCatSelect) {
-      fbCatSelect.addEventListener('change', () => {
-        const isIssueWithWord = !['bug', 'suggestion'].includes(fbCatSelect.value);
-        if (fbWordFields) fbWordFields.style.display = isIssueWithWord ? 'flex' : 'none';
-        if (fbOverrideWrap) fbOverrideWrap.style.display = isIssueWithWord ? 'flex' : 'none';
-      });
-    }
-
-    const collectFeedbackPayload = () => {
-      const cat = feedbackModalOverlay.querySelector('#jp-fb-category')?.value || 'wrong_reading';
-      const wordVal = feedbackModalOverlay.querySelector('#jp-fb-word')?.value.trim() || '';
-      const sugReading = feedbackModalOverlay.querySelector('#jp-fb-correct-reading')?.value.trim() || '';
-      const sugMeaning = feedbackModalOverlay.querySelector('#jp-fb-correct-meaning')?.value.trim() || '';
-      const noteVal = feedbackModalOverlay.querySelector('#jp-fb-note')?.value.trim() || '';
-      const includeDomain = !!feedbackModalOverlay.querySelector('#jp-fb-include-domain')?.checked;
-      const applyLocalOverride = !!feedbackModalOverlay.querySelector('#jp-fb-apply-override')?.checked;
-
-      return {
-        input: {
-          ...activeFeedbackContext,
-          category: cat,
-          word: wordVal,
-          suggestedReading: sugReading,
-          suggestedMeaning: sugMeaning,
-          note: noteVal,
-          includeDomain,
-          pageDomain: (typeof location !== 'undefined' && location.hostname) ? location.hostname : ''
-        },
-        options: {
-          applyLocalOverride,
-          webhookUrl: settings.feedbackWebhookUrl || ''
-        }
-      };
-    };
-
-    const showFeedbackStatus = (msg, isError = false) => {
-      const statusBox = feedbackModalOverlay.querySelector('#jp-fb-status');
-      if (!statusBox) return;
-      statusBox.textContent = msg;
-      statusBox.className = isError ? 'jp-fb-status error' : 'jp-fb-status success';
-      statusBox.style.display = 'block';
-    };
-
-    const handleFeedbackSubmit = async (mode = 'save') => {
-      const fbService = window.japaneseFeedbackService || (typeof japaneseFeedbackService !== 'undefined' ? japaneseFeedbackService : null);
-      if (!fbService) {
-        showFeedbackStatus('⚠️ Không tìm thấy dịch vụ báo cáo.', true);
-        return;
-      }
-      const { input, options } = collectFeedbackPayload();
-      const hasWordFix = Boolean(input.word && (input.suggestedReading || input.suggestedMeaning));
-      if (!hasWordFix && !input.note && !input.word) {
-        showFeedbackStatus('⚠️ Vui lòng nhập mô tả lỗi hoặc nội dung cần sửa.', true);
-        return;
-      }
-
-      const submitBtn = feedbackModalOverlay.querySelector('#jp-fb-submit-btn');
-      if (submitBtn) submitBtn.disabled = true;
-
-      try {
-        const res = await fbService.submitReport(input, options);
-        if (submitBtn) submitBtn.disabled = false;
-
-        if (res.overrideApplied && input.word && currentWord === input.word && typeof japaneseEngine !== 'undefined') {
-          // Làm mới Tooltip ngay lập tức với bản sửa từ điển cá nhân
-          const refreshedData = japaneseEngine.analyze(input.word, currentContextSentence || '', 0);
-          if (refreshedData && cardElem && cardElem.classList.contains('visible')) {
-            showTooltip(refreshedData, lastHoverPos.clientX, lastHoverPos.clientY, null);
-          }
-        }
-
-        if (mode === 'github') {
-          await fbService.updateReportStatus(res.report.id, 'github_opened');
-          window.open(res.githubUrl, '_blank', 'noopener,noreferrer');
-          showFeedbackStatus(
-            res.overrideApplied
-              ? '✅ Đã cập nhật Từ điển cá nhân & mở trang GitHub Issue điền sẵn!'
-              : '✅ Đã lưu báo cáo & mở trang GitHub Issue điền sẵn!'
-          );
-        } else if (mode === 'email') {
-          await fbService.updateReportStatus(res.report.id, 'email_opened');
-          fbService.openMailto(res.mailtoUrl);
-          showFeedbackStatus(
-            res.overrideApplied
-              ? `✅ Đã cập nhật Từ điển cá nhân & mở ứng dụng Email tới ${res.supportEmail}!`
-              : `✅ Đã mở ứng dụng Email soạn thư gửi tới ${res.supportEmail}!`
-          );
-        } else if (mode === 'gmail') {
-          await fbService.updateReportStatus(res.report.id, 'email_opened');
-          window.open(res.gmailUrl, '_blank', 'noopener,noreferrer');
-          showFeedbackStatus(
-            res.overrideApplied
-              ? `✅ Đã cập nhật Từ điển cá nhân & mở Gmail Web gửi tới ${res.supportEmail}!`
-              : `✅ Đã mở Gmail Web soạn thư gửi tới ${res.supportEmail}!`
-          );
-        } else if (mode === 'copy') {
-          const onCopied = () => {
-            showFeedbackStatus(
-              res.overrideApplied
-                ? '📋 Đã áp dụng bản sửa cục bộ & sao chép báo cáo Markdown!'
-                : '📋 Đã lưu & sao chép báo cáo Markdown vào Clipboard!'
-            );
-          };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(res.markdown).then(onCopied).catch(() => fallbackCopyText(res.markdown, onCopied));
-          } else {
-            fallbackCopyText(res.markdown, onCopied);
-          }
-        } else {
-          if (options.webhookUrl && res.webhookResult && res.webhookResult.success) {
-            showFeedbackStatus(
-              res.overrideApplied
-                ? '✅ Đã gửi báo cáo Webhook & áp dụng ngay vào Từ điển cá nhân!'
-                : '✅ Đã gửi báo cáo thành công tới Webhook!'
-            );
-          } else if (options.webhookUrl && res.webhookResult && !res.webhookResult.success) {
-            showFeedbackStatus(`⚠️ Đã lưu cục bộ, nhưng gửi Webhook lỗi: ${res.webhookResult.error}`, true);
-          } else {
-            showFeedbackStatus(
-              res.overrideApplied
-                ? '✅ Đã áp dụng bản sửa tức thì & lưu báo cáo (bấm Gửi Email hoặc GitHub Issue để gửi cho dev).'
-                : `✅ Đã lưu báo cáo! Bấm "Gửi Email" (${res.supportEmail}) hoặc "GitHub Issue" để gửi cho dev.`
-            );
-          }
-        }
-      } catch (err) {
-        if (submitBtn) submitBtn.disabled = false;
-        showFeedbackStatus(`⚠️ Có lỗi xảy ra: ${err.message}`, true);
-      }
-    };
-
-    feedbackModalOverlay.querySelector('#jp-fb-submit-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleFeedbackSubmit('save');
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-email-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleFeedbackSubmit('email');
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-gmail-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleFeedbackSubmit('gmail');
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-copy-email-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const emailAddr = 'lexuantruong098@gmail.com';
-      const onCopied = () => showFeedbackStatus(`📧 Đã sao chép email: ${emailAddr}`);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(emailAddr).then(onCopied).catch(() => fallbackCopyText(emailAddr, onCopied));
-      } else {
-        fallbackCopyText(emailAddr, onCopied);
-      }
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-github-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleFeedbackSubmit('github');
-    });
-    feedbackModalOverlay.querySelector('#jp-fb-copy-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleFeedbackSubmit('copy');
-    });
+    // Các modal ít dùng (Stroke Modal & Feedback Modal) sẽ được tạo lười (lazy-mount) ở lần mở đầu tiên
+    // để giảm thiểu DOM nodes và bộ nhớ khi lướt web thông thường.
 
     // Bắt sự kiện click nút dịch câu bôi đen (giữ selection khi pointerdown/mousedown và mở card tại click)
     const preserveSelectionOnBadge = (e) => {
@@ -1310,10 +990,10 @@
     }
 
     // 6. Định vị và hiển thị Card
+    cardElem.classList.add('visible');
     if (!isPinned) {
       positionTooltip(mouseX, mouseY);
     }
-    cardElem.classList.add('visible');
 
     // 7. Tự động phát âm
     if (settings.autoPlayAudio) {
@@ -1393,12 +1073,15 @@
 
             // Đồng bộ và tính toán lại Quy tắc âm đọc On/Kun dựa theo phiên âm chính xác vừa nhận được
             if (typeof japaneseEngine !== 'undefined' && japaneseEngine.classifyOnKunRule) {
-              const newRule = japaneseEngine.classifyOnKunRule(
-                targetWord,
-                hiraOnline,
-                currentWordData?.kanjiList || [],
-                currentContextSentence || ''
-              );
+              let newRule = null;
+              try {
+                newRule = japaneseEngine.classifyOnKunRule(
+                  targetWord,
+                  hiraOnline,
+                  currentWordData?.kanjiList || [],
+                  currentContextSentence || ''
+                );
+              } catch (_) {}
               if (newRule) {
                 if (currentWordData) currentWordData.onKunRule = newRule;
 
@@ -2085,11 +1768,10 @@
       }
 
       // 3. KIỂM TRA KÍCH THƯỚC AN TOÀN TUYỆT ĐỐI (Sanity checks):
-      // Một từ vựng tiếng Nhật (Kanji/Kana) thông thường không bao giờ rộng quá 220px
-      // hoặc cao quá 36px.
-      // Nếu vượt quá ngưỡng này -> Trình duyệt trả về bounding box của cả bảng/container -> TỪ CHỐI hiển thị highlight!
-      const maxWidth = 220;
-      const maxHeight = 36;
+      // Một từ vựng tiếng Nhật thông thường (hỗ trợ cả tiêu đề lớn H1/H2, cụm từ dài hoặc văn bản dọc)
+      // không vượt quá giới hạn an toàn này.
+      const maxWidth = 380;
+      const maxHeight = 80;
 
       if (
         targetRect.width >= 4 &&
@@ -2176,6 +1858,7 @@
     }
     hideVisualHighlight();
     currentWord = null;
+    lastHoverSpan = { node: null, start: -1, end: -1, word: '' };
     scanExtend = 0;
   }
 
@@ -2186,8 +1869,8 @@
       el === cardElem ||
       el === sentenceCard ||
       el === selectionBadge ||
-      el === feedbackModalOverlay ||
-      el === strokeModalOverlay
+      (feedbackModalOverlay && el === feedbackModalOverlay) ||
+      (strokeModalOverlay && el === strokeModalOverlay)
     );
   }
 
@@ -2386,8 +2069,26 @@
       return;
     }
 
+    // Nếu con trỏ rơi vào thẻ phiên âm Furigana (<rt> hoặc <rp>), tự động chuyển sang chữ Hán chính bên dưới
+    if (textNode.parentElement && textNode.parentElement.closest('rt, rp')) {
+      const rubyElem = textNode.parentElement.closest('ruby');
+      if (rubyElem) {
+        const walker = document.createTreeWalker(rubyElem, NodeFilter.SHOW_TEXT, null, false);
+        let n;
+        while ((n = walker.nextNode())) {
+          if (!n.parentElement || !n.parentElement.closest('rt, rp')) {
+            if (n.nodeValue && isJapaneseText(n.nodeValue)) {
+              textNode = n;
+              offset = 0;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     const text = textNode.nodeValue;
-    if (!text) {
+    if (!text || !isJapaneseText(text)) {
       scheduleHide(350);
       return;
     }
@@ -2398,16 +2099,61 @@
     }
     if (offset < 0) offset = 0;
 
+    const extractContextSentence = (fullTextStr, targetWord) => {
+      if (!fullTextStr) return '';
+      const sentences = fullTextStr.split(/(?<=[。！？\n])/);
+      for (const s of sentences) {
+        if (s.includes(targetWord)) return s.trim();
+      }
+      return fullTextStr.trim().slice(0, 160);
+    };
+
+    // Fast-path: con trỏ vẫn nằm trong cùng từ ở đúng node & khoảng ký tự đã phân tích
+    if (
+      textNode === lastHoverSpan.node &&
+      offset >= lastHoverSpan.start &&
+      offset < lastHoverSpan.end &&
+      lastHoverSpan.word &&
+      lastHoverSpan.word === currentWord &&
+      text.slice(lastHoverSpan.start, lastHoverSpan.end) === lastHoverSpan.word &&
+      cardElem &&
+      cardElem.classList.contains('visible')
+    ) {
+      cancelHideSchedule();
+      return;
+    }
+
     // Tách từ tiếng Nhật tại offset
     const word = japaneseEngine.getWordAtOffset(text, offset, scanExtend);
 
     if (word) {
-      let wordIndex = -1;
-      try {
-        wordIndex = text.indexOf(word, Math.max(0, offset - word.length));
-        if (wordIndex === -1) {
-          wordIndex = text.indexOf(word);
+      let wordIndex = text.indexOf(word, Math.max(0, offset - word.length));
+      if (wordIndex === -1) {
+        wordIndex = text.indexOf(word);
+      }
+
+      const spanStart = wordIndex !== -1 ? wordIndex : Math.max(0, offset);
+      const spanEnd = spanStart + word.length;
+      const isSameNodeSpan = (textNode === lastHoverSpan.node && spanStart === lastHoverSpan.start);
+
+      if (word === currentWord) {
+        cancelHideSchedule();
+        lastHoverSpan = { node: textNode, start: spanStart, end: spanEnd, word };
+        if (!isSameNodeSpan) {
+          currentContextSentence = extractContextSentence(text, word);
+          if (wordIndex !== -1) {
+            try {
+              wordRange = document.createRange();
+              wordRange.setStart(textNode, wordIndex);
+              wordRange.setEnd(textNode, wordIndex + word.length);
+              updateVisualHighlight(wordRange, clientX, clientY);
+            } catch (_) {}
+          }
         }
+        return;
+      }
+
+      try {
         if (wordIndex !== -1) {
           wordRange = document.createRange();
           wordRange.setStart(textNode, wordIndex);
@@ -2441,26 +2187,9 @@
         }
       }
 
-      // Trích xuất câu ngữ cảnh
-      currentContextSentence = '';
-      if (text) {
-        const sentences = text.split(/(?<=[。！？\n])/);
-        for (const s of sentences) {
-          if (s.includes(word)) {
-            currentContextSentence = s.trim();
-            break;
-          }
-        }
-        if (!currentContextSentence) {
-          currentContextSentence = text.trim().slice(0, 160);
-        }
-      }
-
-      if (word === currentWord) {
-        cancelHideSchedule();
-        if (wordRange) updateVisualHighlight(wordRange, clientX, clientY);
-        return;
-      }
+      // Trích xuất câu ngữ cảnh (chỉ tách khi thực sự cần hiển thị từ mới)
+      currentContextSentence = extractContextSentence(text, word);
+      lastHoverSpan = { node: textNode, start: spanStart, end: spanEnd, word };
 
       if (activeAbortController) {
         activeAbortController.abort();
@@ -2489,7 +2218,12 @@
         }
       } catch (_) {}
 
-      const analyzed = japaneseEngine.analyze(word, text, offset);
+      let analyzed = null;
+      try {
+        analyzed = japaneseEngine.analyze(word, text, offset);
+      } catch (err) {
+        console.warn('[JP Hover] Error analyzing word:', err);
+      }
       if (analyzed) {
         analyzed.word = word;
 
@@ -2575,9 +2309,81 @@
     }
   }
 
+  // Khởi tạo lười (lazy-mount) Modal Thứ tự nét viết Kanji
+  function ensureStrokeModal() {
+    if (strokeModalOverlay) return strokeModalOverlay;
+    if (!shadowRoot) return null;
+
+    strokeModalOverlay = document.createElement('div');
+    strokeModalOverlay.className = 'jp-stroke-modal-overlay';
+    strokeModalOverlay.id = 'jp-stroke-modal-overlay';
+    strokeModalOverlay.innerHTML = `
+      <div class="jp-stroke-modal">
+        <div class="jp-stroke-header">
+          <div class="jp-stroke-title">
+            <span>✍️ Thứ tự nét viết chữ Hán</span>
+            <span id="jp-stroke-kanji-title" style="color: #38bdf8; font-size: 24px; font-weight: bold; margin-left: 8px;"></span>
+          </div>
+          <button class="jp-stroke-close" id="jp-stroke-close-btn" title="Đóng (Esc)">✕</button>
+        </div>
+        <div class="jp-stroke-canvas-box" id="jp-stroke-canvas-box">
+          <div style="color: #94a3b8; font-size: 13px;">Đang tải nét vẽ...</div>
+        </div>
+        <div class="jp-stroke-controls">
+          <button class="jp-stroke-btn jp-stroke-show-all-btn" id="jp-stroke-show-all-btn" title="Hiển thị ngay toàn bộ nét chữ không cần chờ vẽ">⚡ Hiện toàn bộ</button>
+          <button class="jp-stroke-btn" id="jp-stroke-play-btn" title="Phát hoạt ảnh vẽ từng nét theo thứ tự">▶️ Vẽ từng nét</button>
+          <button class="jp-stroke-btn" id="jp-stroke-toggle-numbers" title="Bật hoặc tắt số thứ tự nét">🔢 Bật/Tắt số nét</button>
+        </div>
+        <div class="jp-stroke-info" id="jp-stroke-info"></div>
+      </div>
+    `;
+    shadowRoot.appendChild(strokeModalOverlay);
+
+    strokeModalOverlay.querySelector('#jp-stroke-close-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeStrokeModal();
+    });
+    strokeModalOverlay.addEventListener('click', (e) => {
+      if (e.target === strokeModalOverlay) closeStrokeModal();
+    });
+    strokeModalOverlay.querySelector('#jp-stroke-show-all-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
+      if (canvasBox && typeof kanjiStrokeAnimator !== 'undefined') {
+        kanjiStrokeAnimator.showAllStrokes(canvasBox);
+      }
+    });
+    strokeModalOverlay.querySelector('#jp-stroke-play-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
+      if (canvasBox && typeof kanjiStrokeAnimator !== 'undefined') {
+        kanjiStrokeAnimator.startAnimation(canvasBox);
+      }
+    });
+    strokeModalOverlay.querySelector('#jp-stroke-toggle-numbers').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      showStrokeNumbers = !showStrokeNumbers;
+      if (currentStrokeChar && typeof kanjiStrokeAnimator !== 'undefined') {
+        const rawSvg = await kanjiStrokeAnimator.fetchKanjiSvg(currentStrokeChar);
+        const canvasBox = strokeModalOverlay.querySelector('#jp-stroke-canvas-box');
+        if (rawSvg && canvasBox) {
+          const wasPlaying = kanjiStrokeAnimator.isPlaying;
+          kanjiStrokeAnimator.renderAnimatedSvg(canvasBox, rawSvg, { showNumbers: showStrokeNumbers });
+          if (wasPlaying) {
+            kanjiStrokeAnimator.startAnimation(canvasBox);
+          } else {
+            kanjiStrokeAnimator.showAllStrokes(canvasBox);
+          }
+        }
+      }
+    });
+
+    return strokeModalOverlay;
+  }
+
   // Mở modal xem thứ tự nét viết chữ Hán
   async function openStrokeModal(char) {
-    if (!char || !strokeModalOverlay) return;
+    if (!char || !ensureStrokeModal()) return;
     hideTooltip(true);
     currentStrokeChar = char;
     strokeModalOverlay.classList.add('active');
@@ -2651,8 +2457,284 @@
 
   window.__JP_OPEN_STROKE_MODAL = openStrokeModal;
 
+  // Khởi tạo lười (lazy-mount) Modal Báo lỗi / Sửa từ & Góp ý
+  function ensureFeedbackModal() {
+    if (feedbackModalOverlay) return feedbackModalOverlay;
+    if (!shadowRoot) return null;
+
+    feedbackModalOverlay = document.createElement('div');
+    feedbackModalOverlay.className = 'jp-feedback-modal-overlay';
+    feedbackModalOverlay.id = 'jp-feedback-modal-overlay';
+    feedbackModalOverlay.innerHTML = `
+      <div class="jp-feedback-modal" role="dialog" aria-modal="true">
+        <div class="jp-fb-header">
+          <div class="jp-fb-title-group">
+            <span class="jp-fb-title">🚩 Báo lỗi từ sai &amp; Góp ý</span>
+            <span class="jp-fb-subtitle" id="jp-fb-subtitle">Giúp cải thiện độ chính xác từ điển</span>
+          </div>
+          <button type="button" class="jp-stroke-close" id="jp-fb-close-btn" title="Đóng (Esc)">✕</button>
+        </div>
+
+        <div class="jp-fb-snapshot" id="jp-fb-snapshot" style="display:none;">
+          <div class="jp-fb-snapshot-word" id="jp-fb-snap-word"></div>
+          <div class="jp-fb-snapshot-meta" id="jp-fb-snap-meta"></div>
+        </div>
+
+        <div class="jp-fb-form">
+          <div class="jp-fb-field">
+            <label class="jp-fb-label" for="jp-fb-category">Loại vấn đề</label>
+            <select class="jp-fb-select" id="jp-fb-category">
+              <option value="wrong_reading">🔤 Sai phiên âm (Furigana / Romaji / Audio)</option>
+              <option value="wrong_meaning">💡 Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
+              <option value="wrong_onkun">📖 Sai quy tắc On/Kun / Hán-Việt</option>
+              <option value="wrong_segment">✂️ Sai tách từ / Chia thể ngữ pháp</option>
+              <option value="bug">🐛 Lỗi giao diện / Chức năng</option>
+              <option value="suggestion">✨ Góp ý / Đề xuất tính năng mới</option>
+            </select>
+          </div>
+
+          <div class="jp-fb-word-fields" id="jp-fb-word-fields">
+            <div class="jp-fb-row-2">
+              <div class="jp-fb-field">
+                <label class="jp-fb-label" for="jp-fb-word">Từ tiếng Nhật</label>
+                <input type="text" class="jp-fb-input" id="jp-fb-word" placeholder="Ví dụ: フランス語">
+              </div>
+              <div class="jp-fb-field">
+                <label class="jp-fb-label" for="jp-fb-correct-reading">Cách đọc đúng (Kana)</label>
+                <input type="text" class="jp-fb-input" id="jp-fb-correct-reading" placeholder="Ví dụ: ふらんすご">
+              </div>
+            </div>
+            <div class="jp-fb-field">
+              <label class="jp-fb-label" for="jp-fb-correct-meaning">Nghĩa tiếng Việt đúng / Đề xuất</label>
+              <input type="text" class="jp-fb-input" id="jp-fb-correct-meaning" placeholder="Nhập nghĩa chuẩn xác hơn...">
+            </div>
+          </div>
+
+          <div class="jp-fb-field">
+            <label class="jp-fb-label" for="jp-fb-note">Mô tả chi tiết hoặc góp ý</label>
+            <textarea class="jp-fb-textarea" id="jp-fb-note" rows="3" placeholder="Mô tả vấn đề bạn gặp phải hoặc ý tưởng cải thiện..."></textarea>
+          </div>
+
+          <div class="jp-fb-options">
+            <label class="jp-fb-check" id="jp-fb-override-wrap">
+              <input type="checkbox" id="jp-fb-apply-override" checked>
+              <span>✏️ Áp dụng ngay bản sửa này cho Từ điển cá nhân (hiện đúng tức thì)</span>
+            </label>
+            <label class="jp-fb-check">
+              <input type="checkbox" id="jp-fb-include-domain" checked>
+              <span id="jp-fb-domain-label">🌐 Đính kèm tên miền trang web hiện tại</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="jp-fb-status" id="jp-fb-status" style="display:none;"></div>
+
+        <div class="jp-fb-actions">
+          <button type="button" class="jp-fb-btn jp-fb-btn-primary" id="jp-fb-submit-btn">💾 Lưu &amp; Gửi</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-email" id="jp-fb-email-btn" title="Gửi qua Email tới lexuantruong098@gmail.com">📧 Gửi Email</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-github" id="jp-fb-github-btn" title="Mở GitHub Issues với nội dung đã điền sẵn">🐙 GitHub Issue</button>
+          <button type="button" class="jp-fb-btn jp-fb-btn-ghost" id="jp-fb-copy-btn" title="Sao chép báo cáo dạng Markdown">📋 Copy</button>
+        </div>
+
+        <div class="jp-fb-email-hint">
+          <span>📬 Mail hỗ trợ: <strong id="jp-fb-email-addr">lexuantruong098@gmail.com</strong></span>
+          <div class="jp-fb-email-links">
+            <button type="button" class="jp-fb-link-btn" id="jp-fb-gmail-btn" title="Mở soạn thư trên Gmail Web">🌐 Gmail Web</button>
+            <button type="button" class="jp-fb-link-btn" id="jp-fb-copy-email-btn" title="Sao chép địa chỉ email">📋 Copy Email</button>
+          </div>
+        </div>
+      </div>
+    `;
+    shadowRoot.appendChild(feedbackModalOverlay);
+
+    feedbackModalOverlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeFeedbackModal();
+        return;
+      }
+      e.stopPropagation();
+    });
+    feedbackModalOverlay.addEventListener('mousedown', (e) => e.stopPropagation());
+    feedbackModalOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (e.target === feedbackModalOverlay) closeFeedbackModal();
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-close-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFeedbackModal();
+    });
+
+    const fbCatSelect = feedbackModalOverlay.querySelector('#jp-fb-category');
+    const fbWordFields = feedbackModalOverlay.querySelector('#jp-fb-word-fields');
+    const fbOverrideWrap = feedbackModalOverlay.querySelector('#jp-fb-override-wrap');
+    if (fbCatSelect) {
+      fbCatSelect.addEventListener('change', () => {
+        const isIssueWithWord = !['bug', 'suggestion'].includes(fbCatSelect.value);
+        if (fbWordFields) fbWordFields.style.display = isIssueWithWord ? 'flex' : 'none';
+        if (fbOverrideWrap) fbOverrideWrap.style.display = isIssueWithWord ? 'flex' : 'none';
+      });
+    }
+
+    const collectFeedbackPayload = () => {
+      const cat = feedbackModalOverlay.querySelector('#jp-fb-category')?.value || 'wrong_reading';
+      const wordVal = feedbackModalOverlay.querySelector('#jp-fb-word')?.value.trim() || '';
+      const sugReading = feedbackModalOverlay.querySelector('#jp-fb-correct-reading')?.value.trim() || '';
+      const sugMeaning = feedbackModalOverlay.querySelector('#jp-fb-correct-meaning')?.value.trim() || '';
+      const noteVal = feedbackModalOverlay.querySelector('#jp-fb-note')?.value.trim() || '';
+      const includeDomain = !!feedbackModalOverlay.querySelector('#jp-fb-include-domain')?.checked;
+      const applyLocalOverride = !!feedbackModalOverlay.querySelector('#jp-fb-apply-override')?.checked;
+
+      return {
+        input: {
+          ...activeFeedbackContext,
+          category: cat,
+          word: wordVal,
+          suggestedReading: sugReading,
+          suggestedMeaning: sugMeaning,
+          note: noteVal,
+          includeDomain,
+          pageDomain: (typeof location !== 'undefined' && location.hostname) ? location.hostname : ''
+        },
+        options: {
+          applyLocalOverride,
+          webhookUrl: settings.feedbackWebhookUrl || ''
+        }
+      };
+    };
+
+    const showFeedbackStatus = (msg, isError = false) => {
+      const statusBox = feedbackModalOverlay.querySelector('#jp-fb-status');
+      if (!statusBox) return;
+      statusBox.textContent = msg;
+      statusBox.className = isError ? 'jp-fb-status error' : 'jp-fb-status success';
+      statusBox.style.display = 'block';
+    };
+
+    const handleFeedbackSubmit = async (mode = 'save') => {
+      const fbService = window.japaneseFeedbackService || (typeof japaneseFeedbackService !== 'undefined' ? japaneseFeedbackService : null);
+      if (!fbService) {
+        showFeedbackStatus('⚠️ Không tìm thấy dịch vụ báo cáo.', true);
+        return;
+      }
+      const { input, options } = collectFeedbackPayload();
+      const hasWordFix = Boolean(input.word && (input.suggestedReading || input.suggestedMeaning));
+      if (!hasWordFix && !input.note && !input.word) {
+        showFeedbackStatus('⚠️ Vui lòng nhập mô tả lỗi hoặc nội dung cần sửa.', true);
+        return;
+      }
+
+      const submitBtn = feedbackModalOverlay.querySelector('#jp-fb-submit-btn');
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await fbService.submitReport(input, options);
+        if (submitBtn) submitBtn.disabled = false;
+
+        if (res.overrideApplied && input.word && currentWord === input.word && typeof japaneseEngine !== 'undefined') {
+          const refreshedData = japaneseEngine.analyze(input.word, currentContextSentence || '', 0);
+          if (refreshedData && cardElem && cardElem.classList.contains('visible')) {
+            showTooltip(refreshedData, lastHoverPos.clientX, lastHoverPos.clientY, null);
+          }
+        }
+
+        if (mode === 'github') {
+          await fbService.updateReportStatus(res.report.id, 'github_opened');
+          window.open(res.githubUrl, '_blank', 'noopener,noreferrer');
+          showFeedbackStatus(
+            res.overrideApplied
+              ? '✅ Đã cập nhật Từ điển cá nhân & mở trang GitHub Issue điền sẵn!'
+              : '✅ Đã lưu báo cáo & mở trang GitHub Issue điền sẵn!'
+          );
+        } else if (mode === 'email') {
+          await fbService.updateReportStatus(res.report.id, 'email_opened');
+          fbService.openMailto(res.mailtoUrl);
+          showFeedbackStatus(
+            res.overrideApplied
+              ? `✅ Đã cập nhật Từ điển cá nhân & mở ứng dụng Email tới ${res.supportEmail}!`
+              : `✅ Đã mở ứng dụng Email soạn thư gửi tới ${res.supportEmail}!`
+          );
+        } else if (mode === 'gmail') {
+          await fbService.updateReportStatus(res.report.id, 'email_opened');
+          window.open(res.gmailUrl, '_blank', 'noopener,noreferrer');
+          showFeedbackStatus(
+            res.overrideApplied
+              ? `✅ Đã cập nhật Từ điển cá nhân & mở Gmail Web gửi tới ${res.supportEmail}!`
+              : `✅ Đã mở Gmail Web soạn thư gửi tới ${res.supportEmail}!`
+          );
+        } else if (mode === 'copy') {
+          const onCopied = () => {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '📋 Đã áp dụng bản sửa cục bộ & sao chép báo cáo Markdown!'
+                : '📋 Đã lưu & sao chép báo cáo Markdown vào Clipboard!'
+            );
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(res.markdown).then(onCopied).catch(() => fallbackCopyText(res.markdown, onCopied));
+          } else {
+            fallbackCopyText(res.markdown, onCopied);
+          }
+        } else {
+          if (options.webhookUrl && res.webhookResult && res.webhookResult.success) {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '✅ Đã gửi báo cáo Webhook & áp dụng ngay vào Từ điển cá nhân!'
+                : '✅ Đã gửi báo cáo thành công tới Webhook!'
+            );
+          } else if (options.webhookUrl && res.webhookResult && !res.webhookResult.success) {
+            showFeedbackStatus(`⚠️ Đã lưu cục bộ, nhưng gửi Webhook lỗi: ${res.webhookResult.error}`, true);
+          } else {
+            showFeedbackStatus(
+              res.overrideApplied
+                ? '✅ Đã áp dụng bản sửa tức thì & lưu báo cáo (bấm Gửi Email hoặc GitHub Issue để gửi cho dev).'
+                : `✅ Đã lưu báo cáo! Bấm "Gửi Email" (${res.supportEmail}) hoặc "GitHub Issue" để gửi cho dev.`
+            );
+          }
+        }
+      } catch (err) {
+        if (submitBtn) submitBtn.disabled = false;
+        showFeedbackStatus(`⚠️ Có lỗi xảy ra: ${err.message}`, true);
+      }
+    };
+
+    feedbackModalOverlay.querySelector('#jp-fb-submit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('save');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-email-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('email');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-gmail-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('gmail');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-copy-email-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const emailAddr = 'lexuantruong098@gmail.com';
+      const onCopied = () => showFeedbackStatus(`📧 Đã sao chép email: ${emailAddr}`);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(emailAddr).then(onCopied).catch(() => fallbackCopyText(emailAddr, onCopied));
+      } else {
+        fallbackCopyText(emailAddr, onCopied);
+      }
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-github-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('github');
+    });
+    feedbackModalOverlay.querySelector('#jp-fb-copy-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleFeedbackSubmit('copy');
+    });
+
+    return feedbackModalOverlay;
+  }
+
   function openFeedbackModal(contextData = {}) {
-    if (!feedbackModalOverlay) return;
+    if (!ensureFeedbackModal()) return;
     activeFeedbackContext = { ...(contextData || {}) };
     cancelHideSchedule();
 
@@ -2730,6 +2812,7 @@
       if (qs && qs.setEnabled) {
         qs.setEnabled(settings.enabled);
       }
+      syncSubtitleController();
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ jpSettings: settings });
       }
@@ -3017,6 +3100,7 @@
           if (qs.setAllowWhenDisabled) qs.setAllowWhenDisabled(settings.allowQuickSearchWhenDisabled !== false);
           if (qs.setEnabled) qs.setEnabled(nextEnabled);
         }
+        syncSubtitleController();
         if (!nextEnabled) hideAllPopups(true);
         if (msg.action === 'TOGGLE_HOVER' || msg.showToggleToast || prevEnabled !== nextEnabled) {
           showToggleToast(nextEnabled);

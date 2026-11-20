@@ -5643,7 +5643,10 @@ function lookupJapaneseWord(word) {
   if (!cleanWord) return null;
 
   if (LOOKUP_CACHE.has(cleanWord)) {
-    return LOOKUP_CACHE.get(cleanWord);
+    const cached = LOOKUP_CACHE.get(cleanWord);
+    LOOKUP_CACHE.delete(cleanWord);
+    LOOKUP_CACHE.set(cleanWord, cached);
+    return cached;
   }
 
   // 1. Khớp từ điển trực tiếp (Kanji hoặc Kana)
@@ -5723,7 +5726,9 @@ function lookupJapaneseWord(word) {
 }
 
 function cacheLookup(word, result) {
-  if (LOOKUP_CACHE.size > 500) {
+  if (LOOKUP_CACHE.has(word)) {
+    LOOKUP_CACHE.delete(word);
+  } else if (LOOKUP_CACHE.size >= 500) {
     const oldest = LOOKUP_CACHE.keys().next().value;
     LOOKUP_CACHE.delete(oldest);
   }
