@@ -1,14 +1,36 @@
 // Content Script chính - Xử lý bắt vị trí chuột, nhận diện từ tiếng Nhật, hiển thị Tooltip & Sổ tay từ vựng
 
 (function () {
-  console.log('%c[JP Furigana Hover] v1.5.7 Loaded successfully!', 'color:#38bdf8;font-weight:bold;font-size:12px;');
+  // Chỉ thực thi trên tài liệu HTML/XHTML chuẩn có hỗ trợ đầy đủ giao diện DOM
+  // Tuyệt đối không chạy trên XML thuần (như BingSiteAuth.xml, sitemap.xml, RSS feed, SVG)
+  if (typeof document === 'undefined') return;
+
+  if (document.contentType && !document.contentType.includes('html') && !document.contentType.includes('xhtml')) {
+    return;
+  }
+  if (document instanceof XMLDocument && (!document.documentElement || !(document.documentElement instanceof HTMLElement))) {
+    return;
+  }
+  if (document.documentElement && !(document.documentElement instanceof HTMLElement)) {
+    return;
+  }
+  try {
+    const testEl = document.createElement('div');
+    if (!testEl || typeof testEl.style === 'undefined') {
+      return;
+    }
+  } catch (_) {
+    return;
+  }
 
   // Tránh inject trùng lặp trên cùng context
   if (window.__JP_HOVER_EXTENSION_INJECTED__) return;
   window.__JP_HOVER_EXTENSION_INJECTED__ = true;
-  if (document.documentElement) {
+  if (document.documentElement && typeof document.documentElement.setAttribute === 'function') {
     document.documentElement.setAttribute('data-jp-hover-injected', 'true');
   }
+
+  console.log('%c[ZYNO Nihon] v2.0.0 Loaded successfully!', 'color:#38bdf8;font-weight:bold;font-size:12px;');
 
   // Cấu hình mặc định
   let settings = {
@@ -204,7 +226,15 @@
       } catch (_) {}
     }
 
+    const parent = document.body || document.documentElement;
+    if (!parent || !(parent instanceof HTMLElement)) {
+      return;
+    }
+
     host = document.createElement('div');
+    if (!host || !host.style) {
+      return;
+    }
     host.id = 'jp-hover-extension-root';
     host.style.position = 'absolute';
     host.style.top = '0';
@@ -212,21 +242,12 @@
     host.style.zIndex = '2147483647';
     host.style.pointerEvents = 'none';
 
-    const parent = document.body || document.documentElement;
-    if (parent) {
-      parent.appendChild(host);
-    } else {
-      document.addEventListener('DOMContentLoaded', () => {
-        if (!document.getElementById('jp-hover-extension-root')) {
-          (document.body || document.documentElement).appendChild(host);
-        }
-      });
-    }
+    parent.appendChild(host);
 
     try {
       shadowRoot = host.attachShadow({ mode: 'open' });
     } catch (e) {
-      console.warn('JP Hover: attachShadow error:', e);
+      console.warn('ZYNO Nihon: attachShadow error:', e);
       return;
     }
 
@@ -3061,15 +3082,15 @@
     }, Math.max(800, Number(duration) || 2000));
   }
 
-  function showToggleToast(enabled) {
+  function showToggleToast(enabled, force = false) {
     // Chỉ hiển thị ở tab đang mở để tránh nháy thông báo trên các tab nền khi sync storage
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+    if (!force && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       return;
     }
     const nextState = Boolean(enabled);
     const now = Date.now();
     // Chống trùng lặp khi cả chrome.storage.onChanged lẫn SET_STATE cùng đến cho 1 lần bấm
-    if (lastToggleToastState === nextState && (now - lastToggleToastAt) < 400) {
+    if (lastToggleToastState === nextState && (now - lastToggleToastAt) < 300) {
       return;
     }
     lastToggleToastState = nextState;
@@ -3103,7 +3124,7 @@
         syncSubtitleController();
         if (!nextEnabled) hideAllPopups(true);
         if (msg.action === 'TOGGLE_HOVER' || msg.showToggleToast || prevEnabled !== nextEnabled) {
-          showToggleToast(nextEnabled);
+          showToggleToast(nextEnabled, true);
         }
         sendResponse({ enabled: nextEnabled });
       } else if (msg.action === 'GET_STATUS') {

@@ -3,18 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JP Furigana Hover Pro</title>
+  <title>ZYNO Nihon - Japanese Immersion &amp; Furigana</title>
   <link rel="stylesheet" href="popup.css">
+  <style>
+    .option-icon svg, .tab-btn svg, .quick-action-btn svg, .preview-voice-btn svg {
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .zyno-brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      transition: color 0.2s ease;
+    }
+    .zyno-brand-badge:hover {
+      color: #38bdf8;
+    }
+    .zyno-brand-badge svg {
+      width: 12px;
+      height: 12px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
     <!-- Header -->
     <header class="header">
       <div class="logo-group">
-        <img src="../icons/icon48.png" class="logo-img" alt="JP Hover Logo">
+        <img src="../icons/icon48.png" class="logo-img" alt="ZYNO Nihon Logo">
         <div>
-          <h1 class="title">JP Hover Pro</h1>
-          <p class="subtitle">Phiên âm, Tra cứu & SRS Flashcards (v1.6.4)</p>
+          <h1 class="title">ZYNO Nihon</h1>
+          <p class="subtitle">Japanese Immersion &amp; Furigana (v2.0.0)</p>
         </div>
       </div>
       
@@ -28,14 +52,17 @@
     <!-- Tab navigation -->
     <div class="tab-nav">
       <button class="tab-btn active" id="tab-btn-settings" data-tab="settings">
-        <span>⚙️ Cài đặt</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Cài đặt</span>
       </button>
       <button class="tab-btn" id="tab-btn-notebook" data-tab="notebook">
-        <span>⭐ Sổ từ</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
+        <span>Sổ từ</span>
         <span class="tab-count-badge" id="saved-count-badge">0</span>
       </button>
       <button class="tab-btn" id="tab-btn-feedback" data-tab="feedback">
-        <span>🚩 Góp ý</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span>Góp ý</span>
         <span class="tab-count-badge" id="feedback-count-badge" style="display:none;">0</span>
       </button>
     </div>
@@ -45,7 +72,8 @@
       <!-- Shortcut Panel -->
       <div class="shortcut-panel">
         <div class="shortcut-panel-title">
-          <span>⚡ Bảng phím tắt thao tác nhanh</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Bảng phím tắt thao tác nhanh</span>
         </div>
         <div class="shortcut-grid">
           <div class="shortcut-chip">
@@ -82,14 +110,14 @@
           </div>
         </div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 8px; line-height: 1.4;">
-          💡 <em>Để tránh chật chội, popup khi rê chuột chỉ hiển thị các phím tắt chính. Tất cả 8 phím tắt trên đều hoạt động tức thì mọi lúc!</em>
+          <em>Để tránh chật chội, popup khi rê chuột chỉ hiển thị các phím tắt chính. Tất cả 8 phím tắt trên đều hoạt động tức thì mọi lúc!</em>
         </div>
       </div>
 
       <!-- Quick Actions -->
       <div class="quick-action-bar">
         <button type="button" id="btn-open-quick-search" class="quick-action-btn btn-action-search" style="flex: 1;">
-          <span class="btn-icon">🔍</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>Tra từ nhanh Nhật ⇄ Việt (Alt+S)</span>
         </button>
       </div>
@@ -98,7 +126,9 @@
       <div class="quick-search-setting-card">
         <label class="option-item quick-search-option" for="opt-quick-search-always">
           <div class="option-label quick-search-option-label">
-            <span class="option-icon">⚡</span>
+            <span class="option-icon">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </span>
             <div class="quick-search-text-group">
               <span class="quick-search-title">Mở Tra từ nhanh (Alt+S) không cần bật tiện ích</span>
               <span class="quick-search-desc">Dùng phím tắt Alt+S / Ctrl+Shift+F mọi lúc kể cả khi đang TẮT tiện ích</span>
@@ -110,32 +140,42 @@
 
       <!-- NEW: Video Subtitle Settings -->
       <section class="section">
-        <h2 class="section-title">🎬 Phụ đề video YouTube & Netflix (Immersion)</h2>
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><rect width="20" height="15" x="2" y="4.5" rx="2"></rect><polygon points="10 9 15 12 10 15 10 9"></polygon></svg>
+          Phụ đề video YouTube &amp; Netflix (Immersion)
+        </h2>
         <div class="options-list">
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">💬</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              </span>
               <span>Rê chuột tra từ trực tiếp trên phụ đề tiếng Nhật</span>
             </div>
             <input type="checkbox" id="opt-subtitle-hover" checked>
           </label>
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">⏸️</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="4" height="16" x="6" y="4"></rect><rect width="4" height="16" x="14" y="4"></rect></svg>
+              </span>
               <span>Tự động tạm dừng video khi rê chuột xem nghĩa</span>
             </div>
             <input type="checkbox" id="opt-auto-pause-hover">
           </label>
         </div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
-          💡 <em>Mẹo: Khi xem video, bấm phím <strong>A</strong> để tua lại 3.5 giây nghe lại câu thoại.</em>
+          <em>Mẹo: Khi xem video, bấm phím <strong>A</strong> để tua lại 3.5 giây nghe lại câu thoại.</em>
         </div>
       </section>
 
       <!-- NEW: AnkiConnect Desktop Settings -->
       <section class="section">
         <div class="section-header-row">
-          <h2 class="section-title">📥 Kết nối Anki Desktop (AnkiConnect)</h2>
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Kết nối Anki Desktop (AnkiConnect)
+          </h2>
           <button type="button" id="btn-test-anki" class="preview-voice-btn" title="Kiểm tra kết nối AnkiConnect">
             <span>Kiểm tra kết nối</span>
           </button>
@@ -149,7 +189,9 @@
         <div class="options-list">
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">⚡</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              </span>
               <span>Bật phím tắt 'E' để thêm từ vào Anki 1-click</span>
             </div>
             <input type="checkbox" id="opt-anki-enabled" checked>
@@ -174,21 +216,21 @@
           <label class="radio-card">
             <input type="radio" name="activation-mode" value="always" checked>
             <div class="radio-content">
-              <span class="radio-title">🚀 Luôn hiển thị</span>
+              <span class="radio-title">Luôn hiển thị</span>
               <span class="radio-desc">Hiện tooltip ngay khi di chuột vào từ</span>
             </div>
           </label>
           <label class="radio-card">
             <input type="radio" name="activation-mode" value="shift">
             <div class="radio-content">
-              <span class="radio-title">⌨️ Giữ phím Shift</span>
+              <span class="radio-title">Giữ phím Shift</span>
               <span class="radio-desc">Chỉ hiện khi vừa giữ Shift vừa rê chuột</span>
             </div>
           </label>
           <label class="radio-card">
             <input type="radio" name="activation-mode" value="alt">
             <div class="radio-content">
-              <span class="radio-title">⌥ Giữ phím Alt</span>
+              <span class="radio-title">Giữ phím Alt</span>
               <span class="radio-desc">Chỉ hiện khi vừa giữ Alt vừa rê chuột</span>
             </div>
           </label>
@@ -197,18 +239,18 @@
 
       <!-- Display options -->
       <section class="section">
-        <h2 class="section-title">Nội dung hiển thị & Phiên âm</h2>
+        <h2 class="section-title">Nội dung hiển thị &amp; Phiên âm</h2>
 
         <!-- Tùy chọn kiểu phiên âm: Hiragana, Katakana, Cả hai -->
         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;">
           <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;" for="select-reading-format">
-            🎌 Kiểu phiên âm ưu tiên hiển thị:
+            Kiểu phiên âm ưu tiên hiển thị:
           </label>
           <div class="select-wrapper">
             <select id="select-reading-format" class="custom-select" style="width: 100%;">
               <option value="hiragana" selected>Hiragana (Mặc định: しょくどう)</option>
               <option value="katakana">Katakana (ショクドウ)</option>
-              <option value="both">Cả hai (Hiragana & Katakana song song)</option>
+              <option value="both">Cả hai (Hiragana &amp; Katakana song song)</option>
             </select>
           </div>
         </div>
@@ -216,7 +258,9 @@
         <div class="options-list">
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🎌</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>
+              </span>
               <span>Bật cách đọc phiên âm (Furigana)</span>
             </div>
             <input type="checkbox" id="opt-reading" checked>
@@ -224,7 +268,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🈸</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M7 7h10"></path><path d="M12 7v10"></path></svg>
+              </span>
               <span>Hiển thị thêm phiên âm Katakana</span>
             </div>
             <input type="checkbox" id="opt-katakana" checked>
@@ -232,7 +278,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🔤</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
+              </span>
               <span>Phiên âm Romaji</span>
             </div>
             <input type="checkbox" id="opt-romaji" checked>
@@ -240,7 +288,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🏮</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v18"></path><path d="M3 12h18"></path></svg>
+              </span>
               <span>Âm Hán - Việt</span>
             </div>
             <input type="checkbox" id="opt-hanviet" checked>
@@ -248,7 +298,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">💡</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg>
+              </span>
               <span>Giải nghĩa tiếng Việt</span>
             </div>
             <input type="checkbox" id="opt-meaning" checked>
@@ -256,23 +308,29 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🔍</span>
-              <span>Bóc tách chi tiết từng chữ Kanji & Nét vẽ ✍️</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </span>
+              <span>Bóc tách chi tiết từng chữ Kanji &amp; Nét vẽ</span>
             </div>
             <input type="checkbox" id="opt-kanji-breakdown" checked>
           </label>
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">📖</span>
-              <span>Quy tắc âm đọc On/Kun & Thể ngữ pháp</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+              </span>
+              <span>Quy tắc âm đọc On/Kun &amp; Thể ngữ pháp</span>
             </div>
             <input type="checkbox" id="opt-onkun-rule" checked>
           </label>
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🎼</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+              </span>
               <span>Trọng âm (Pitch Accent)</span>
             </div>
             <input type="checkbox" id="opt-pitch-accent" checked>
@@ -280,7 +338,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">✨</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path></svg>
+              </span>
               <span>Viền sáng làm nổi bật từ đang hover</span>
             </div>
             <input type="checkbox" id="opt-visual-highlight" checked>
@@ -288,7 +348,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">📑</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path></svg>
+              </span>
               <span>Nút dịch khi bôi đen câu / đoạn văn</span>
             </div>
             <input type="checkbox" id="opt-selection-translate" checked>
@@ -296,15 +358,19 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🌐</span>
-              <span>Dịch dự phòng & Đồng nghĩa trực tuyến</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              </span>
+              <span>Dịch dự phòng &amp; Đồng nghĩa trực tuyến</span>
             </div>
             <input type="checkbox" id="opt-online-fallback" checked>
           </label>
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🔊</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+              </span>
               <span>Tự động phát âm giọng đọc khi hover</span>
             </div>
             <input type="checkbox" id="opt-auto-audio">
@@ -312,16 +378,18 @@
         </div>
       </section>
 
-      <!-- Tùy chỉnh nút bấm Tooltip & Phím tắt (Gọn gàng không vỡ layout) -->
+      <!-- Tùy chỉnh nút bấm Tooltip & Phím tắt -->
       <section class="section">
-        <h2 class="section-title">🎛️ Nút bấm trên Tooltip (Chống vỡ giao diện)</h2>
+        <h2 class="section-title">Nút bấm trên Tooltip (Chống vỡ giao diện)</h2>
         <p style="font-size: 11.5px; color: #94a3b8; margin-bottom: 8px; line-height: 1.4;">
           Tắt bớt các nút ít dùng để thanh tiêu đề gọn gàng. Bạn vẫn có thể thao tác tức thì bằng phím tắt bất kỳ lúc nào:
         </p>
         <div class="options-list">
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">📥</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </span>
               <span>Nút Anki (Phím tắt: <strong>E</strong>)</span>
             </div>
             <input type="checkbox" id="opt-show-anki-btn">
@@ -329,7 +397,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">📋</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+              </span>
               <span>Nút Sao chép (Phím tắt: <strong>C</strong> hoặc click vào từ)</span>
             </div>
             <input type="checkbox" id="opt-show-copy-btn">
@@ -337,7 +407,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">🔍</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </span>
               <span>Nút Tra từ điển Mazii (Phím tắt: <strong>Alt+S</strong>)</span>
             </div>
             <input type="checkbox" id="opt-show-lookup-btn">
@@ -345,7 +417,9 @@
 
           <label class="option-item">
             <div class="option-label">
-              <span class="option-icon">📌</span>
+              <span class="option-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+              </span>
               <span>Nút Ghim Tooltip (Phím tắt: <strong>P</strong>)</span>
             </div>
             <input type="checkbox" id="opt-show-pin-btn" checked>
@@ -356,7 +430,10 @@
       <!-- AI Engine & Multi-provider API Settings -->
       <section class="section">
         <div class="section-header-row">
-          <h2 class="section-title">🧠 Trí tuệ Nhân tạo (AI Engine & API Keys)</h2>
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2a4 4 0 0 0-4 4c0 .7.2 1.4.5 2H6a4 4 0 0 0-4 4 4 4 0 0 0 4 4h1.5A4 4 0 0 0 11 20a4 4 0 0 0 2 0 4 4 0 0 0 3.5-4H18a4 4 0 0 0 4-4 4 4 0 0 0-4-4h-2.5c.3-.6.5-1.3.5-2a4 4 0 0 0-4-4Z"></path></svg>
+            Trí tuệ Nhân tạo (AI Engine &amp; API Keys)
+          </h2>
           <button type="button" id="btn-test-ai" class="preview-voice-btn" title="Kiểm tra kết nối API Key & Model">
             <span id="ai-test-btn-text">Kiểm tra kết nối</span>
           </button>
@@ -366,15 +443,15 @@
           <label class="radio-card">
             <input type="radio" name="trans-engine" value="google" checked>
             <div class="radio-content">
-              <span class="radio-title">🌐 Google Translate API</span>
-              <span class="radio-desc">Mặc định, dịch nhanh, miễn phí & không cần API key</span>
+              <span class="radio-title">Google Translate API</span>
+              <span class="radio-desc">Mặc định, dịch nhanh, miễn phí &amp; không cần API key</span>
             </div>
           </label>
           <label class="radio-card">
             <input type="radio" name="trans-engine" value="ai">
             <div class="radio-content">
-              <span class="radio-title">✨ Trí tuệ Nhân tạo Đa nền tảng (AI Engine)</span>
-              <span class="radio-desc">Dịch chuẩn ngữ cảnh, phân tích ngữ pháp JLPT & giải thích từ vựng</span>
+              <span class="radio-title">Trí tuệ Nhân tạo Đa nền tảng (AI Engine)</span>
+              <span class="radio-desc">Dịch chuẩn ngữ cảnh, phân tích ngữ pháp JLPT &amp; giải thích từ vựng</span>
             </div>
           </label>
         </div>
@@ -384,16 +461,16 @@
           <!-- Provider Select -->
           <div style="margin-bottom: 10px;">
             <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="select-ai-provider">
-              🏢 Nhà cung cấp AI (Provider):
+              Nhà cung cấp AI (Provider):
             </label>
             <div class="select-wrapper">
               <select id="select-ai-provider" class="custom-select" style="width: 100%;">
-                <option value="gemini" selected>✨ Google Gemini (Khuyên dùng: Miễn phí & Cực nhanh)</option>
-                <option value="openai">🟢 OpenAI (GPT-4o, GPT-4o-mini)</option>
-                <option value="claude">🟣 Anthropic Claude (Claude 3.5 Haiku / Sonnet)</option>
-                <option value="deepseek">🐳 DeepSeek (DeepSeek V3 / R1)</option>
-                <option value="groq">⚡ Groq (Llama 3.3 70B - Tốc độ cực cao)</option>
-                <option value="custom">🛠️ Tùy chỉnh (OpenAI-compatible / Ollama / OpenRouter)</option>
+                <option value="gemini" selected>Google Gemini (Khuyên dùng: Miễn phí &amp; Cực nhanh)</option>
+                <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
+                <option value="claude">Anthropic Claude (Claude 3.5 Haiku / Sonnet)</option>
+                <option value="deepseek">DeepSeek (DeepSeek V3 / R1)</option>
+                <option value="groq">Groq (Llama 3.3 70B - Tốc độ cực cao)</option>
+                <option value="custom">Tùy chỉnh (OpenAI-compatible / Ollama / OpenRouter)</option>
               </select>
             </div>
           </div>
@@ -402,10 +479,10 @@
           <div style="margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1;" for="ai-api-key">
-                🔑 API Key:
+                API Key:
               </label>
               <button type="button" id="btn-toggle-ai-key" style="background: none; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; padding: 0;">
-                👁️ Hiện key
+                Hiện key
               </button>
             </div>
             <input type="password" id="ai-api-key" placeholder="Nhập API Key của nhà cung cấp..." class="custom-api-input">
@@ -422,7 +499,7 @@
           <!-- Model Input / Presets -->
           <div style="margin-bottom: 10px;">
             <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="ai-model-name">
-              🤖 Mô hình (Model):
+              Mô hình (Model):
             </label>
             <div style="display: flex; gap: 6px;">
               <input type="text" id="ai-model-name" class="custom-api-input" value="gemini-flash-latest" placeholder="gemini-flash-latest..." style="flex: 1;">
@@ -441,7 +518,7 @@
           <!-- Custom Endpoint (Chỉ hiện khi chọn 'custom') -->
           <div id="ai-custom-endpoint-group" style="display: none; margin-bottom: 10px;">
             <label style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; display: block;" for="ai-custom-endpoint">
-              🌐 Base URL Endpoint (OpenAI-compatible):
+              Base URL Endpoint (OpenAI-compatible):
             </label>
             <input type="text" id="ai-custom-endpoint" class="custom-api-input" placeholder="Ví dụ: http://localhost:11434/v1 hoặc https://openrouter.ai/api/v1">
             <div style="font-size: 10.5px; color: #94a3b8; margin-top: 3px;">
@@ -457,27 +534,33 @@
 
           <!-- Các tác vụ AI hỗ trợ (AI Feature Toggles) -->
           <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #38bdf8; margin-bottom: 6px;">
-            ⚡ Các tác vụ sử dụng AI:
+            Các tác vụ sử dụng AI:
           </div>
           <div class="options-list">
             <label class="option-item">
               <div class="option-label">
-                <span class="option-icon">📖</span>
-                <span>Dịch câu & đoạn văn thông minh</span>
+                <span class="option-icon">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                </span>
+                <span>Dịch câu &amp; đoạn văn thông minh</span>
               </div>
               <input type="checkbox" id="opt-ai-translate" checked>
             </label>
             <label class="option-item">
               <div class="option-label">
-                <span class="option-icon">🧩</span>
-                <span>Phân tích ngữ pháp & Cấu trúc câu JLPT</span>
+                <span class="option-icon">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                </span>
+                <span>Phân tích ngữ pháp &amp; Cấu trúc câu JLPT</span>
               </div>
               <input type="checkbox" id="opt-ai-grammar" checked>
             </label>
             <label class="option-item">
               <div class="option-label">
-                <span class="option-icon">💡</span>
-                <span>Giải thích sâu từ vựng & Ví dụ thực tế</span>
+                <span class="option-icon">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg>
+                </span>
+                <span>Giải thích sâu từ vựng &amp; Ví dụ thực tế</span>
               </div>
               <input type="checkbox" id="opt-ai-explain" checked>
             </label>
@@ -488,7 +571,10 @@
       <!-- Voice & Audio Settings -->
       <section class="section audio-section">
         <div class="section-header-row">
-          <h2 class="section-title">🎙️ Giọng đọc & Phát âm (Audio TTS)</h2>
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+            Giọng đọc &amp; Phát âm (Audio TTS)
+          </h2>
           <button type="button" id="preview-voice-btn" class="preview-voice-btn" title="Nghe thử giọng đang chọn">
             <span class="preview-icon">▶</span>
             <span class="preview-text">Nghe thử</span>
@@ -499,17 +585,17 @@
           <label class="voice-label" for="voice-select">Lựa chọn giọng đọc tiếng Nhật:</label>
           <div class="select-wrapper">
             <select id="voice-select" class="custom-select">
-              <option value="" selected>✨ Tự động (Ưu tiên giọng người Nhật tốt nhất)</option>
-              <optgroup label="🌸 Giọng Nữ Nhật Bản (Haruka, Ayumi, Sayaka, Nanami)" id="optgroup-female">
+              <option value="" selected>Tự động (Ưu tiên giọng người Nhật tốt nhất)</option>
+              <optgroup label="Giọng Nữ Nhật Bản (Haruka, Ayumi, Sayaka, Nanami)" id="optgroup-female">
               </optgroup>
-              <optgroup label="👔 Giọng Nam Nhật Bản (Ichiro, Keita)" id="optgroup-male">
+              <optgroup label="Giọng Nam Nhật Bản (Ichiro, Keita)" id="optgroup-male">
               </optgroup>
-              <optgroup label="🌐 Giọng trực tuyến" id="optgroup-online">
-                <option value="google-tts">🌐 Google TTS (Trực tuyến)</option>
+              <optgroup label="Giọng trực tuyến" id="optgroup-online">
+                <option value="google-tts">Google TTS (Trực tuyến)</option>
               </optgroup>
             </select>
           </div>
-          <p class="voice-hint" id="voice-hint">✨ Phát âm tức thì không độ trễ (0ms) với các giọng người Nhật Haruka, Ayumi, Sayaka, Ichiro</p>
+          <p class="voice-hint" id="voice-hint">Phát âm tức thì không độ trễ (0ms) với các giọng người Nhật Haruka, Ayumi, Sayaka, Ichiro</p>
         </div>
 
         <div class="sliders-row">
@@ -557,21 +643,23 @@
     <div class="tab-pane" id="pane-notebook">
       <div class="flashcards-banner">
         <button type="button" id="open-flashcards-page-btn" class="flashcards-hero-btn" title="Mở trang Flashcards luyện nhớ và tra cứu toàn màn hình">
-          <span class="banner-icon">🎴</span>
+          <span class="banner-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="12" cy="12" r="4"></circle></svg>
+          </span>
           <div class="banner-text">
-            <strong>Mở Flashcards & Sổ tay Toàn màn hình</strong>
+            <strong>Mở Flashcards &amp; Sổ tay Toàn màn hình</strong>
             <small>Thuật toán SRS lặp lại ngắt quãng, đánh giá 4 cấp độ ➔</small>
           </div>
         </button>
 
         <div class="popup-quick-jlpt-row">
-          <button type="button" id="open-listening-page-btn" class="quick-jlpt-btn btn-listening-quick" title="Luyện nghe JLPT N5-N3 & Sổ tay">
-            <span>🎧</span>
+          <button type="button" id="open-listening-page-btn" class="quick-jlpt-btn btn-listening-quick" title="Luyện nghe JLPT N5-N3 &amp; Sổ tay">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
             <span>Luyện nghe JLPT</span>
           </button>
-          <button type="button" id="open-exam-page-btn" class="quick-jlpt-btn btn-exam-quick" title="Thi thử JLPT N5, N4, N3 & Luyện viết">
-            <span>✍️</span>
-            <span>Thi thử & Viết</span>
+          <button type="button" id="open-exam-page-btn" class="quick-jlpt-btn btn-exam-quick" title="Thi thử JLPT N5, N4, N3 &amp; Luyện viết">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            <span>Thi thử &amp; Viết</span>
           </button>
         </div>
       </div>
@@ -579,24 +667,24 @@
       <!-- Due Review Notification Banner -->
       <div id="due-words-banner" class="due-words-banner" style="display:none;">
         <div class="due-words-info">
-          <span>🧠 Bạn có <strong id="due-words-count">0</strong> từ đến hạn ôn tập hôm nay!</span>
+          <span>Bạn có <strong id="due-words-count">0</strong> từ đến hạn ôn tập hôm nay!</span>
         </div>
         <button type="button" id="btn-review-due-now" class="btn-review-due">Ôn ngay</button>
       </div>
 
       <div class="notebook-toolbar">
         <div class="search-box">
-          <input type="text" id="saved-search-input" placeholder="🔍 Tìm kiếm từ đã lưu...">
+          <input type="text" id="saved-search-input" placeholder="Tìm kiếm từ đã lưu...">
         </div>
         <div class="toolbar-actions">
           <button type="button" id="btn-sync-all-anki" class="action-btn anki-sync-btn" title="Đồng bộ tất cả từ vựng sang Anki Desktop">
-            <span>📥 Anki Desktop</span>
+            <span>Anki Desktop</span>
           </button>
           <button type="button" id="export-anki-btn" class="action-btn export-btn" title="Xuất file CSV để nạp vào Anki hoặc Quizlet">
-            <span>📄 CSV</span>
+            <span>CSV</span>
           </button>
           <button type="button" id="clear-saved-btn" class="action-btn clear-btn" title="Xóa toàn bộ từ vựng đã lưu">
-            <span>🗑️ Xóa hết</span>
+            <span>Xóa hết</span>
           </button>
         </div>
       </div>
@@ -606,33 +694,35 @@
       </div>
 
       <div class="saved-empty-state" id="saved-empty-state">
-        <div class="empty-icon">🏮</div>
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
+        </div>
         <p class="empty-title">Chưa có từ nào được lưu</p>
-        <p class="empty-desc">Khi rê chuột tra từ trên bất kỳ trang web nào, hãy bấm nút <strong>⭐</strong> trên tooltip để lưu từ vào đây và ôn tập!</p>
+        <p class="empty-desc">Khi rê chuột tra từ trên bất kỳ trang web nào, hãy bấm nút lưu từ trên tooltip để lưu từ vào đây và ôn tập!</p>
       </div>
     </div>
 
     <!-- TAB 3: Báo lỗi từ sai & Góp ý -->
     <div class="tab-pane" id="pane-feedback">
       <div class="feedback-hero-card">
-        <div class="feedback-hero-title">🚩 Báo lỗi từ sai &amp; Đóng góp</div>
+        <div class="feedback-hero-title">Báo lỗi từ sai &amp; Đóng góp</div>
         <p class="feedback-hero-desc">
           Báo lỗi phiên âm/nghĩa sai, góp ý tính năng hoặc tự sửa nhanh từ vựng để áp dụng ngay lập tức cho từ điển của riêng bạn.
         </p>
       </div>
 
       <section class="section">
-        <h2 class="section-title">📝 Gửi báo cáo / Góp ý</h2>
+        <h2 class="section-title">Gửi báo cáo / Góp ý</h2>
         <div class="feedback-form-card">
           <div class="fb-field">
             <label class="fb-label" for="popup-fb-category">Phân loại</label>
             <select id="popup-fb-category" class="custom-select" style="width: 100%;">
-              <option value="wrong_reading">🔤 Sai phiên âm (Furigana / Romaji / Audio)</option>
-              <option value="wrong_meaning">💡 Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
-              <option value="wrong_onkun">📖 Sai quy tắc On/Kun / Hán-Việt</option>
-              <option value="wrong_segment">✂️ Sai tách từ / Chia thể ngữ pháp</option>
-              <option value="bug">🐛 Lỗi giao diện / Chức năng</option>
-              <option value="suggestion" selected>✨ Góp ý / Đề xuất tính năng mới</option>
+              <option value="wrong_reading">Sai phiên âm (Furigana / Romaji / Audio)</option>
+              <option value="wrong_meaning">Sai nghĩa / Thiếu nghĩa tiếng Việt</option>
+              <option value="wrong_onkun">Sai quy tắc On/Kun / Hán-Việt</option>
+              <option value="wrong_segment">Sai tách từ / Chia thể ngữ pháp</option>
+              <option value="bug">Lỗi giao diện / Chức năng</option>
+              <option value="suggestion" selected>Góp ý / Đề xuất tính năng mới</option>
             </select>
           </div>
 
@@ -653,7 +743,9 @@
             </div>
             <label class="option-item" style="padding: 4px 0; border: none;">
               <div class="option-label" style="font-size: 11.5px;">
-                <span class="option-icon">✏️</span>
+                <span class="option-icon">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                </span>
                 <span>Áp dụng ngay bản sửa vào Từ điển cá nhân</span>
               </div>
               <input type="checkbox" id="popup-fb-apply-override" checked>
@@ -673,17 +765,17 @@
           <div id="popup-fb-status" class="fb-status-banner" style="display: none;"></div>
 
           <div class="fb-actions-row">
-            <button type="button" id="popup-fb-submit-btn" class="quick-action-btn btn-action-search">💾 Lưu &amp; Gửi</button>
-            <button type="button" id="popup-fb-email-btn" class="quick-action-btn btn-action-email" title="Mở Email gửi tới lexuantruong098@gmail.com">📧 Gửi Email</button>
-            <button type="button" id="popup-fb-github-btn" class="quick-action-btn btn-action-furigana">🐙 GitHub Issue</button>
-            <button type="button" id="popup-fb-copy-btn" class="quick-action-btn action-btn export-btn" title="Copy báo cáo dạng Markdown">📋 Copy</button>
+            <button type="button" id="popup-fb-submit-btn" class="quick-action-btn btn-action-search">Lưu &amp; Gửi</button>
+            <button type="button" id="popup-fb-email-btn" class="quick-action-btn btn-action-email" title="Mở Email gửi tới lexuantruong098@gmail.com">Gửi Email</button>
+            <button type="button" id="popup-fb-github-btn" class="quick-action-btn btn-action-furigana">GitHub Issue</button>
+            <button type="button" id="popup-fb-copy-btn" class="quick-action-btn action-btn export-btn" title="Copy báo cáo dạng Markdown">Copy</button>
           </div>
 
           <div class="fb-email-strip">
-            <span>📬 Mail hỗ trợ: <strong id="popup-fb-email-addr">lexuantruong098@gmail.com</strong></span>
+            <span>Mail hỗ trợ: <strong id="popup-fb-email-addr">lexuantruong098@gmail.com</strong></span>
             <div class="fb-email-mini-actions">
-              <button type="button" id="popup-fb-gmail-btn" class="fb-mini-btn" title="Mở soạn thư trên Gmail Web">🌐 Gmail Web</button>
-              <button type="button" id="popup-fb-copy-email-btn" class="fb-mini-btn" title="Sao chép địa chỉ email">📋 Copy Email</button>
+              <button type="button" id="popup-fb-gmail-btn" class="fb-mini-btn" title="Mở soạn thư trên Gmail Web">Gmail Web</button>
+              <button type="button" id="popup-fb-copy-email-btn" class="fb-mini-btn" title="Sao chép địa chỉ email">Copy Email</button>
             </div>
           </div>
         </div>
@@ -691,12 +783,12 @@
 
       <!-- Webhook Config -->
       <section class="section">
-        <h2 class="section-title">🔗 Kênh nhận phản hồi tự động (Tùy chọn)</h2>
+        <h2 class="section-title">Kênh nhận phản hồi tự động (Tùy chọn)</h2>
         <div class="feedback-form-card">
           <label class="fb-label" for="feedback-webhook-url">Webhook URL (Discord, Slack, Formspree, Google Script...):</label>
           <input type="text" id="feedback-webhook-url" class="custom-api-input" placeholder="https://discord.com/api/webhooks/... hoặc Formspree URL">
           <div style="font-size: 10.5px; color: #94a3b8; line-height: 1.4;">
-            💡 Nếu để trống, báo cáo vẫn được lưu cục bộ và hỗ trợ gửi qua Email (<strong>lexuantruong098@gmail.com</strong>), GitHub Issues hoặc Copy.
+            Nếu để trống, báo cáo vẫn được lưu cục bộ và hỗ trợ gửi qua Email (<strong>lexuantruong098@gmail.com</strong>), GitHub Issues hoặc Copy.
           </div>
         </div>
       </section>
@@ -704,7 +796,7 @@
       <!-- Custom Dictionary Overrides -->
       <section class="section">
         <div class="section-header-row">
-          <h2 class="section-title">✏️ Từ điển cá nhân đã sửa (<span id="custom-dict-count">0</span>)</h2>
+          <h2 class="section-title">Từ điển cá nhân đã sửa (<span id="custom-dict-count">0</span>)</h2>
         </div>
         <div id="custom-dict-list" class="fb-history-list"></div>
       </section>
@@ -712,10 +804,10 @@
       <!-- Saved Reports History -->
       <section class="section">
         <div class="section-header-row">
-          <h2 class="section-title">🗂️ Lịch sử báo cáo (<span id="fb-history-count">0</span>)</h2>
+          <h2 class="section-title">Lịch sử báo cáo (<span id="fb-history-count">0</span>)</h2>
           <div style="display: flex; gap: 6px;">
-            <button type="button" id="fb-export-md-btn" class="preview-voice-btn" title="Tải file tổng hợp báo cáo (.md)">📥 Xuất .md</button>
-            <button type="button" id="fb-clear-history-btn" class="action-btn clear-btn" style="padding: 3px 8px; font-size: 11px;" title="Xóa toàn bộ lịch sử báo cáo">🗑️</button>
+            <button type="button" id="fb-export-md-btn" class="preview-voice-btn" title="Tải file tổng hợp báo cáo (.md)">Xuất .md</button>
+            <button type="button" id="fb-clear-history-btn" class="action-btn clear-btn" style="padding: 3px 8px; font-size: 11px;" title="Xóa toàn bộ lịch sử báo cáo">Xóa</button>
           </div>
         </div>
         <div id="fb-history-list" class="fb-history-list"></div>
@@ -728,7 +820,11 @@
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">Đang hoạt động</span>
       </div>
-      <button type="button" id="open-shortcuts-btn" class="shortcut-link">Đổi phím tắt ⚙️</button>
+      <a href="https://zyno.top/products/zyno-nihon" target="_blank" class="zyno-brand-badge" title="Khám phá hệ sinh thái ZYNO">
+        <span>ZYNO</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l10-10M7 7h10v10"></path></svg>
+      </a>
+      <button type="button" id="open-shortcuts-btn" class="shortcut-link">Đổi phím tắt</button>
     </footer>
   </div>
 

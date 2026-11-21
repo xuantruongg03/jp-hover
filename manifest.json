@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "JP Furigana Hover - Phiên âm & Học Tiếng Nhật Pro",
-  "version": "1.7.0",
-  "description": "Rê chuột hiển thị Furigana, Hán-Việt, Nét vẽ Kanji, Dịch câu, Phụ đề YouTube/Netflix, AnkiConnect & SRS Flashcard.",
+  "name": "ZYNO Nihon - Tiếng Nhật, Furigana & SRS Flashcards",
+  "short_name": "ZYNO Nihon",
+  "version": "2.0.0",
+  "description": "Rê chuột hiển thị Furigana, Hán-Việt, Nét vẽ Kanji, Dịch câu AI, Phụ đề YouTube/Netflix, AnkiConnect & SRS Flashcards miễn phí.",
+  "homepage_url": "https://zyno.top/products/zyno-nihon",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -11,7 +13,7 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "JP Furigana Hover Pro",
+    "default_title": "ZYNO Nihon",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

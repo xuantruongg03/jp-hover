@@ -602,13 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const enabledChanged = prevEnabled !== (currentSettings.enabled !== false);
     updateStatusDisplay(currentSettings.enabled);
-    if (enabledChanged) {
-      showToastNotification(
-        currentSettings.enabled
-          ? '🟢 Đã BẬT phiên âm tiếng Nhật (Alt+J)'
-          : '⚪ Đã TẮT phiên âm tiếng Nhật (Alt+J)'
-      );
-    }
 
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.set({ jpSettings: currentSettings }, () => {

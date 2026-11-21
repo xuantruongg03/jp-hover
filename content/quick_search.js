@@ -139,8 +139,12 @@ class QuickSearchPalette {
   ensureDOM() {
     if (this.container && document.contains(this.container) && this.shadow) return true;
 
+    if (typeof document === 'undefined') return false;
+    if (document.contentType && !document.contentType.includes('html') && !document.contentType.includes('xhtml')) {
+      return false;
+    }
     const parent = document.body || document.documentElement;
-    if (!parent) return false;
+    if (!parent || !(parent instanceof HTMLElement)) return false;
 
     // Dọn dẹp root cũ nếu có phiên bản trước tồn tại để tránh xung đột DOM
     const oldRoot = document.getElementById('jp-quick-search-root');
@@ -149,6 +153,7 @@ class QuickSearchPalette {
     }
 
     let root = document.createElement('div');
+    if (!root || !root.style || typeof root.style.setProperty !== 'function') return false;
     root.id = 'jp-quick-search-root';
     root.setAttribute('hidden', '');
     root.style.setProperty('position', 'fixed', 'important');

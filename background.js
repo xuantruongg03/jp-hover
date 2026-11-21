@@ -381,7 +381,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         let userPrompt = '';
 
         if (task === 'test_connection') {
-          systemPrompt = 'You are an AI assistant in JP Furigana Hover Chrome Extension.';
+          systemPrompt = 'You are an AI assistant in ZYNO Nihon Chrome Extension.';
           userPrompt = 'Respond with "OK: Connection successful" in 6 words or less.';
         } else if (task === 'translate') {
           const isVi = direction === 'vi-ja' || (direction !== 'ja-vi' && /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(text));
@@ -506,8 +506,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const headers = { 'Content-Type': 'application/json' };
           if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
           if (endpoint.includes('openrouter.ai')) {
-            headers['HTTP-Referer'] = 'https://github.com/ext/JP';
-            headers['X-Title'] = 'JP Furigana Hover Pro';
+            headers['HTTP-Referer'] = 'https://zyno.top/products/zyno-nihon';
+            headers['X-Title'] = 'ZYNO Nihon';
           }
 
           const controller = new AbortController();

@@ -86,9 +86,16 @@ class SubtitleController {
    */
   initSubtitleStyles() {
     if (typeof document === 'undefined') return;
+    if (document.contentType && !document.contentType.includes('html') && !document.contentType.includes('xhtml')) {
+      return;
+    }
     if (document.getElementById('jp-sub-enhancer-styles')) return;
 
+    const target = document.head || document.documentElement || document.body;
+    if (!target || !(target instanceof HTMLElement)) return;
+
     const style = document.createElement('style');
+    if (!style) return;
     style.id = 'jp-sub-enhancer-styles';
     style.textContent = `
       /* Các container bao bọc phụ đề PHẢI luôn xuyên thấu chuột (pointer-events: none)
@@ -123,7 +130,6 @@ class SubtitleController {
       }
     `;
 
-    const target = document.head || document.documentElement || document.body;
     if (target) {
       target.appendChild(style);
       this.styleElement = style;
@@ -211,9 +217,17 @@ class SubtitleController {
    * Lắng nghe các thay đổi phụ đề trên DOM (YouTube, Netflix, HTML5 Video)
    */
   initObserver() {
+    if (typeof document === 'undefined') return;
+    if (document.contentType && !document.contentType.includes('html') && !document.contentType.includes('xhtml')) {
+      return;
+    }
+    if (document.documentElement && !(document.documentElement instanceof HTMLElement)) {
+      return;
+    }
+
     const attach = () => {
       const target = document.body || document.documentElement;
-      if (!target || typeof MutationObserver === 'undefined') return;
+      if (!target || !(target instanceof HTMLElement) || typeof MutationObserver === 'undefined') return;
 
       const observer = new MutationObserver((mutations) => {
         if (!this.enabled || !this.enableSubtitleHover || this._scanScheduled) return;
